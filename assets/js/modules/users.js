@@ -1,8 +1,8 @@
 // assets/js/modules/users.js
 // Manage Users module (Strictly restricted to Receptionist)
 
-import api from '../api.js';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js';
+import api from '../api.js?v=7';
+import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=7';
 
 export default {
     state: {
@@ -91,7 +91,6 @@ export default {
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th data-sort="user_id">ID</th>
                                 <th data-sort="full_name">Full Name</th>
                                 <th data-sort="username">Username</th>
                                 <th data-sort="role_name">Role</th>
@@ -100,7 +99,7 @@ export default {
                             </tr>
                         </thead>
                         <tbody id="users-table-body">
-                            <tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading users...</td></tr>
+                            <tr><td colspan="5" class="text-center" style="padding: 2rem;">Loading users...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -158,11 +157,11 @@ export default {
                             </div>
 
                             <div class="form-group" id="user-specialty-group" style="display: none;">
-                                <label for="user-specialty-id">Clinical Specialty <span class="required-star">*</span></label>
-                                <select id="user-specialty-id" class="form-control">
-                                    <option value="">Select Specialty</option>
+                                <label for="user-specialty-id">Clinical Specialties <span class="required-star">*</span></label>
+                                <select id="user-specialty-id" class="form-control" multiple size="6">
                                     ${this.state.specialties.map(s => `<option value="${s.specialty_id}">${escapeHtml(s.specialty_name)}</option>`).join('')}
                                 </select>
+                                <small class="text-muted" style="display: block; margin-top: 0.25rem;">Hold Ctrl (Windows) or Cmd (Mac) to select more than one specialty.</small>
                                 <div class="invalid-feedback" id="user-specialty-id-error"></div>
                             </div>
 
@@ -287,7 +286,8 @@ export default {
         } else {
             specGroup.style.display = 'none';
             specSelect.removeAttribute('required');
-            specSelect.value = ''; // clear value
+            // Clear all selected options (multiple select)
+            Array.from(specSelect.options).forEach(option => { option.selected = false; });
             
             contactGroup.style.display = 'none';
             contactInput.value = ''; // clear value
@@ -297,7 +297,7 @@ export default {
 
     async loadData() {
         const tbody = this.container.querySelector('#users-table-body');
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading users...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding: 2rem;">Loading users...</td></tr>';
 
         try {
             const res = await api.get('api/user_controller.php', {
@@ -318,7 +318,7 @@ export default {
                 throw new Error(res.message);
             }
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted" style="padding: 2rem;">Failed to load users: ${escapeHtml(err.message)}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding: 2rem;">Failed to load users: ${escapeHtml(err.message)}</td></tr>`;
         }
     },
 
@@ -327,7 +327,7 @@ export default {
         if (!items || items.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6">
+                    <td colspan="5">
                         <div class="empty-state">
                             <strong>No users found</strong>
                             <p>Try adjusting your search criteria or filter options.</p>
@@ -341,7 +341,6 @@ export default {
         tbody.innerHTML = items.map(user => {
             return `
                 <tr>
-                    <td><strong>#${user.user_id}</strong></td>
                     <td>${escapeHtml(user.full_name)}</td>
                     <td><code>${escapeHtml(user.username)}</code></td>
                     <td><span class="badge badge-role">${escapeHtml(user.role_name)}</span></td>
@@ -450,8 +449,11 @@ export default {
             const isDoctor = user.role_name === 'Doctor';
             this.toggleDoctorFields(isDoctor);
             if (isDoctor) {
-                const primarySpecialtyId = user.specialty_ids ? user.specialty_ids.split(',')[0] : '';
-                this.container.querySelector('#user-specialty-id').value = primarySpecialtyId;
+                const selectedSpecialtyIds = user.specialty_ids ? String(user.specialty_ids).split(',') : [];
+                const specialtySelect = this.container.querySelector('#user-specialty-id');
+                Array.from(specialtySelect.options).forEach(option => {
+                    option.selected = selectedSpecialtyIds.includes(option.value);
+                });
                 this.container.querySelector('#user-contact-no').value = user.contact_no || '';
             }
 
@@ -480,7 +482,7 @@ export default {
         const roleSelect = this.container.querySelector('#user-role-id');
         const roleId = roleSelect.value;
         const roleName = roleSelect.options[roleSelect.selectedIndex]?.getAttribute('data-name');
-        const specialtyId = this.container.querySelector('#user-specialty-id').value;
+        const specialtyIds = Array.from(this.container.querySelector('#user-specialty-id').selectedOptions).map(o => parseInt(o.value, 10));
         const contactNo = this.container.querySelector('#user-contact-no').value.trim();
         const password = this.container.querySelector('#user-password').value;
 
@@ -506,8 +508,8 @@ export default {
             this.showFieldError('user-role-id', 'Role is required.');
             hasErrors = true;
         }
-        if (roleName === 'Doctor' && !specialtyId) {
-            this.showFieldError('user-specialty-id', 'Please select a specialty.');
+        if (roleName === 'Doctor' && specialtyIds.length === 0) {
+            this.showFieldError('user-specialty-id', 'Please select at least one specialty.');
             hasErrors = true;
         }
         if (!id && (!password || password.length < 6)) {
@@ -527,7 +529,7 @@ export default {
             gender: gender,
             username: username,
             role_id: parseInt(roleId, 10),
-            specialty_id: specialtyId ? parseInt(specialtyId, 10) : null,
+            specialty_ids: specialtyIds,
             contact_no: contactNo,
             password: password
         };
@@ -579,8 +581,7 @@ export default {
             const body = this.container.querySelector('#user-view-body');
             body.innerHTML = `
                 <table class="data-table">
-                    <tr><th style="width: 35%;">User ID</th><td>#${u.user_id}</td></tr>
-                    <tr><th>Full Name</th><td><strong>${escapeHtml(u.full_name)}</strong></td></tr>
+                    <tr><th style="width: 35%;">Full Name</th><td><strong>${escapeHtml(u.full_name)}</strong></td></tr>
                     <tr><th>Username</th><td><code>${escapeHtml(u.username)}</code></td></tr>
                     <tr><th>Gender</th><td>${escapeHtml(u.gender || 'N/A')}</td></tr>
                     <tr><th>Role</th><td><span class="badge badge-role">${escapeHtml(u.role_name)}</span></td></tr>

@@ -183,7 +183,7 @@ function createUser(PDO $pdo): void {
     $username = trim($input['username'] ?? '');
     $password = $input['password'] ?? '';
     $roleId   = (int)($input['role_id'] ?? 0);
-    $specialtyId = (int)($input['specialty_id'] ?? 0);
+    $specialtyIds = normalize_specialty_ids($input);
     $contactNo = trim($input['contact_no'] ?? '');
 
     $errors = [];
@@ -210,8 +210,12 @@ function createUser(PDO $pdo): void {
         $errors['role_id'] = 'Only Doctor or Receptionist roles can be assigned here.';
     }
     
-    if ($role && $role['role_name'] === 'Doctor' && $specialtyId <= 0) {
-        $errors['specialty_id'] = 'Please select a specialty for the Doctor.';
+    if ($role && $role['role_name'] === 'Doctor') {
+        if (empty($specialtyIds)) {
+            $errors['specialty_id'] = 'Please select at least one specialty for the Doctor.';
+        } elseif (!active_specialty_ids_exist($pdo, $specialtyIds)) {
+            $errors['specialty_id'] = 'One or more selected specialties are inactive or do not exist.';
+        }
     }
 
     // Username uniqueness check
@@ -248,7 +252,9 @@ function createUser(PDO $pdo): void {
             $newDocId = (int)$pdo->lastInsertId();
 
             $specIns = $pdo->prepare("INSERT INTO doctor_specialty (doctor_id, specialty_id) VALUES (?, ?)");
-            $specIns->execute([$newDocId, $specialtyId]);
+            foreach ($specialtyIds as $specialtyId) {
+                $specIns->execute([$newDocId, $specialtyId]);
+            }
         }
 
         $pdo->commit();
@@ -273,7 +279,7 @@ function updateUser(PDO $pdo): void {
     $username = trim($input['username'] ?? '');
     $password = $input['password'] ?? '';
     $roleId   = (int)($input['role_id'] ?? 0);
-    $specialtyId = (int)($input['specialty_id'] ?? 0);
+    $specialtyIds = normalize_specialty_ids($input);
     $contactNo = trim($input['contact_no'] ?? '');
 
     // Verify user exists
@@ -310,8 +316,12 @@ function updateUser(PDO $pdo): void {
     if ($username === '') {
         $errors['username'] = 'Username is required.';
     }
-    if ($newRole['role_name'] === 'Doctor' && $specialtyId <= 0) {
-        $errors['specialty_id'] = 'Please select a specialty for the Doctor.';
+    if ($newRole['role_name'] === 'Doctor') {
+        if (empty($specialtyIds)) {
+            $errors['specialty_id'] = 'Please select at least one specialty for the Doctor.';
+        } elseif (!active_specialty_ids_exist($pdo, $specialtyIds)) {
+            $errors['specialty_id'] = 'One or more selected specialties are inactive or do not exist.';
+        }
     }
 
     // Check unique username for another user
@@ -357,9 +367,12 @@ function updateUser(PDO $pdo): void {
                 );
                 $updDoc->execute([$firstName, $lastName, $middleInitial, $gender, $contactNo, $existingUser['doctor_id']]);
 
-                // Update specialty
+                // Update specialties
                 $pdo->prepare("DELETE FROM doctor_specialty WHERE doctor_id = ?")->execute([$existingUser['doctor_id']]);
-                $pdo->prepare("INSERT INTO doctor_specialty (doctor_id, specialty_id) VALUES (?, ?)")->execute([$existingUser['doctor_id'], $specialtyId]);
+                $specIns = $pdo->prepare("INSERT INTO doctor_specialty (doctor_id, specialty_id) VALUES (?, ?)");
+                foreach ($specialtyIds as $specialtyId) {
+                    $specIns->execute([$existingUser['doctor_id'], $specialtyId]);
+                }
             } else {
                 // Insert new doctor profile if they changed from Receptionist to Doctor
                 $docIns = $pdo->prepare(
@@ -369,7 +382,10 @@ function updateUser(PDO $pdo): void {
                 $docIns->execute([$userId, $firstName, $lastName, $middleInitial, $gender, $contactNo]);
                 $newDocId = (int)$pdo->lastInsertId();
 
-                $pdo->prepare("INSERT INTO doctor_specialty (doctor_id, specialty_id) VALUES (?, ?)")->execute([$newDocId, $specialtyId]);
+                $specIns = $pdo->prepare("INSERT INTO doctor_specialty (doctor_id, specialty_id) VALUES (?, ?)");
+                foreach ($specialtyIds as $specialtyId) {
+                    $specIns->execute([$newDocId, $specialtyId]);
+                }
             }
         } else {
             // Changed from Doctor to Receptionist. Soft-delete the doctor profile to prevent orphaned clinical data access.
@@ -473,4 +489,31 @@ function hardDeleteUser(PDO $pdo): void {
         $pdo->rollBack();
         throw $e;
     }
+}
+
+// Normalizes specialty_ids (multiple) with legacy single specialty_id support
+function normalize_specialty_ids(array $input): array {
+    $raw = $input['specialty_ids'] ?? $input['specialty_id'] ?? [];
+    if (!is_array($raw)) {
+        $raw = [$raw];
+    }
+
+    $ids = [];
+    foreach ($raw as $value) {
+        $id = (int)$value;
+        if ($id > 0) {
+            $ids[$id] = $id;
+        }
+    }
+
+    return array_values($ids);
+}
+
+// Returns true when every given specialty exists and is active
+function active_specialty_ids_exist(PDO $pdo, array $specialtyIds): bool {
+    $placeholders = implode(',', array_fill(0, count($specialtyIds), '?'));
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM specialties WHERE specialty_id IN ({$placeholders}) AND deleted_at IS NULL");
+    $stmt->execute($specialtyIds);
+
+    return (int)$stmt->fetchColumn() === count($specialtyIds);
 }

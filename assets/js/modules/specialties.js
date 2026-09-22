@@ -1,8 +1,8 @@
 // assets/js/modules/specialties.js
 // Manage Specialties module
 
-import api from '../api.js';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js';
+import api from '../api.js?v=7';
+import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=7';
 
 export default {
     state: {
@@ -60,14 +60,13 @@ export default {
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th data-sort="specialty_id">ID</th>
                                 <th data-sort="specialty_name">Specialty Name</th>
                                 <th>Status</th>
                                 <th style="text-align: right;">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="specialties-table-body">
-                            <tr><td colspan="4" class="text-center" style="padding: 2rem;">Loading specialties...</td></tr>
+                            <tr><td colspan="3" class="text-center" style="padding: 2rem;">Loading specialties...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -151,7 +150,7 @@ export default {
 
     async loadData() {
         const tbody = this.container.querySelector('#specialties-table-body');
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 2rem;">Loading specialties...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center" style="padding: 2rem;">Loading specialties...</td></tr>';
 
         try {
             const res = await api.get('api/specialty_controller.php', {
@@ -171,7 +170,7 @@ export default {
                 throw new Error(res.message);
             }
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted" style="padding: 2rem;">Failed to load specialties: ${escapeHtml(err.message)}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="3" class="text-center text-muted" style="padding: 2rem;">Failed to load specialties: ${escapeHtml(err.message)}</td></tr>`;
         }
     },
 
@@ -180,7 +179,7 @@ export default {
         if (!items || items.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="4">
+                    <td colspan="3">
                         <div class="empty-state">
                             <strong>No specialties found</strong>
                             <p>Try modifying your search or filter settings.</p>
@@ -196,7 +195,6 @@ export default {
 
             return `
                 <tr>
-                    <td><strong>#${s.specialty_id}</strong></td>
                     <td><strong>${escapeHtml(s.specialty_name)}</strong></td>
                     <td><span class="badge badge-active">Active</span></td>
                     <td>
@@ -350,8 +348,7 @@ export default {
             const body = this.container.querySelector('#specialty-view-body');
             body.innerHTML = `
                 <table class="data-table">
-                    <tr><th style="width: 35%;">Specialty ID</th><td>#${s.specialty_id}</td></tr>
-                    <tr><th>Specialty Name</th><td><strong>${escapeHtml(s.specialty_name)}</strong></td></tr>
+                    <tr><th style="width: 35%;">Specialty Name</th><td><strong>${escapeHtml(s.specialty_name)}</strong></td></tr>
                     <tr><th>Status</th><td>${s.deleted_at ? '<span class="badge badge-deleted">archived</span>' : '<span class="badge badge-active">Active</span>'}</td></tr>
                     <tr><th>Created At</th><td>${escapeHtml(s.created_at || 'N/A')}</td></tr>
                     ${s.deleted_at ? `<tr><th>archived At</th><td style="color: var(--danger);">${escapeHtml(s.deleted_at)}</td></tr>` : ''}

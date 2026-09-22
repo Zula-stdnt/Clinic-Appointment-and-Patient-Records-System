@@ -1,8 +1,8 @@
 // assets/js/modules/discounts.js
 // Manage Discounts module (Strict 0-100% validation on client and server)
 
-import api from '../api.js';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js';
+import api from '../api.js?v=7';
+import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=7';
 
 export default {
     state: {
@@ -60,7 +60,6 @@ export default {
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th data-sort="discount_id">ID</th>
                                 <th data-sort="discount_name">Discount Name</th>
                                 <th data-sort="percentage">Percentage (%)</th>
                                 <th>Status</th>
@@ -68,7 +67,7 @@ export default {
                             </tr>
                         </thead>
                         <tbody id="discounts-table-body">
-                            <tr><td colspan="5" class="text-center" style="padding: 2rem;">Loading discounts...</td></tr>
+                            <tr><td colspan="4" class="text-center" style="padding: 2rem;">Loading discounts...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -159,7 +158,7 @@ export default {
 
     async loadData() {
         const tbody = this.container.querySelector('#discounts-table-body');
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding: 2rem;">Loading discounts...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 2rem;">Loading discounts...</td></tr>';
 
         try {
             const res = await api.get('api/discount_controller.php', {
@@ -179,7 +178,7 @@ export default {
                 throw new Error(res.message);
             }
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding: 2rem;">Failed to load discounts: ${escapeHtml(err.message)}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted" style="padding: 2rem;">Failed to load discounts: ${escapeHtml(err.message)}</td></tr>`;
         }
     },
 
@@ -188,7 +187,7 @@ export default {
         if (!items || items.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="5">
+                    <td colspan="4">
                         <div class="empty-state">
                             <strong>No discounts found</strong>
                             <p>Try modifying your search or filter settings.</p>
@@ -206,7 +205,6 @@ export default {
 
             return `
                 <tr>
-                    <td><strong>#${d.discount_id}</strong></td>
                     <td><strong>${escapeHtml(d.discount_name)}</strong></td>
                     <td><span class="badge badge-role">${escapeHtml(percentageFormatted)}%</span></td>
                     <td><span class="badge badge-active">Active</span></td>
@@ -376,8 +374,7 @@ export default {
             const body = this.container.querySelector('#discount-view-body');
             body.innerHTML = `
                 <table class="data-table">
-                    <tr><th style="width: 35%;">Discount ID</th><td>#${d.discount_id}</td></tr>
-                    <tr><th>Discount Name</th><td><strong>${escapeHtml(d.discount_name)}</strong></td></tr>
+                    <tr><th style="width: 35%;">Discount Name</th><td><strong>${escapeHtml(d.discount_name)}</strong></td></tr>
                     <tr><th>Percentage</th><td><strong>${escapeHtml(parseFloat(d.percentage).toFixed(2))}%</strong></td></tr>
                     <tr><th>Status</th><td>${d.deleted_at ? '<span class="badge badge-deleted">archived</span>' : '<span class="badge badge-active">Active</span>'}</td></tr>
                     <tr><th>Created At</th><td>${escapeHtml(d.created_at || 'N/A')}</td></tr>

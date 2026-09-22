@@ -1,8 +1,8 @@
 // assets/js/modules/services.js
 // Manage Services module (Non-negative price validation and CRUD)
 
-import api from '../api.js';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js';
+import api from '../api.js?v=7';
+import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=7';
 
 export default {
     state: {
@@ -60,7 +60,6 @@ export default {
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th data-sort="service_id">ID</th>
                                 <th data-sort="service_name">Service Name</th>
                                 <th data-sort="price">Price (PHP)</th>
                                 <th>Status</th>
@@ -68,7 +67,7 @@ export default {
                             </tr>
                         </thead>
                         <tbody id="services-table-body">
-                            <tr><td colspan="5" class="text-center" style="padding: 2rem;">Loading services...</td></tr>
+                            <tr><td colspan="4" class="text-center" style="padding: 2rem;">Loading services...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -159,7 +158,7 @@ export default {
 
     async loadData() {
         const tbody = this.container.querySelector('#services-table-body');
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding: 2rem;">Loading services...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center" style="padding: 2rem;">Loading services...</td></tr>';
 
         try {
             const res = await api.get('api/service_controller.php', {
@@ -179,7 +178,7 @@ export default {
                 throw new Error(res.message);
             }
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding: 2rem;">Failed to load services: ${escapeHtml(err.message)}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted" style="padding: 2rem;">Failed to load services: ${escapeHtml(err.message)}</td></tr>`;
         }
     },
 
@@ -188,7 +187,7 @@ export default {
         if (!items || items.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="5">
+                    <td colspan="4">
                         <div class="empty-state">
                             <strong>No services found</strong>
                             <p>Try modifying your search or filter settings.</p>
@@ -206,7 +205,6 @@ export default {
 
             return `
                 <tr>
-                    <td><strong>#${s.service_id}</strong></td>
                     <td><strong>${escapeHtml(s.service_name)}</strong></td>
                     <td>PHP ${escapeHtml(priceFormatted)}</td>
                     <td><span class="badge badge-active">Active</span></td>
@@ -376,8 +374,7 @@ export default {
             const body = this.container.querySelector('#service-view-body');
             body.innerHTML = `
                 <table class="data-table">
-                    <tr><th style="width: 35%;">Service ID</th><td>#${s.service_id}</td></tr>
-                    <tr><th>Service Name</th><td><strong>${escapeHtml(s.service_name)}</strong></td></tr>
+                    <tr><th style="width: 35%;">Service Name</th><td><strong>${escapeHtml(s.service_name)}</strong></td></tr>
                     <tr><th>Standard Price</th><td><strong>PHP ${escapeHtml(priceFormatted)}</strong></td></tr>
                     <tr><th>Status</th><td>${s.deleted_at ? '<span class="badge badge-deleted">archived</span>' : '<span class="badge badge-active">Active</span>'}</td></tr>
                     <tr><th>Created At</th><td>${escapeHtml(s.created_at || 'N/A')}</td></tr>

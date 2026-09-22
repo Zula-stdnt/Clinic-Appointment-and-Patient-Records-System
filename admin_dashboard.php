@@ -17,7 +17,7 @@ $csrfToken   = get_csrf_token();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
     <title>Admin Dashboard - Hospital Billing &amp; Patient Information System</title>
-    <link rel="stylesheet" href="assets/css/style.css?v=5">
+    <link rel="stylesheet" href="assets/css/style.css?v=7">
     <script src="assets/js/axios.min.js"></script>
 </head>
 <body>
@@ -33,9 +33,16 @@ $csrfToken   = get_csrf_token();
             </div>
 
             <nav class="sidebar-nav">
-                <div class="nav-section-title">Master Files</div>
+                <div class="nav-section-title">Overview</div>
 
-                <button class="nav-link active" data-module="users">
+                <button class="nav-link active" data-module="overview">
+                    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+                    <span>Dashboard</span>
+                </button>
+
+                <div class="nav-section-title mt-4">Master Files</div>
+
+                <button class="nav-link" data-module="users">
                     <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                     <span>Manage Users</span>
                 </button>
@@ -65,7 +72,7 @@ $csrfToken   = get_csrf_token();
                     <span>Manage Discounts</span>
                 </button>
 
-                <div class="nav-section-title" style="margin-top: 1rem;">System</div>
+                <div class="nav-section-title mt-4">System</div>
                 
                 <button class="nav-link" data-module="archive">
                     <svg viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
@@ -94,15 +101,23 @@ $csrfToken   = get_csrf_token();
             </div>
         </aside>
 
+        <!-- Backdrop for the off-canvas sidebar on small screens -->
+        <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
         <!-- Main Workspace Area -->
         <main class="main-content">
             <header class="topbar">
-                <h1 class="topbar-title" id="current-module-title">Manage Users</h1>
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <span class="text-muted" style="font-size: 0.85rem;">
+                <div class="topbar-left">
+                    <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation menu" aria-controls="sidebar" aria-expanded="false">
+                        <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </button>
+                    <h1 class="topbar-title" id="current-module-title">Dashboard</h1>
+                </div>
+                <div class="topbar-meta">
+                    <span class="topbar-date text-muted">
                         Today is <?= date('F j, Y') ?>
                     </span>
-                    <span class="badge badge-active" style="padding: 0.35rem 0.75rem;">
+                    <span class="badge badge-active">
                         System Online
                     </span>
                 </div>
@@ -136,6 +151,6 @@ $csrfToken   = get_csrf_token();
     <div id="toast-container" class="toast-container"></div>
 
     <!-- Application Script Loader -->
-    <script type="module" src="assets/js/main.js?v=5"></script>
+    <script type="module" src="assets/js/main.js?v=7"></script>
 </body>
 </html>

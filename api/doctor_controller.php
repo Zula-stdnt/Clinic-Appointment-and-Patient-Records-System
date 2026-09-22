@@ -170,7 +170,7 @@ function validateDoctorInput(PDO $pdo, array $input): array {
     $errors = [];
     $firstName   = trim($input['first_name'] ?? '');
     $lastName    = trim($input['last_name'] ?? '');
-    $specialtyId = (int)($input['specialty_id'] ?? 0);
+    $specialtyIds = normalize_specialty_ids($input);
 
     if ($firstName === '') {
         $errors['first_name'] = 'First name is required.';
@@ -184,15 +184,10 @@ function validateDoctorInput(PDO $pdo, array $input): array {
         $errors['last_name'] = 'Last name cannot exceed 80 characters.';
     }
 
-    if ($specialtyId <= 0) {
-        $errors['specialty_id'] = 'Please select a valid specialty.';
-    } else {
-        // Specialty must be active
-        $sStmt = $pdo->prepare("SELECT specialty_id FROM specialties WHERE specialty_id = ? AND deleted_at IS NULL");
-        $sStmt->execute([$specialtyId]);
-        if (!$sStmt->fetch()) {
-            $errors['specialty_id'] = 'The selected specialty is inactive or does not exist.';
-        }
+    if (empty($specialtyIds)) {
+        $errors['specialty_id'] = 'Please select at least one valid specialty.';
+    } elseif (!active_specialty_ids_exist($pdo, $specialtyIds)) {
+        $errors['specialty_id'] = 'One or more selected specialties are inactive or do not exist.';
     }
 
     $username = trim($input['username'] ?? '');
@@ -255,10 +250,11 @@ function createDoctor(PDO $pdo): void {
         ]);
         $newDoctorId = (int)$pdo->lastInsertId();
 
-        // 3. Link specialty
-        $specialtyId = (int)$input['specialty_id'];
+        // 3. Link specialties
         $dsStmt = $pdo->prepare("INSERT INTO doctor_specialty (doctor_id, specialty_id) VALUES (?, ?)");
-        $dsStmt->execute([$newDoctorId, $specialtyId]);
+        foreach (normalize_specialty_ids($input) as $specialtyId) {
+            $dsStmt->execute([$newDoctorId, $specialtyId]);
+        }
 
         $pdo->commit();
         send_success('Doctor record created successfully.', ['doctor_id' => $newDoctorId], 201);
@@ -315,13 +311,14 @@ function updateDoctor(PDO $pdo): void {
             $uUpd->execute([trim($input['first_name']), trim($input['last_name']), $middleInitial, $gender, trim($input['username']), $doc['user_id']]);
         }
 
-        $specialtyId = (int)$input['specialty_id'];
         // Update junction table
         $delDs = $pdo->prepare("DELETE FROM doctor_specialty WHERE doctor_id = ?");
         $delDs->execute([$id]);
 
         $insDs = $pdo->prepare("INSERT INTO doctor_specialty (doctor_id, specialty_id) VALUES (?, ?)");
-        $insDs->execute([$id, $specialtyId]);
+        foreach (normalize_specialty_ids($input) as $specialtyId) {
+            $insDs->execute([$id, $specialtyId]);
+        }
 
         $pdo->commit();
         send_success('Doctor record updated successfully.');
@@ -411,4 +408,31 @@ function hardDeleteDoctor(PDO $pdo): void {
         $pdo->rollBack();
         throw $e;
     }
+}
+
+// Normalizes specialty_ids (multiple) with legacy single specialty_id support
+function normalize_specialty_ids(array $input): array {
+    $raw = $input['specialty_ids'] ?? $input['specialty_id'] ?? [];
+    if (!is_array($raw)) {
+        $raw = [$raw];
+    }
+
+    $ids = [];
+    foreach ($raw as $value) {
+        $id = (int)$value;
+        if ($id > 0) {
+            $ids[$id] = $id;
+        }
+    }
+
+    return array_values($ids);
+}
+
+// Returns true when every given specialty exists and is active
+function active_specialty_ids_exist(PDO $pdo, array $specialtyIds): bool {
+    $placeholders = implode(',', array_fill(0, count($specialtyIds), '?'));
+    $stmt = $pdo->prepare("SELECT COUNT(*) FROM specialties WHERE specialty_id IN ({$placeholders}) AND deleted_at IS NULL");
+    $stmt->execute($specialtyIds);
+
+    return (int)$stmt->fetchColumn() === count($specialtyIds);
 }
