@@ -1,0 +1,141 @@
+<?php
+// admin_dashboard.php
+// Admin Dashboard Shell with strict access control enforced before any output
+
+require_once __DIR__ . '/includes/auth.php';
+
+// Section 6: Enforce Administrator role before any output
+require_role('Administrator');
+
+$currentUser = get_auth_user();
+$csrfToken   = get_csrf_token();
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
+    <title>Admin Dashboard - Hospital Billing &amp; Patient Information System</title>
+    <link rel="stylesheet" href="assets/css/style.css?v=5">
+    <script src="assets/js/axios.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-layout">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-brand">
+                <img src="logo.png" alt="Hospital Logo" class="sidebar-logo">
+                <div class="sidebar-title-group">
+                    <h2>Hospital Billing</h2>
+                    <p>Admin Master Panel</p>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section-title">Master Files</div>
+
+                <button class="nav-link active" data-module="users">
+                    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <span>Manage Users</span>
+                </button>
+
+                <button class="nav-link" data-module="patients">
+                    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                    <span>Manage Patients</span>
+                </button>
+
+                <button class="nav-link" data-module="doctors">
+                    <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                    <span>Manage Doctors</span>
+                </button>
+
+                <button class="nav-link" data-module="services">
+                    <svg viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                    <span>Manage Services</span>
+                </button>
+
+                <button class="nav-link" data-module="specialties">
+                    <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                    <span>Manage Specialties</span>
+                </button>
+
+                <button class="nav-link" data-module="discounts">
+                    <svg viewBox="0 0 24 24"><line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle></svg>
+                    <span>Manage Discounts</span>
+                </button>
+
+                <div class="nav-section-title" style="margin-top: 1rem;">System</div>
+                
+                <button class="nav-link" data-module="archive">
+                    <svg viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                    <span>Manage Archive</span>
+                </button>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar">
+                        <?= strtoupper(substr($currentUser['full_name'] ?? 'A', 0, 1)) ?>
+                    </div>
+                    <div class="user-details">
+                        <div class="user-name" title="<?= htmlspecialchars($currentUser['full_name'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
+                            <?= htmlspecialchars($currentUser['full_name'] ?? 'Administrator', ENT_QUOTES, 'UTF-8') ?>
+                        </div>
+                        <div class="user-role">
+                            <?= htmlspecialchars($currentUser['role_name'] ?? 'Administrator', ENT_QUOTES, 'UTF-8') ?>
+                        </div>
+                    </div>
+                </div>
+                <a href="logout.php" class="btn btn-secondary btn-sm btn-block">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                    Sign Out
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Workspace Area -->
+        <main class="main-content">
+            <header class="topbar">
+                <h1 class="topbar-title" id="current-module-title">Manage Users</h1>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <span class="text-muted" style="font-size: 0.85rem;">
+                        Today is <?= date('F j, Y') ?>
+                    </span>
+                    <span class="badge badge-active" style="padding: 0.35rem 0.75rem;">
+                        System Online
+                    </span>
+                </div>
+            </header>
+
+            <div class="content-body">
+                <!-- Dynamic SPA Viewport: active module renders here -->
+                <div id="module-viewport"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Global Reusable Confirmation Modal for Soft and Hard Deletion -->
+    <div class="modal-backdrop" id="global-confirm-modal">
+        <div class="modal-dialog">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirm Action</h3>
+                <button type="button" class="btn-close" data-close-modal>&times;</button>
+            </div>
+            <div class="modal-body">
+                <!-- Injected dynamically by ui.js -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+                <button type="button" id="global-confirm-btn" class="btn btn-danger">Confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Global Toast Notification Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Application Script Loader -->
+    <script type="module" src="assets/js/main.js?v=5"></script>
+</body>
+</html>

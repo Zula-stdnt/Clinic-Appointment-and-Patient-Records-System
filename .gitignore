@@ -1,0 +1,31 @@
+# Operating System files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# IDE and Editor settings
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+
+# Environment and sensitive files
+.env
+.env.*
+*.env
+*.pem
+*.key
+
+# Logs and temporary files
+*.log
+error_log
+access_log
+*.tmp
+*.temp
+*.bak
+
+# Node / Package managers (if applicable)
+node_modules/
+vendor/
