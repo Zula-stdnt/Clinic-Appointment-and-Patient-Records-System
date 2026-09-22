@@ -1,8 +1,8 @@
 // assets/js/modules/doctors.js
 // Manage Doctors module (with active specialty selection and FK appointment delete handling)
 
-import api from '../api.js';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js';
+import api from '../api.js?v=7';
+import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=7';
 
 export default {
     state: {
@@ -79,7 +79,6 @@ export default {
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th data-sort="doctor_id">ID</th>
                                 <th data-sort="last_name">Doctor Name</th>
                                 <th data-sort="specialty_name">Specialty</th>
                                 <th>Contact No</th>
@@ -88,7 +87,7 @@ export default {
                             </tr>
                         </thead>
                         <tbody id="doctors-table-body">
-                            <tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading doctors...</td></tr>
+                            <tr><td colspan="5" class="text-center" style="padding: 2rem;">Loading doctors...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -137,11 +136,11 @@ export default {
                             </div>
 
                             <div class="form-group">
-                                <label for="doctor-specialty-id">Clinical Specialty <span class="required-star">*</span></label>
-                                <select id="doctor-specialty-id" class="form-control" required>
-                                    <option value="">Select an Active Specialty</option>
+                                <label for="doctor-specialty-id">Clinical Specialties <span class="required-star">*</span></label>
+                                <select id="doctor-specialty-id" class="form-control" multiple size="6">
                                     ${this.state.specialties.map(s => `<option value="${s.specialty_id}">${escapeHtml(s.specialty_name)}</option>`).join('')}
                                 </select>
+                                <small class="text-muted" style="display: block; margin-top: 0.25rem;">Hold Ctrl (Windows) or Cmd (Mac) to select more than one specialty.</small>
                                 <div class="invalid-feedback" id="doctor-specialty-id-error"></div>
                             </div>
 
@@ -243,7 +242,7 @@ export default {
 
     async loadData() {
         const tbody = this.container.querySelector('#doctors-table-body');
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading doctors...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding: 2rem;">Loading doctors...</td></tr>';
 
         try {
             const res = await api.get('api/doctor_controller.php', {
@@ -264,7 +263,7 @@ export default {
                 throw new Error(res.message);
             }
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted" style="padding: 2rem;">Failed to load doctors: ${escapeHtml(err.message)}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding: 2rem;">Failed to load doctors: ${escapeHtml(err.message)}</td></tr>`;
         }
     },
 
@@ -273,7 +272,7 @@ export default {
         if (!items || items.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6">
+                    <td colspan="5">
                         <div class="empty-state">
                             <strong>No doctors found</strong>
                             <p>Try modifying your search or specialty filters.</p>
@@ -289,7 +288,6 @@ export default {
 
             return `
                 <tr>
-                    <td><strong>#${d.doctor_id}</strong></td>
                     <td><strong>${escapeHtml(fullName)}</strong></td>
                     <td><span class="badge badge-role">${escapeHtml(d.specialty_names || 'General Medicine')}</span></td>
                     <td>${escapeHtml(d.contact_no || '—')}</td>
@@ -389,8 +387,11 @@ export default {
             this.container.querySelector('#doctor-username').value = d.username || '';
             this.container.querySelector('#doctor-password').value = '';
 
-            const primarySpecialtyId = d.specialty_ids ? d.specialty_ids.split(',')[0] : '';
-            this.container.querySelector('#doctor-specialty-id').value = primarySpecialtyId;
+            const selectedSpecialtyIds = d.specialty_ids ? String(d.specialty_ids).split(',') : [];
+            const specialtySelect = this.container.querySelector('#doctor-specialty-id');
+            Array.from(specialtySelect.options).forEach(option => {
+                option.selected = selectedSpecialtyIds.includes(option.value);
+            });
 
             const fullName = `${d.last_name}, ${d.first_name}${d.middle_initial ? ' ' + d.middle_initial + '.' : ''}`;
             this.container.querySelector('#doctor-form-title').textContent = `Edit Doctor: ${fullName}`;
@@ -411,7 +412,7 @@ export default {
         const lastName = this.container.querySelector('#doctor-last-name').value.trim();
         const middleInitial = this.container.querySelector('#doctor-middle-initial').value.trim();
         const gender = this.container.querySelector('#doctor-gender').value;
-        const specialtyId = this.container.querySelector('#doctor-specialty-id').value;
+        const specialtyIds = Array.from(this.container.querySelector('#doctor-specialty-id').selectedOptions).map(o => parseInt(o.value, 10));
         const contact = this.container.querySelector('#doctor-contact').value.trim();
         const username = this.container.querySelector('#doctor-username').value.trim();
         const password = this.container.querySelector('#doctor-password').value;
@@ -429,8 +430,8 @@ export default {
             this.showFieldError('doctor-gender', 'Gender is required.');
             hasErrors = true;
         }
-        if (!specialtyId) {
-            this.showFieldError('doctor-specialty-id', 'Please select a specialty.');
+        if (specialtyIds.length === 0) {
+            this.showFieldError('doctor-specialty-id', 'Please select at least one specialty.');
             hasErrors = true;
         }
         if (!username) {
@@ -452,7 +453,7 @@ export default {
             last_name: lastName,
             middle_initial: middleInitial,
             gender: gender,
-            specialty_id: parseInt(specialtyId, 10),
+            specialty_ids: specialtyIds,
             contact_no: contact,
             username: username,
             password: password
@@ -506,8 +507,7 @@ export default {
             const body = this.container.querySelector('#doctor-view-body');
             body.innerHTML = `
                 <table class="data-table">
-                    <tr><th style="width: 35%;">Doctor ID</th><td>#${d.doctor_id}</td></tr>
-                    <tr><th>Name</th><td><strong>${escapeHtml(fullName)}</strong></td></tr>
+                    <tr><th style="width: 35%;">Name</th><td><strong>${escapeHtml(fullName)}</strong></td></tr>
                     <tr><th>Username</th><td><code>${escapeHtml(d.username || 'N/A')}</code></td></tr>
                     <tr><th>Gender</th><td>${escapeHtml(d.gender || 'N/A')}</td></tr>
                     <tr><th>Specialty</th><td><span class="badge badge-role">${escapeHtml(d.specialty_names || 'General Medicine')}</span></td></tr>

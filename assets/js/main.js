@@ -1,15 +1,20 @@
 // assets/js/main.js
 // Single-Page Application Router and Module Orchestrator
 
-import usersModule from './modules/users.js';
-import patientsModule from './modules/patients.js';
-import doctorsModule from './modules/doctors.js';
-import servicesModule from './modules/services.js';
-import specialtiesModule from './modules/specialties.js';
-import discountsModule from './modules/discounts.js';
-import archiveModule from './modules/archive.js';
+import overviewModule from './modules/overview.js?v=7';
+import usersModule from './modules/users.js?v=7';
+import patientsModule from './modules/patients.js?v=7';
+import doctorsModule from './modules/doctors.js?v=7';
+import servicesModule from './modules/services.js?v=7';
+import specialtiesModule from './modules/specialties.js?v=7';
+import discountsModule from './modules/discounts.js?v=7';
+import archiveModule from './modules/archive.js?v=7';
 
 const modules = {
+    'overview': {
+        title: 'Dashboard',
+        instance: overviewModule
+    },
     'users': {
         title: 'Manage Users',
         instance: usersModule
@@ -42,12 +47,41 @@ const modules = {
 
 let activeModuleKey = null;
 
+// Off-canvas sidebar controls (active below 1024px; harmless on desktop)
+function isSidebarCollapsed() {
+    return window.matchMedia('(max-width: 1024px)').matches;
+}
+
+function openSidebar() {
+    document.body.classList.add('sidebar-open');
+    const toggle = document.getElementById('sidebar-toggle');
+    if (toggle) toggle.setAttribute('aria-expanded', 'true');
+}
+
+function closeSidebar() {
+    if (!document.body.classList.contains('sidebar-open')) return;
+    document.body.classList.remove('sidebar-open');
+    const toggle = document.getElementById('sidebar-toggle');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+}
+
+function toggleSidebar() {
+    if (document.body.classList.contains('sidebar-open')) {
+        closeSidebar();
+    } else {
+        openSidebar();
+    }
+}
+
 function navigateTo(moduleKey) {
     if (!modules[moduleKey]) {
-        moduleKey = 'users'; // default module
+        moduleKey = 'overview'; // default module
     }
 
     activeModuleKey = moduleKey;
+
+    // Close the off-canvas sidebar after navigating on small screens
+    closeSidebar();
 
     // Update active class on sidebar items
     document.querySelectorAll('.sidebar-nav .nav-link').forEach(link => {
@@ -88,6 +122,30 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    // Off-canvas sidebar: hamburger toggle, backdrop dismiss, and Escape key
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', toggleSidebar);
+    }
+
+    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+    if (sidebarBackdrop) {
+        sidebarBackdrop.addEventListener('click', closeSidebar);
+    }
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeSidebar();
+        }
+    });
+
+    // Reset the sidebar state when resizing back to the desktop layout
+    window.addEventListener('resize', () => {
+        if (!isSidebarCollapsed()) {
+            closeSidebar();
+        }
+    });
+
     // Hash change event (back/forward browser navigation)
     window.addEventListener('hashchange', () => {
         const hash = window.location.hash.replace('#', '');
@@ -96,8 +154,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Initial load from URL hash or default to 'users'
+    // Initial load from URL hash or default to the dashboard overview
     const initialHash = window.location.hash.replace('#', '');
-    navigateTo(initialHash || 'users');
+    navigateTo(initialHash || 'overview');
 });
 

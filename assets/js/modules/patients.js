@@ -1,8 +1,8 @@
 // assets/js/modules/patients.js
 // Manage Patients module
 
-import api from '../api.js';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js';
+import api from '../api.js?v=7';
+import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=7';
 
 export default {
     state: {
@@ -69,7 +69,6 @@ export default {
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th data-sort="patient_id">ID</th>
                                 <th data-sort="last_name">Patient Name</th>
                                 <th data-sort="gender">Gender</th>
                                 <th data-sort="date_of_birth">Date of Birth</th>
@@ -79,7 +78,7 @@ export default {
                             </tr>
                         </thead>
                         <tbody id="patients-table-body">
-                            <tr><td colspan="7" class="text-center" style="padding: 2rem;">Loading patients...</td></tr>
+                            <tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading patients...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -216,7 +215,7 @@ export default {
 
     async loadData() {
         const tbody = this.container.querySelector('#patients-table-body');
-        tbody.innerHTML = '<tr><td colspan="7" class="text-center" style="padding: 2rem;">Loading patients...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading patients...</td></tr>';
 
         try {
             const res = await api.get('api/patient_controller.php', {
@@ -237,7 +236,7 @@ export default {
                 throw new Error(res.message);
             }
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding: 2rem;">Failed to load patients: ${escapeHtml(err.message)}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted" style="padding: 2rem;">Failed to load patients: ${escapeHtml(err.message)}</td></tr>`;
         }
     },
 
@@ -246,7 +245,7 @@ export default {
         if (!items || items.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7">
+                    <td colspan="6">
                         <div class="empty-state">
                             <strong>No patients found</strong>
                             <p>Try modifying your search or filter settings.</p>
@@ -263,7 +262,6 @@ export default {
 
             return `
                 <tr>
-                    <td><strong>#${p.patient_id}</strong></td>
                     <td><strong>${escapeHtml(fullName)}</strong></td>
                     <td>${escapeHtml(genderFormatted)}</td>
                     <td>${escapeHtml(p.date_of_birth)}</td>
@@ -454,8 +452,7 @@ export default {
             const body = this.container.querySelector('#patient-view-body');
             body.innerHTML = `
                 <table class="data-table">
-                    <tr><th style="width: 35%;">Patient ID</th><td>#${p.patient_id}</td></tr>
-                    <tr><th>Full Name</th><td><strong>${escapeHtml(p.last_name)}, ${escapeHtml(p.first_name)}</strong></td></tr>
+                    <tr><th style="width: 35%;">Full Name</th><td><strong>${escapeHtml(p.last_name)}, ${escapeHtml(p.first_name)}</strong></td></tr>
                     <tr><th>Gender</th><td>${escapeHtml(p.gender)}</td></tr>
                     <tr><th>Date of Birth</th><td>${escapeHtml(p.date_of_birth)}</td></tr>
                     <tr><th>Contact No</th><td>${escapeHtml(p.contact_no || 'N/A')}</td></tr>

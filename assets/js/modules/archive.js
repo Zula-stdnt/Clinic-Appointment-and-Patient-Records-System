@@ -1,17 +1,16 @@
 // assets/js/modules/archive.js
 // Manage Archive module for viewing, restoring, and permanently deleting archived records
 
-import api from '../api.js';
-import { escapeHtml, showToast, confirmRestore, confirmHardDelete } from '../ui.js';
+import api from '../api.js?v=7';
+import { escapeHtml, showToast, confirmRestore, confirmHardDelete } from '../ui.js?v=7';
 
 const CONFIG = {
     'users': {
         endpoint: 'api/user_controller.php',
         idField: 'user_id',
         nameField: 'full_name',
-        columns: ['ID', 'Full Name', 'Username', 'Role', 'Archived At'],
+        columns: ['Full Name', 'Username', 'Role', 'Archived At'],
         renderRow: (item) => `
-            <td><strong>#${item.user_id}</strong></td>
             <td>${escapeHtml(item.full_name)}</td>
             <td><code>${escapeHtml(item.username)}</code></td>
             <td><span class="badge badge-role">${escapeHtml(item.role_name)}</span></td>
@@ -22,9 +21,8 @@ const CONFIG = {
         endpoint: 'api/patient_controller.php',
         idField: 'patient_id',
         nameField: (item) => `${item.last_name}, ${item.first_name}`,
-        columns: ['ID', 'Name', 'Gender', 'Archived At'],
+        columns: ['Name', 'Gender', 'Archived At'],
         renderRow: (item) => `
-            <td><strong>#${item.patient_id}</strong></td>
             <td><strong>${escapeHtml(item.last_name)}, ${escapeHtml(item.first_name)}</strong></td>
             <td>${escapeHtml(item.gender ? item.gender.charAt(0).toUpperCase() + item.gender.slice(1) : 'Unknown')}</td>
             <td style="color: var(--danger);">${escapeHtml(item.deleted_at)}</td>
@@ -34,9 +32,8 @@ const CONFIG = {
         endpoint: 'api/doctor_controller.php',
         idField: 'doctor_id',
         nameField: (item) => `${item.last_name}, ${item.first_name}`,
-        columns: ['ID', 'Name', 'Specialty', 'Archived At'],
+        columns: ['Name', 'Specialty', 'Archived At'],
         renderRow: (item) => `
-            <td><strong>#${item.doctor_id}</strong></td>
             <td><strong>${escapeHtml(item.last_name)}, ${escapeHtml(item.first_name)}</strong></td>
             <td><span class="badge badge-role">${escapeHtml(item.specialty_names || 'General Medicine')}</span></td>
             <td style="color: var(--danger);">${escapeHtml(item.deleted_at)}</td>
@@ -46,9 +43,8 @@ const CONFIG = {
         endpoint: 'api/service_controller.php',
         idField: 'service_id',
         nameField: 'service_name',
-        columns: ['ID', 'Service Name', 'Price', 'Archived At'],
+        columns: ['Service Name', 'Price', 'Archived At'],
         renderRow: (item) => `
-            <td><strong>#${item.service_id}</strong></td>
             <td><strong>${escapeHtml(item.service_name)}</strong></td>
             <td>PHP ${escapeHtml(parseFloat(item.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</td>
             <td style="color: var(--danger);">${escapeHtml(item.deleted_at)}</td>
@@ -58,9 +54,8 @@ const CONFIG = {
         endpoint: 'api/specialty_controller.php',
         idField: 'specialty_id',
         nameField: 'specialty_name',
-        columns: ['ID', 'Specialty Name', 'Archived At'],
+        columns: ['Specialty Name', 'Archived At'],
         renderRow: (item) => `
-            <td><strong>#${item.specialty_id}</strong></td>
             <td><strong>${escapeHtml(item.specialty_name)}</strong></td>
             <td style="color: var(--danger);">${escapeHtml(item.deleted_at)}</td>
         `
@@ -69,9 +64,8 @@ const CONFIG = {
         endpoint: 'api/discount_controller.php',
         idField: 'discount_id',
         nameField: 'discount_name',
-        columns: ['ID', 'Discount Name', 'Percentage', 'Archived At'],
+        columns: ['Discount Name', 'Percentage', 'Archived At'],
         renderRow: (item) => `
-            <td><strong>#${item.discount_id}</strong></td>
             <td><strong>${escapeHtml(item.discount_name)}</strong></td>
             <td><span class="badge badge-role">${escapeHtml(parseFloat(item.percentage).toFixed(2))}%</span></td>
             <td style="color: var(--danger);">${escapeHtml(item.deleted_at)}</td>
@@ -138,7 +132,7 @@ export default {
                             <!-- Dynamic Columns -->
                         </thead>
                         <tbody id="archive-table-body">
-                            <tr><td colspan="10" class="text-center" style="padding: 2rem;">Loading archive...</td></tr>
+                            <tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading archive...</td></tr>
                         </tbody>
                     </table>
                 </div>
