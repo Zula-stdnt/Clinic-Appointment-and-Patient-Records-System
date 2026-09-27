@@ -119,7 +119,7 @@ export default {
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div class="form-group">
-                                    <label for="doctor-middle-initial">Middle Initial</label>
+                                    <label for="doctor-middle-initial">Middle Initial <span class="text-muted" style="font-weight: normal; font-size: 0.85em;">(Optional)</span></label>
                                     <input type="text" id="doctor-middle-initial" class="form-control" maxlength="5" placeholder="M.I.">
                                     <div class="invalid-feedback" id="doctor-middle-initial-error"></div>
                                 </div>

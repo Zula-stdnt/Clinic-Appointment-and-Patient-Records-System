@@ -17,7 +17,7 @@ $csrfToken   = get_csrf_token();
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="<?= htmlspecialchars($csrfToken, ENT_QUOTES, 'UTF-8') ?>">
     <title>Admin Dashboard - Hospital Billing &amp; Patient Information System</title>
-    <link rel="stylesheet" href="assets/css/style.css?v=7">
+    <link rel="stylesheet" href="assets/css/style.css?v=10">
     <script src="assets/js/axios.min.js"></script>
 </head>
 <body>
@@ -151,6 +151,6 @@ $csrfToken   = get_csrf_token();
     <div id="toast-container" class="toast-container"></div>
 
     <!-- Application Script Loader -->
-    <script type="module" src="assets/js/main.js?v=7"></script>
+    <script type="module" src="assets/js/main.js?v=10"></script>
 </body>
 </html>

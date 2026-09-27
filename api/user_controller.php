@@ -193,14 +193,23 @@ function createUser(PDO $pdo): void {
     if ($lastName === '') {
         $errors['last_name'] = 'Last name is required.';
     }
-    if (!in_array($gender, ['Male', 'Female', 'Other'])) {
+    if ($gender === '') {
         $errors['gender'] = 'Please select a valid gender.';
     }
     if ($username === '') {
         $errors['username'] = 'Username is required.';
     }
-    if ($password === '' || strlen($password) < 6) {
-        $errors['password'] = 'Password is required and must be at least 6 characters.';
+
+    $rawContact = preg_replace('/\s+/', '', $contactNo);
+    if ($rawContact !== '' && (strlen($rawContact) !== 11 || strpos($rawContact, '09') !== 0 || !ctype_digit($rawContact))) {
+        $errors['contact_no'] = 'Contact number must be exactly 11 digits and start with 09.';
+    }
+
+    $passwordRegex = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{6,}$/';
+    if ($password === '') {
+        $errors['password'] = 'Password is required.';
+    } elseif (!preg_match($passwordRegex, $password)) {
+        $errors['password'] = 'Password must be at least 6 characters, including uppercase, lowercase, number, and special character.';
     }
 
     $stmt = $pdo->prepare("SELECT role_id, role_name FROM roles WHERE role_id = ? AND role_name IN ('Doctor', 'Receptionist')");
@@ -310,12 +319,23 @@ function updateUser(PDO $pdo): void {
     if ($lastName === '') {
         $errors['last_name'] = 'Last name is required.';
     }
-    if (!in_array($gender, ['Male', 'Female', 'Other'])) {
+    if ($gender === '') {
         $errors['gender'] = 'Please select a valid gender.';
     }
     if ($username === '') {
         $errors['username'] = 'Username is required.';
     }
+
+    $rawContact = preg_replace('/\s+/', '', $contactNo);
+    if ($rawContact !== '' && (strlen($rawContact) !== 11 || strpos($rawContact, '09') !== 0 || !ctype_digit($rawContact))) {
+        $errors['contact_no'] = 'Contact number must be exactly 11 digits and start with 09.';
+    }
+
+    $passwordRegex = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{6,}$/';
+    if ($password !== '' && !preg_match($passwordRegex, $password)) {
+        $errors['password'] = 'Password must be at least 6 characters, including uppercase, lowercase, number, and special character.';
+    }
+
     if ($newRole['role_name'] === 'Doctor') {
         if (empty($specialtyIds)) {
             $errors['specialty_id'] = 'Please select at least one specialty for the Doctor.';
@@ -342,10 +362,6 @@ function updateUser(PDO $pdo): void {
 
         // Update user
         if ($password !== '') {
-            if (strlen($password) < 6) {
-                $pdo->rollBack();
-                send_error('Validation failed.', ['password' => 'Password must be at least 6 characters.'], 422);
-            }
             $hash = password_hash($password, PASSWORD_DEFAULT);
             $upd = $pdo->prepare(
                 "UPDATE users SET role_id = ?, first_name = ?, last_name = ?, middle_initial = ?, gender = ?, username = ?, password_hash = ? WHERE user_id = ?"

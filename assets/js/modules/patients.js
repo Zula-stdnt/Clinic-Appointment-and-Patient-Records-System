@@ -96,11 +96,16 @@ export default {
                     <form id="patient-form" novalidate>
                         <div class="modal-body">
                             <input type="hidden" id="patient-id">
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                            <div style="display: grid; grid-template-columns: 1fr 120px 1fr; gap: 1rem;">
                                 <div class="form-group">
                                     <label for="patient-first-name">First Name <span class="required-star">*</span></label>
                                     <input type="text" id="patient-first-name" class="form-control" required placeholder="First name">
                                     <div class="invalid-feedback" id="patient-first-name-error"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="patient-middle-initial">M.I. <span class="text-muted" style="font-weight: normal; font-size: 0.85em;">(Optional)</span></label>
+                                    <input type="text" id="patient-middle-initial" class="form-control" maxlength="10" placeholder="e.g. A">
+                                    <div class="invalid-feedback" id="patient-middle-initial-error"></div>
                                 </div>
                                 <div class="form-group">
                                     <label for="patient-last-name">Last Name <span class="required-star">*</span></label>
@@ -257,7 +262,7 @@ export default {
         }
 
         tbody.innerHTML = items.map(p => {
-            const fullName = `${p.last_name}, ${p.first_name}`;
+            const fullName = `${p.last_name}, ${p.first_name}${p.middle_initial ? ' ' + p.middle_initial + '.' : ''}`;
             const genderFormatted = p.gender ? p.gender.charAt(0).toUpperCase() + p.gender.slice(1) : 'Unknown';
 
             return `
@@ -338,6 +343,7 @@ export default {
         this.clearFormErrors();
         this.container.querySelector('#patient-form').reset();
         this.container.querySelector('#patient-id').value = '';
+        this.container.querySelector('#patient-middle-initial').value = '';
         this.container.querySelector('#patient-gender').value = 'unknown';
         this.container.querySelector('#patient-form-title').textContent = 'Add New Patient';
         openModal('patient-form-modal');
@@ -352,13 +358,15 @@ export default {
             const p = res.data.patient;
             this.container.querySelector('#patient-id').value = p.patient_id;
             this.container.querySelector('#patient-first-name').value = p.first_name;
+            this.container.querySelector('#patient-middle-initial').value = p.middle_initial || '';
             this.container.querySelector('#patient-last-name').value = p.last_name;
             this.container.querySelector('#patient-gender').value = p.gender;
             this.container.querySelector('#patient-dob').value = p.date_of_birth;
             this.container.querySelector('#patient-contact').value = p.contact_no || '';
             this.container.querySelector('#patient-address').value = p.address || '';
 
-            this.container.querySelector('#patient-form-title').textContent = `Edit Patient: ${p.last_name}, ${p.first_name}`;
+            const fullName = `${p.last_name}, ${p.first_name}${p.middle_initial ? ' ' + p.middle_initial + '.' : ''}`;
+            this.container.querySelector('#patient-form-title').textContent = `Edit Patient: ${fullName}`;
             openModal('patient-form-modal');
         } catch (err) {
             showToast(err.response?.data?.message || err.message, 'danger');
@@ -370,6 +378,7 @@ export default {
 
         const id = this.container.querySelector('#patient-id').value;
         const firstName = this.container.querySelector('#patient-first-name').value.trim();
+        const middleInitial = this.container.querySelector('#patient-middle-initial').value.trim();
         const lastName = this.container.querySelector('#patient-last-name').value.trim();
         const gender = this.container.querySelector('#patient-gender').value;
         const dob = this.container.querySelector('#patient-dob').value;
@@ -398,6 +407,7 @@ export default {
 
         const payload = {
             first_name: firstName,
+            middle_initial: middleInitial,
             last_name: lastName,
             gender: gender,
             date_of_birth: dob,
@@ -449,10 +459,11 @@ export default {
             if (!res.success) throw new Error(res.message);
 
             const p = res.data.patient;
+            const fullName = `${p.last_name}, ${p.first_name}${p.middle_initial ? ' ' + p.middle_initial + '.' : ''}`;
             const body = this.container.querySelector('#patient-view-body');
             body.innerHTML = `
                 <table class="data-table">
-                    <tr><th style="width: 35%;">Full Name</th><td><strong>${escapeHtml(p.last_name)}, ${escapeHtml(p.first_name)}</strong></td></tr>
+                    <tr><th style="width: 35%;">Full Name</th><td><strong>${escapeHtml(fullName)}</strong></td></tr>
                     <tr><th>Gender</th><td>${escapeHtml(p.gender)}</td></tr>
                     <tr><th>Date of Birth</th><td>${escapeHtml(p.date_of_birth)}</td></tr>
                     <tr><th>Contact No</th><td>${escapeHtml(p.contact_no || 'N/A')}</td></tr>

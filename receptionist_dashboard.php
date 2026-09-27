@@ -13,7 +13,7 @@ $currentUser = get_auth_user();
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Receptionist Portal - Coming Soon</title>
-    <link rel="stylesheet" href="assets/css/style.css?v=7">
+    <link rel="stylesheet" href="assets/css/style.css?v=10">
 </head>
 <body class="login-body">
     <div class="login-wrapper">

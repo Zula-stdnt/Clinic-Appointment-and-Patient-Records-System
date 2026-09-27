@@ -1,14 +1,14 @@
 // assets/js/main.js
 // Single-Page Application Router and Module Orchestrator
 
-import overviewModule from './modules/overview.js?v=7';
-import usersModule from './modules/users.js?v=7';
-import patientsModule from './modules/patients.js?v=7';
-import doctorsModule from './modules/doctors.js?v=7';
-import servicesModule from './modules/services.js?v=7';
-import specialtiesModule from './modules/specialties.js?v=7';
-import discountsModule from './modules/discounts.js?v=7';
-import archiveModule from './modules/archive.js?v=7';
+import overviewModule from './modules/overview.js?v=10';
+import usersModule from './modules/users.js?v=10';
+import patientsModule from './modules/patients.js?v=10';
+import doctorsModule from './modules/doctors.js?v=10';
+import servicesModule from './modules/services.js?v=10';
+import specialtiesModule from './modules/specialties.js?v=10';
+import discountsModule from './modules/discounts.js?v=10';
+import archiveModule from './modules/archive.js?v=10';
 
 const modules = {
     'overview': {

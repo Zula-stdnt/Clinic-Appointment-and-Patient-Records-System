@@ -131,14 +131,14 @@ export default {
                             </div>
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div class="form-group">
-                                    <label for="user-middle-initial">Middle Initial</label>
+                                    <label for="user-middle-initial">Middle Initial <span class="text-muted" style="font-weight: normal; font-size: 0.85em;">(Optional)</span></label>
                                     <input type="text" id="user-middle-initial" class="form-control" maxlength="5" placeholder="M.I.">
                                     <div class="invalid-feedback" id="user-middle-initial-error"></div>
                                 </div>
                                 <div class="form-group">
                                     <label for="user-gender">Gender <span class="required-star">*</span></label>
                                     <select id="user-gender" class="form-control" required>
-                                        <option value="">Select Gender</option>
+                                        <option value="" disabled selected>Select Gender</option>
                                         <option value="Male">Male</option>
                                         <option value="Female">Female</option>
                                         <option value="Other">Other</option>
@@ -147,10 +147,16 @@ export default {
                                 </div>
                             </div>
 
+                            <div class="form-group" id="user-custom-gender-group" style="display: none;">
+                                <label for="user-custom-gender">Specify Gender <span class="required-star">*</span></label>
+                                <input type="text" id="user-custom-gender" class="form-control" placeholder="Please specify your gender">
+                                <div class="invalid-feedback" id="user-custom-gender-error"></div>
+                            </div>
+
                             <div class="form-group">
                                 <label for="user-role-id">Role <span class="required-star">*</span></label>
                                 <select id="user-role-id" class="form-control" required>
-                                    <option value="">Select Role</option>
+                                    <option value="" disabled selected>Select Role</option>
                                     ${this.state.roles.map(r => `<option value="${r.role_id}" data-name="${escapeHtml(r.role_name)}">${escapeHtml(r.role_name)}</option>`).join('')}
                                 </select>
                                 <div class="invalid-feedback" id="user-role-id-error"></div>
@@ -167,7 +173,7 @@ export default {
 
                             <div class="form-group" id="user-contact-group" style="display: none;">
                                 <label for="user-contact-no">Contact Number</label>
-                                <input type="text" id="user-contact-no" class="form-control" placeholder="e.g. 09171234567">
+                                <input type="text" id="user-contact-no" class="form-control" placeholder="09XX XXX XXXX">
                                 <div class="invalid-feedback" id="user-contact-no-error"></div>
                             </div>
 
@@ -182,8 +188,14 @@ export default {
 
                             <div class="form-group">
                                 <label for="user-password" id="user-password-label">Password <span class="required-star">*</span></label>
-                                <input type="password" id="user-password" class="form-control" placeholder="Min. 6 characters">
+                                <div style="position: relative;">
+                                    <input type="password" id="user-password" class="form-control" placeholder="Enter password" style="padding-right: 40px;">
+                                    <button type="button" class="btn-toggle-password" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; padding: 0; color: var(--text-muted);" aria-label="Toggle password visibility">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    </button>
+                                </div>
                                 <div class="invalid-feedback" id="user-password-error"></div>
+                                <small class="text-muted" style="display: block; margin-top: 0.25rem;">Must contain an uppercase letter, lowercase letter, number, and special character.</small>
                                 <small class="text-muted" id="user-password-hint" style="display: none; margin-top: 0.25rem;">Leave blank to keep password unchanged.</small>
                             </div>
                         </div>
@@ -262,6 +274,73 @@ export default {
             const roleName = selectedOpt ? selectedOpt.getAttribute('data-name') : '';
             this.toggleDoctorFields(roleName === 'Doctor');
         });
+
+        // Gender other toggle
+        const genderSelect = this.container.querySelector('#user-gender');
+        const customGenderGroup = this.container.querySelector('#user-custom-gender-group');
+        const customGenderInput = this.container.querySelector('#user-custom-gender');
+        genderSelect.addEventListener('change', () => {
+            if (genderSelect.value === 'Other') {
+                customGenderGroup.style.display = 'block';
+                customGenderInput.setAttribute('required', 'required');
+            } else {
+                customGenderGroup.style.display = 'none';
+                customGenderInput.removeAttribute('required');
+                customGenderInput.value = '';
+            }
+        });
+
+        const contactInput = this.container.querySelector('#user-contact-no');
+        if (contactInput) {
+            contactInput.addEventListener('input', (e) => {
+                const input = e.target;
+                const oldSelectionStart = input.selectionStart;
+                const oldVal = input.value;
+                
+                let val = oldVal.replace(/\D/g, ''); // strip non-numeric
+                if (val.length > 11) val = val.slice(0, 11);
+                
+                let formatted = '';
+                for (let i = 0; i < val.length; i++) {
+                    if (i === 4 || i === 7) {
+                        formatted += ' ';
+                    }
+                    formatted += val[i];
+                }
+                
+                input.value = formatted;
+
+                let newCursor = 0;
+                let digitsFound = 0;
+                const digitsBeforeCursor = oldVal.slice(0, oldSelectionStart).replace(/\D/g, '').length;
+                
+                for (let i = 0; i < formatted.length; i++) {
+                    if (digitsFound === digitsBeforeCursor) break;
+                    if (/\d/.test(formatted[i])) digitsFound++;
+                    newCursor++;
+                }
+                
+                // Only set selection if the element is focused to avoid unwanted scrolling or focus issues
+                if (document.activeElement === input) {
+                    input.setSelectionRange(newCursor, newCursor);
+                }
+            });
+        }
+
+        // Password toggle
+        const toggleBtn = this.container.querySelector('.btn-toggle-password');
+        const pwdInput = this.container.querySelector('#user-password');
+        if (toggleBtn && pwdInput) {
+            toggleBtn.addEventListener('click', () => {
+                if (pwdInput.type === 'password') {
+                    pwdInput.type = 'text';
+                    toggleBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>'; // eye-off
+                } else {
+                    pwdInput.type = 'password';
+                    toggleBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>'; // eye
+                }
+            });
+        }
 
         // Form submit
         const form = this.container.querySelector('#user-form');
@@ -442,7 +521,18 @@ export default {
             this.container.querySelector('#user-first-name').value = user.first_name || '';
             this.container.querySelector('#user-last-name').value = user.last_name || '';
             this.container.querySelector('#user-middle-initial').value = user.middle_initial || '';
-            this.container.querySelector('#user-gender').value = user.gender || 'Other';
+            
+            const genderVal = user.gender || '';
+            if (['Male', 'Female'].includes(genderVal)) {
+                this.container.querySelector('#user-gender').value = genderVal;
+                this.container.querySelector('#user-custom-gender-group').style.display = 'none';
+                this.container.querySelector('#user-custom-gender').value = '';
+            } else {
+                this.container.querySelector('#user-gender').value = 'Other';
+                this.container.querySelector('#user-custom-gender-group').style.display = 'block';
+                this.container.querySelector('#user-custom-gender').value = genderVal;
+            }
+
             this.container.querySelector('#user-username').value = user.username;
             this.container.querySelector('#user-role-id').value = user.role_id;
             
@@ -454,7 +544,18 @@ export default {
                 Array.from(specialtySelect.options).forEach(option => {
                     option.selected = selectedSpecialtyIds.includes(option.value);
                 });
-                this.container.querySelector('#user-contact-no').value = user.contact_no || '';
+                // Reformat contact number
+                let val = (user.contact_no || '').replace(/\D/g, '');
+                if (val.length > 11) val = val.slice(0, 11);
+                
+                let formatted = '';
+                for (let i = 0; i < val.length; i++) {
+                    if (i === 4 || i === 7) {
+                        formatted += ' ';
+                    }
+                    formatted += val[i];
+                }
+                this.container.querySelector('#user-contact-no').value = formatted;
             }
 
             this.container.querySelector('#user-password').value = '';
@@ -477,7 +578,8 @@ export default {
         const firstName = this.container.querySelector('#user-first-name').value.trim();
         const lastName = this.container.querySelector('#user-last-name').value.trim();
         const middleInitial = this.container.querySelector('#user-middle-initial').value.trim();
-        const gender = this.container.querySelector('#user-gender').value;
+        let gender = this.container.querySelector('#user-gender').value;
+        const customGender = this.container.querySelector('#user-custom-gender').value.trim();
         const username = this.container.querySelector('#user-username').value.trim();
         const roleSelect = this.container.querySelector('#user-role-id');
         const roleId = roleSelect.value;
@@ -499,6 +601,13 @@ export default {
         if (!gender) {
             this.showFieldError('user-gender', 'Gender is required.');
             hasErrors = true;
+        } else if (gender === 'Other') {
+            if (!customGender) {
+                this.showFieldError('user-custom-gender', 'Please specify the custom gender.');
+                hasErrors = true;
+            } else {
+                gender = customGender;
+            }
         }
         if (!username) {
             this.showFieldError('user-username', 'Username is required.');
@@ -512,11 +621,19 @@ export default {
             this.showFieldError('user-specialty-id', 'Please select at least one specialty.');
             hasErrors = true;
         }
-        if (!id && (!password || password.length < 6)) {
-            this.showFieldError('user-password', 'Password must be at least 6 characters.');
+
+        const rawContact = contactNo.replace(/\s+/g, '');
+        if (rawContact && (rawContact.length !== 11 || !rawContact.startsWith('09'))) {
+            this.showFieldError('user-contact-no', 'Contact number must be exactly 11 digits and start with 09.');
             hasErrors = true;
-        } else if (id && password && password.length < 6) {
-            this.showFieldError('user-password', 'Password must be at least 6 characters.');
+        }
+
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{6,}$/;
+        if (!id && !password) {
+            this.showFieldError('user-password', 'Password is required.');
+            hasErrors = true;
+        } else if (password && !passwordRegex.test(password)) {
+            this.showFieldError('user-password', 'Password must meet all complexity requirements.');
             hasErrors = true;
         }
 
@@ -530,7 +647,7 @@ export default {
             username: username,
             role_id: parseInt(roleId, 10),
             specialty_ids: specialtyIds,
-            contact_no: contactNo,
+            contact_no: rawContact,
             password: password
         };
 

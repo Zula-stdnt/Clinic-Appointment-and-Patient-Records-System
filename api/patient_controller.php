@@ -98,7 +98,7 @@ function listPatients(PDO $pdo): void {
     $total = (int)$countStmt->fetchColumn();
 
     // Data query
-    $dataSql = "SELECT patient_id, first_name, last_name, gender, date_of_birth, contact_no, address, created_at, updated_at, deleted_at
+    $dataSql = "SELECT patient_id, first_name, middle_initial, last_name, gender, date_of_birth, contact_no, address, created_at, updated_at, deleted_at
                 FROM patients
                 WHERE {$whereSql}
                 ORDER BY {$sortBy} {$sortOrder}
@@ -137,6 +137,7 @@ function getPatientById(PDO $pdo, int $id): void {
 function validatePatientInput(array $input): array {
     $errors = [];
     $firstName = trim($input['first_name'] ?? '');
+    $middleInitial = trim($input['middle_initial'] ?? '');
     $lastName  = trim($input['last_name'] ?? '');
     $gender    = trim($input['gender'] ?? 'unknown');
     $dob       = trim($input['date_of_birth'] ?? '');
@@ -145,6 +146,10 @@ function validatePatientInput(array $input): array {
         $errors['first_name'] = 'First name is required.';
     } elseif (strlen($firstName) > 80) {
         $errors['first_name'] = 'First name cannot exceed 80 characters.';
+    }
+
+    if (strlen($middleInitial) > 10) {
+        $errors['middle_initial'] = 'Middle initial cannot exceed 10 characters.';
     }
 
     if ($lastName === '') {
@@ -183,11 +188,12 @@ function createPatient(PDO $pdo): void {
     }
 
     $stmt = $pdo->prepare(
-        "INSERT INTO patients (first_name, last_name, gender, date_of_birth, contact_no, address)
-         VALUES (?, ?, ?, ?, ?, ?)"
+        "INSERT INTO patients (first_name, middle_initial, last_name, gender, date_of_birth, contact_no, address)
+         VALUES (?, ?, ?, ?, ?, ?, ?)"
     );
     $stmt->execute([
         trim($input['first_name']),
+        trim($input['middle_initial'] ?? '') ?: null,
         trim($input['last_name']),
         $input['gender'],
         $input['date_of_birth'],
@@ -219,11 +225,12 @@ function updatePatient(PDO $pdo): void {
 
     $stmt = $pdo->prepare(
         "UPDATE patients
-         SET first_name = ?, last_name = ?, gender = ?, date_of_birth = ?, contact_no = ?, address = ?
+         SET first_name = ?, middle_initial = ?, last_name = ?, gender = ?, date_of_birth = ?, contact_no = ?, address = ?
          WHERE patient_id = ?"
     );
     $stmt->execute([
         trim($input['first_name']),
+        trim($input['middle_initial'] ?? '') ?: null,
         trim($input['last_name']),
         $input['gender'],
         $input['date_of_birth'],
