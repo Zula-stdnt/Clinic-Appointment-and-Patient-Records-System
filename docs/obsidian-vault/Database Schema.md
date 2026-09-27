@@ -10,6 +10,7 @@ Database: `hospital_db` (utf8mb4 / utf8mb4_unicode_ci). Full dump: `migrations/h
 - Every master table has `created_at`, `updated_at`, and `deleted_at`. `deleted_at IS NULL` means active; non-null means archived (soft delete).
 - `roles` is a lookup table: Administrator, Receptionist, Doctor, Cashier.
 - `doctor_specialty` is a junction table so one doctor can have **many** specialties.
+- Personal identity data (`first_name`, `last_name`, `middle_initial`, `gender`) is stored **only** on `users`. `doctors` holds doctor-specific data and links to the account via `user_id` (no name duplication).
 
 ## Core relationships
 ```mermaid
@@ -45,7 +46,7 @@ erDiagram
 | Table | Key columns | Notes |
 | --- | --- | --- |
 | `patients` | `patient_id`, names, `gender`, `date_of_birth`, `contact_no`, `address`, `deleted_at` | |
-| `doctors` | `doctor_id`, `user_id` → users (unique), names, `gender`, `contact_no`, `deleted_at` | Optional link to a login account |
+| `doctors` | `doctor_id`, `user_id` → users (unique), `contact_no`, `deleted_at` | Profile-only table: names/gender live on `users` (single source of truth, 1:0..1 link) |
 | `specialties` | `specialty_id`, `specialty_name` (unique), `deleted_at` | |
 | `doctor_specialty` | `doctor_id` + `specialty_id` (composite PK) | Many-to-many |
 | `services` | `service_id`, `service_name` (unique), `price`, `deleted_at` | |

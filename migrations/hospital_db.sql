@@ -130,13 +130,11 @@ INSERT INTO `discounts` (`discount_id`, `discount_name`, `percentage`, `created_
 -- Table structure for table `doctors`
 --
 
+-- Personal identity fields (first_name, last_name, middle_initial, gender) live ONLY
+-- on `users`. `doctors` stores the profile link and doctor-specific data.
 CREATE TABLE `doctors` (
   `doctor_id` int(10) UNSIGNED NOT NULL,
   `user_id` int(10) UNSIGNED DEFAULT NULL,
-  `first_name` varchar(80) NOT NULL,
-  `last_name` varchar(80) NOT NULL,
-  `middle_initial` varchar(10) DEFAULT NULL,
-  `gender` enum('Male','Female','Other') NOT NULL DEFAULT 'Other',
   `contact_no` varchar(30) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -147,13 +145,13 @@ CREATE TABLE `doctors` (
 -- Dumping data for table `doctors`
 --
 
-INSERT INTO `doctors` (`doctor_id`, `user_id`, `first_name`, `last_name`, `middle_initial`, `gender`, `contact_no`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 2, 'Gregory', 'House', NULL, 'Male', '09171234567', '2026-09-20 13:09:00', '2026-09-21 06:46:43', NULL),
-(2, 4, 'John', 'Watson', NULL, 'Male', '09181234568', '2026-09-20 13:09:00', '2026-09-20 14:55:02', NULL),
-(3, 5, 'Meredith', 'Grey', NULL, 'Female', '09191234569', '2026-09-20 13:09:00', '2026-09-20 14:55:02', NULL),
-(4, 6, 'Stephen', 'Strange', NULL, 'Male', '09201234570', '2026-09-20 13:09:00', '2026-09-20 14:55:02', NULL),
-(5, 7, 'Doogie', 'Howser', NULL, 'Male', '09211234571', '2026-09-20 13:09:00', '2026-09-21 06:46:29', NULL),
-(15, 1029, 'Jason', 'tatum', 'D', 'Other', '09171234567', '2026-09-21 07:06:37', '2026-09-21 07:06:37', NULL);
+INSERT INTO `doctors` (`doctor_id`, `user_id`, `contact_no`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 2, '09171234567', '2026-09-20 13:09:00', '2026-09-21 06:46:43', NULL),
+(2, 4, '09181234568', '2026-09-20 13:09:00', '2026-09-20 14:55:02', NULL),
+(3, 5, '09191234569', '2026-09-20 13:09:00', '2026-09-20 14:55:02', NULL),
+(4, 6, '09201234570', '2026-09-20 13:09:00', '2026-09-20 14:55:02', NULL),
+(5, 7, '09211234571', '2026-09-20 13:09:00', '2026-09-21 06:46:29', NULL),
+(15, 1029, '09171234567', '2026-09-21 07:06:37', '2026-09-21 07:06:37', NULL);
 
 -- --------------------------------------------------------
 
@@ -387,7 +385,8 @@ INSERT INTO `users` (`user_id`, `role_id`, `first_name`, `last_name`, `middle_in
 (6, 3, 'Stephen', 'Strange', NULL, 'Male', 'dr.strange', '$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne', '2026-09-20 14:26:50', '2026-09-20 14:55:02', NULL),
 (7, 3, 'Doogie', 'Howser', NULL, 'Male', 'dr.howser', '$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne', '2026-09-20 14:26:50', '2026-09-21 06:46:29', NULL),
 (8, 1, 'Test', 'Admin', NULL, 'Other', 'testadmin', '$2y$10$R.p0kSQvA.1fjWxfQxvn3OHAB2/hNk2P8iSFIykVqZw2P/TVxj40.', '2026-09-20 14:33:19', '2026-09-20 14:55:02', NULL),
-(1029, 3, 'Jason', 'tatum', 'D', 'Other', 'Dr.lab', '$2y$10$1zBWQSQy0RUXqYaYKMhvOuoTJUHkeMkdaM.rme9M0HMZpkqnJB49G', '2026-09-21 07:06:37', '2026-09-21 07:06:37', NULL);
+(1029, 3, 'Jason', 'tatum', 'D', 'Other', 'Dr.lab', '$2y$10$1zBWQSQy0RUXqYaYKMhvOuoTJUHkeMkdaM.rme9M0HMZpkqnJB49G', '2026-09-21 07:06:37', '2026-09-21 07:06:37', NULL),
+(1030, 1, 'Mikel', 'Admin', NULL, 'Other', 'mikel', '$2y$10$LEBB2/lVaaz1b06D9KVvVeuF0c92D6DAUu4QlyxgM8kqQb8SIJlzu', '2026-09-22 23:54:54', '2026-09-22 23:54:54', NULL);
 
 -- --------------------------------------------------------
 

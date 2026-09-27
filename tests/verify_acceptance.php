@@ -82,8 +82,8 @@ echo "--- Group 1: Authentication and Access ---\n";
 
 run_test("1.1: Valid Administrator credentials reach dashboard", function() use ($baseUrl, $cookieAdmin) {
     $res = http_request('POST', "$baseUrl/api/auth_controller.php?action=login", [
-        'username' => 'admin',
-        'password' => 'AdminPass123!'
+        'username' => 'testadmin',
+        'password' => 'TestPass123!'
     ], $cookieAdmin);
 
     if ($res['status'] !== 200 || !($res['json']['success'] ?? false)) {
@@ -101,7 +101,7 @@ run_test("1.2: Wrong username and wrong password produce identical generic error
         'password' => 'somepass'
     ]);
     $resWrongPass = http_request('POST', "$baseUrl/api/auth_controller.php?action=login", [
-        'username' => 'admin',
+        'username' => 'testadmin',
         'password' => 'WrongPassword!'
     ]);
 
@@ -145,7 +145,7 @@ run_test("1.4: User with unauthorized role cannot log in", function() use ($base
     $pdo = new PDO("mysql:host=127.0.0.1;dbname=hospital_db;charset=utf8mb4", "root", "");
     $pdo->exec("INSERT INTO roles (role_id, role_name) VALUES (999, 'Cashier') ON DUPLICATE KEY UPDATE role_name = 'Cashier'");
     $hash = password_hash('CashierPass123!', PASSWORD_DEFAULT);
-    $pdo->exec("INSERT INTO users (user_id, role_id, full_name, username, password_hash) VALUES (999, 999, 'Test Cashier', 'cashier.test', '$hash') ON DUPLICATE KEY UPDATE password_hash = '$hash'");
+    $pdo->exec("INSERT INTO users (user_id, role_id, first_name, last_name, gender, username, password_hash) VALUES (999, 999, 'Test', 'Cashier', 'Other', 'cashier.test', '$hash') ON DUPLICATE KEY UPDATE password_hash = '$hash'");
 
     $res = http_request('POST', "$baseUrl/api/auth_controller.php?action=login", [
         'username' => 'cashier.test',
@@ -230,7 +230,7 @@ run_test("2.1: Administrator accounts never appear in users list", function() us
 
     $items = $res['json']['data']['items'] ?? [];
     foreach ($items as $item) {
-        if ($item['role_name'] === 'Administrator' || $item['username'] === 'admin') {
+        if ($item['role_name'] === 'Administrator' || $item['username'] === 'testadmin') {
             return "Found Administrator account in list: {$item['username']}";
         }
     }
@@ -256,7 +256,9 @@ run_test("2.2: Requests targeting an Administrator ID are rejected", function() 
 run_test("2.3: Only Doctor and Receptionist can be assigned as roles", function() use ($baseUrl, $cookieAdmin, $adminCsrf) {
     // Attempt to assign unauthorized role_id 1 (Administrator) or invalid role_id
     $res = http_request('POST', "$baseUrl/api/user_controller.php", [
-        'full_name' => 'Hacker Admin',
+        'first_name' => 'Hacker',
+        'last_name' => 'Admin',
+        'gender' => 'Other',
         'username' => 'hacker.admin',
         'password' => 'Secret123!',
         'role_id' => 1
@@ -273,7 +275,9 @@ run_test("2.4: Stored passwords are hashes and new user can log in", function() 
     $password = 'TestPass123!';
 
     $create = http_request('POST', "$baseUrl/api/user_controller.php", [
-        'full_name' => 'Test Receptionist',
+        'first_name' => 'Test',
+        'last_name' => 'Receptionist',
+        'gender' => 'Female',
         'username' => $username,
         'password' => $password,
         'role_id' => 2 // Receptionist
@@ -302,6 +306,9 @@ run_test("2.4: Stored passwords are hashes and new user can log in", function() 
     if ($loginRes['status'] !== 200 || !($loginRes['json']['success'] ?? false)) {
         return "Login failed with new credentials: " . json_encode($loginRes['json']);
     }
+
+    // Clean up the temporary user
+    $pdo->prepare("DELETE FROM users WHERE username = ?")->execute([$username]);
 
     return true;
 });
