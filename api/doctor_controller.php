@@ -79,7 +79,7 @@ function listDoctors(PDO $pdo): void {
     }
 
     if ($search !== '') {
-        $where[] = '(d.first_name LIKE :search1 OR d.last_name LIKE :search2 OR d.contact_no LIKE :search3 OR s.specialty_name LIKE :search4)';
+        $where[] = '(u.first_name LIKE :search1 OR u.last_name LIKE :search2 OR d.contact_no LIKE :search3 OR s.specialty_name LIKE :search4)';
         $params[':search1'] = '%' . $search . '%';
         $params[':search2'] = '%' . $search . '%';
         $params[':search3'] = '%' . $search . '%';
@@ -92,7 +92,11 @@ function listDoctors(PDO $pdo): void {
     $sortBy = in_array($_GET['sort_by'] ?? '', $allowedSort, true) ? $_GET['sort_by'] : 'd.doctor_id';
     if ($sortBy === 'specialty_name') {
         $sortBy = 's.specialty_name';
-    } elseif ($sortBy !== 'd.doctor_id') {
+    } elseif ($sortBy === 'first_name') {
+        $sortBy = 'u.first_name';
+    } elseif ($sortBy === 'last_name') {
+        $sortBy = 'u.last_name';
+    } elseif ($sortBy !== 'doctor_id') {
         $sortBy = 'd.' . $sortBy;
     }
     $sortOrder = strtoupper($_GET['sort_order'] ?? 'ASC') === 'DESC' ? 'DESC' : 'ASC';
@@ -110,8 +114,9 @@ function listDoctors(PDO $pdo): void {
     $countStmt->execute();
     $total = (int)$countStmt->fetchColumn();
 
-    // Data query with GROUP_CONCAT for specialties if doctor has multiple
-    $dataSql = "SELECT d.doctor_id, d.first_name, d.last_name, d.middle_initial, d.gender, d.contact_no, d.created_at, d.updated_at, d.deleted_at,
+    // Data query with GROUP_CONCAT for specialties if doctor has multiple.
+    // Personal identity fields live on users; doctors only stores profile data.
+    $dataSql = "SELECT d.doctor_id, u.first_name, u.last_name, u.middle_initial, u.gender, d.contact_no, d.created_at, d.updated_at, d.deleted_at,
                        u.username, u.user_id,
                        GROUP_CONCAT(DISTINCT s.specialty_name ORDER BY s.specialty_name SEPARATOR ', ') AS specialty_names,
                        GROUP_CONCAT(DISTINCT s.specialty_id SEPARATOR ',') AS specialty_ids
@@ -120,7 +125,7 @@ function listDoctors(PDO $pdo): void {
                 LEFT JOIN doctor_specialty ds ON d.doctor_id = ds.doctor_id
                 LEFT JOIN specialties s ON ds.specialty_id = s.specialty_id
                 WHERE {$whereSql}
-                GROUP BY d.doctor_id, d.first_name, d.last_name, d.middle_initial, d.gender, u.username, u.user_id
+                GROUP BY d.doctor_id, u.first_name, u.last_name, u.middle_initial, u.gender, u.username, u.user_id
                 ORDER BY {$sortBy} {$sortOrder}
                 LIMIT :limit OFFSET :offset";
 
@@ -144,7 +149,7 @@ function listDoctors(PDO $pdo): void {
 
 function getDoctorById(PDO $pdo, int $id): void {
     $stmt = $pdo->prepare(
-        "SELECT d.doctor_id, d.first_name, d.last_name, d.middle_initial, d.gender, d.contact_no, d.created_at, d.updated_at, d.deleted_at,
+        "SELECT d.doctor_id, u.first_name, u.last_name, u.middle_initial, u.gender, d.contact_no, d.created_at, d.updated_at, d.deleted_at,
                 u.username, u.user_id,
                 GROUP_CONCAT(DISTINCT s.specialty_name ORDER BY s.specialty_name SEPARATOR ', ') AS specialty_names,
                 GROUP_CONCAT(DISTINCT s.specialty_id SEPARATOR ',') AS specialty_ids
@@ -153,7 +158,7 @@ function getDoctorById(PDO $pdo, int $id): void {
          LEFT JOIN doctor_specialty ds ON d.doctor_id = ds.doctor_id
          LEFT JOIN specialties s ON ds.specialty_id = s.specialty_id
          WHERE d.doctor_id = ?
-         GROUP BY d.doctor_id, d.first_name, d.last_name, d.middle_initial, d.gender, u.username, u.user_id
+         GROUP BY d.doctor_id, u.first_name, u.last_name, u.middle_initial, u.gender, u.username, u.user_id
          LIMIT 1"
     );
     $stmt->execute([$id]);
@@ -238,14 +243,11 @@ function createDoctor(PDO $pdo): void {
         $uStmt->execute([$roleId, trim($input['first_name']), trim($input['last_name']), $middleInitial, $gender, trim($input['username']), $passwordHash]);
         $newUserId = (int)$pdo->lastInsertId();
 
-        // 2. Create Doctor profile linked to the User
-        $stmt = $pdo->prepare("INSERT INTO doctors (user_id, first_name, last_name, middle_initial, gender, contact_no) VALUES (?, ?, ?, ?, ?, ?)");
+        // 2. Create Doctor profile linked to the User.
+        //    Names/gender already live on the users row; only profile data goes here.
+        $stmt = $pdo->prepare("INSERT INTO doctors (user_id, contact_no) VALUES (?, ?)");
         $stmt->execute([
             $newUserId,
-            trim($input['first_name']),
-            trim($input['last_name']),
-            $middleInitial,
-            $gender,
             trim($input['contact_no'] ?? '') ?: null
         ]);
         $newDoctorId = (int)$pdo->lastInsertId();
@@ -291,17 +293,14 @@ function updateDoctor(PDO $pdo): void {
         $middleInitial = trim($input['middle_initial'] ?? '') ?: null;
         $gender = $input['gender'] ?? 'Other';
 
-        $stmt = $pdo->prepare("UPDATE doctors SET first_name = ?, last_name = ?, middle_initial = ?, gender = ?, contact_no = ? WHERE doctor_id = ?");
+        // Only doctor-specific profile data lives on the doctors row.
+        $stmt = $pdo->prepare("UPDATE doctors SET contact_no = ? WHERE doctor_id = ?");
         $stmt->execute([
-            trim($input['first_name']),
-            trim($input['last_name']),
-            $middleInitial,
-            $gender,
             trim($input['contact_no'] ?? '') ?: null,
             $id
         ]);
-        
-        // Update linked user
+
+        // Personal identity fields live on the linked user account.
         if (!empty($input['password'])) {
             $hash = password_hash($input['password'], PASSWORD_DEFAULT);
             $uUpd = $pdo->prepare("UPDATE users SET first_name = ?, last_name = ?, middle_initial = ?, gender = ?, username = ?, password_hash = ? WHERE user_id = ?");

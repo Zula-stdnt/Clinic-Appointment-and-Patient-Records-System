@@ -253,11 +253,11 @@ function createUser(PDO $pdo): void {
         $newUserId = (int)$pdo->lastInsertId();
 
         if ($role['role_name'] === 'Doctor') {
+            // Names/gender live on the users row; doctors stores only profile data.
             $docIns = $pdo->prepare(
-                "INSERT INTO doctors (user_id, first_name, last_name, middle_initial, gender, contact_no)
-                 VALUES (?, ?, ?, ?, ?, ?)"
+                "INSERT INTO doctors (user_id, contact_no) VALUES (?, ?)"
             );
-            $docIns->execute([$newUserId, $firstName, $lastName, $middleInitial, $gender, $contactNo]);
+            $docIns->execute([$newUserId, $contactNo]);
             $newDocId = (int)$pdo->lastInsertId();
 
             $specIns = $pdo->prepare("INSERT INTO doctor_specialty (doctor_id, specialty_id) VALUES (?, ?)");
@@ -377,11 +377,11 @@ function updateUser(PDO $pdo): void {
         // Manage Doctor profile
         if ($newRole['role_name'] === 'Doctor') {
             if ($existingUser['doctor_id']) {
-                // Update existing doctor profile
+                // Update existing doctor profile (identity fields come from users)
                 $updDoc = $pdo->prepare(
-                    "UPDATE doctors SET first_name = ?, last_name = ?, middle_initial = ?, gender = ?, contact_no = ?, deleted_at = NULL WHERE doctor_id = ?"
+                    "UPDATE doctors SET contact_no = ?, deleted_at = NULL WHERE doctor_id = ?"
                 );
-                $updDoc->execute([$firstName, $lastName, $middleInitial, $gender, $contactNo, $existingUser['doctor_id']]);
+                $updDoc->execute([$contactNo, $existingUser['doctor_id']]);
 
                 // Update specialties
                 $pdo->prepare("DELETE FROM doctor_specialty WHERE doctor_id = ?")->execute([$existingUser['doctor_id']]);
@@ -392,10 +392,9 @@ function updateUser(PDO $pdo): void {
             } else {
                 // Insert new doctor profile if they changed from Receptionist to Doctor
                 $docIns = $pdo->prepare(
-                    "INSERT INTO doctors (user_id, first_name, last_name, middle_initial, gender, contact_no)
-                     VALUES (?, ?, ?, ?, ?, ?)"
+                    "INSERT INTO doctors (user_id, contact_no) VALUES (?, ?)"
                 );
-                $docIns->execute([$userId, $firstName, $lastName, $middleInitial, $gender, $contactNo]);
+                $docIns->execute([$userId, $contactNo]);
                 $newDocId = (int)$pdo->lastInsertId();
 
                 $specIns = $pdo->prepare("INSERT INTO doctor_specialty (doctor_id, specialty_id) VALUES (?, ?)");

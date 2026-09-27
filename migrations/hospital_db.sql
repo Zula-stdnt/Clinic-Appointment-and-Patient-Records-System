@@ -182,12 +182,12 @@ UNLOCK TABLES;
 -- Table structure for table `doctor_specialty`
 --
 
-DROP TABLE IF EXISTS `doctor_specialty`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `doctor_specialty` (
-  `doctor_id` int(10) unsigned NOT NULL,
-  `specialty_id` int(10) unsigned NOT NULL,
+-- Personal identity fields (first_name, last_name, middle_initial, gender) live ONLY
+-- on `users`. `doctors` stores the profile link and doctor-specific data.
+CREATE TABLE `doctors` (
+  `doctor_id` int(10) UNSIGNED NOT NULL,
+  `user_id` int(10) UNSIGNED DEFAULT NULL,
+  `contact_no` varchar(30) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`doctor_id`,`specialty_id`),
   KEY `fk_ds_specialty` (`specialty_id`),
@@ -200,11 +200,15 @@ CREATE TABLE `doctor_specialty` (
 -- Dumping data for table `doctor_specialty`
 --
 
-LOCK TABLES `doctor_specialty` WRITE;
-/*!40000 ALTER TABLE `doctor_specialty` DISABLE KEYS */;
-INSERT INTO `doctor_specialty` VALUES (1,7,'2026-09-20 13:09:00'),(2,7,'2026-09-20 13:09:00'),(3,3,'2026-09-20 13:09:00'),(4,6,'2026-09-20 13:09:00'),(5,2,'2026-09-20 13:09:00'),(15,21,'2026-09-21 07:06:37');
-/*!40000 ALTER TABLE `doctor_specialty` ENABLE KEYS */;
-UNLOCK TABLES;
+INSERT INTO `doctors` (`doctor_id`, `user_id`, `contact_no`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 2, '09171234567', '2026-09-20 13:09:00', '2026-09-21 06:46:43', NULL),
+(2, 4, '09181234568', '2026-09-20 13:09:00', '2026-09-20 14:55:02', NULL),
+(3, 5, '09191234569', '2026-09-20 13:09:00', '2026-09-20 14:55:02', NULL),
+(4, 6, '09201234570', '2026-09-20 13:09:00', '2026-09-20 14:55:02', NULL),
+(5, 7, '09211234571', '2026-09-20 13:09:00', '2026-09-21 06:46:29', NULL),
+(15, 1029, '09171234567', '2026-09-21 07:06:37', '2026-09-21 07:06:37', NULL);
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `doctors`
@@ -511,11 +515,19 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-LOCK TABLES `users` WRITE;
-/*!40000 ALTER TABLE `users` DISABLE KEYS */;
-INSERT INTO `users` VALUES (1,1,'Jamaica','Mcren',NULL,'female','Mcren','$2y$10$2lvR.qmmiQIaA.trciq4DOAQ5bfSsKqSSz4PFSRVteeCdjIqzl0yW','2026-09-20 09:21:24','2026-09-20 14:55:02',NULL),(2,3,'Gregory','House',NULL,'male','dr.smith','$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne','2026-09-20 13:09:00','2026-09-20 16:43:54',NULL),(3,2,'Jane','Doe',NULL,'female','recep.jane','$2y$10$KbtbTTvMurQl1Itl1yPy1uDZsocnvB0RDv/Z34/6flK6utWnduaIy','2026-09-20 13:09:00','2026-09-20 14:55:02',NULL),(4,3,'John','Watson',NULL,'male','dr.watson','$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne','2026-09-20 14:26:50','2026-09-20 14:55:02',NULL),(5,3,'Meredith','Grey',NULL,'female','dr.grey','$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne','2026-09-20 14:26:50','2026-09-20 14:55:02',NULL),(6,3,'Stephen','Strange',NULL,'male','dr.strange','$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne','2026-09-20 14:26:50','2026-09-20 14:55:02',NULL),(7,3,'Doogie','Howser',NULL,'male','dr.howser','$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne','2026-09-20 14:26:50','2026-09-21 06:46:29',NULL),(8,1,'Test','Admin',NULL,'other','testadmin','$2y$10$R.p0kSQvA.1fjWxfQxvn3OHAB2/hNk2P8iSFIykVqZw2P/TVxj40.','2026-09-20 14:33:19','2026-09-20 14:55:02',NULL),(1029,3,'Jason','tatum','D','other','Dr.lab','$2y$10$1zBWQSQy0RUXqYaYKMhvOuoTJUHkeMkdaM.rme9M0HMZpkqnJB49G','2026-09-21 07:06:37','2026-09-21 07:06:37',NULL);
-/*!40000 ALTER TABLE `users` ENABLE KEYS */;
-UNLOCK TABLES;
+INSERT INTO `users` (`user_id`, `role_id`, `first_name`, `last_name`, `middle_initial`, `gender`, `username`, `password_hash`, `created_at`, `updated_at`, `deleted_at`) VALUES
+(1, 1, 'Jamaica', 'Mcren', NULL, 'Female', 'Mcren', '$2y$10$2lvR.qmmiQIaA.trciq4DOAQ5bfSsKqSSz4PFSRVteeCdjIqzl0yW', '2026-09-20 09:21:24', '2026-09-20 14:55:02', NULL),
+(2, 3, 'Gregory', 'House', NULL, 'Male', 'dr.smith', '$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne', '2026-09-20 13:09:00', '2026-09-20 16:43:54', NULL),
+(3, 2, 'Jane', 'Doe', NULL, 'Female', 'recep.jane', '$2y$10$KbtbTTvMurQl1Itl1yPy1uDZsocnvB0RDv/Z34/6flK6utWnduaIy', '2026-09-20 13:09:00', '2026-09-20 14:55:02', NULL),
+(4, 3, 'John', 'Watson', NULL, 'Male', 'dr.watson', '$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne', '2026-09-20 14:26:50', '2026-09-20 14:55:02', NULL),
+(5, 3, 'Meredith', 'Grey', NULL, 'Female', 'dr.grey', '$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne', '2026-09-20 14:26:50', '2026-09-20 14:55:02', NULL),
+(6, 3, 'Stephen', 'Strange', NULL, 'Male', 'dr.strange', '$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne', '2026-09-20 14:26:50', '2026-09-20 14:55:02', NULL),
+(7, 3, 'Doogie', 'Howser', NULL, 'Male', 'dr.howser', '$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne', '2026-09-20 14:26:50', '2026-09-21 06:46:29', NULL),
+(8, 1, 'Test', 'Admin', NULL, 'Other', 'testadmin', '$2y$10$R.p0kSQvA.1fjWxfQxvn3OHAB2/hNk2P8iSFIykVqZw2P/TVxj40.', '2026-09-20 14:33:19', '2026-09-20 14:55:02', NULL),
+(1029, 3, 'Jason', 'tatum', 'D', 'Other', 'Dr.lab', '$2y$10$1zBWQSQy0RUXqYaYKMhvOuoTJUHkeMkdaM.rme9M0HMZpkqnJB49G', '2026-09-21 07:06:37', '2026-09-21 07:06:37', NULL),
+(1030, 1, 'Mikel', 'Admin', NULL, 'Other', 'mikel', '$2y$10$LEBB2/lVaaz1b06D9KVvVeuF0c92D6DAUu4QlyxgM8kqQb8SIJlzu', '2026-09-22 23:54:54', '2026-09-22 23:54:54', NULL);
+
+-- --------------------------------------------------------
 
 --
 -- Table structure for table `vital_signs`
