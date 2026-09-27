@@ -25,3 +25,6 @@ All entities reuse the standard controllers with `status=deleted`:
 ## Behavior notes
 - Restoring a doctor also restores the linked user account, and vice versa (handled in [[Manage Doctors]] / [[Manage Users]] controllers).
 - Hard-deleting a doctor removes the linked user; the join rows cascade.
+- **Doctor controller integration**:
+  - `doctor_controller.php` query builder handles omitted `sort_by` parameters by defaulting to `doctor_id` before prefixing `d.`, preventing `d.d.doctor_id` column errors.
+  - The doctor count query explicitly joins `users u` on `d.user_id = u.user_id` so searching archived doctors by name functions without SQL errors.

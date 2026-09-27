@@ -8,6 +8,8 @@ Implemented in `includes/auth.php`, `includes/response.php`, and the `api/*_cont
 
 ## Authentication
 - Passwords are stored with `password_hash($password, PASSWORD_DEFAULT)` (bcrypt) and checked with `password_verify()`.
+- **Password Complexity Policy**: Required on account creation and password updates. Must contain at least 6 characters, including at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (`/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/`). Enforced both client-side and server-side.
+- **Password Visibility Controls**: Accessible eye-icon buttons on `login.php` and modal forms enable users to toggle between masked and plaintext input with keyboard accessibility and dynamic `aria-label` updates.
 - Login failures return a generic "Invalid username or password" for both unknown users and wrong passwords.
 - Only roles `Administrator`, `Doctor`, and `Receptionist` may log in; other roles get `403`.
 - `session_regenerate_id(true)` after login prevents session fixation.

@@ -126,13 +126,19 @@ export default {
                                 <div class="form-group">
                                     <label for="doctor-gender">Gender <span class="required-star">*</span></label>
                                     <select id="doctor-gender" class="form-control" required>
-                                        <option value="">Select Gender</option>
+                                        <option value="" disabled selected>Select Gender</option>
                                         <option value="Male">Male</option>
                                         <option value="Female">Female</option>
                                         <option value="Other">Other</option>
                                     </select>
                                     <div class="invalid-feedback" id="doctor-gender-error"></div>
                                 </div>
+                            </div>
+
+                            <div class="form-group" id="doctor-custom-gender-group" style="display: none;">
+                                <label for="doctor-custom-gender">Specify Gender <span class="required-star">*</span></label>
+                                <input type="text" id="doctor-custom-gender" class="form-control" placeholder="Please specify your gender">
+                                <div class="invalid-feedback" id="doctor-custom-gender-error"></div>
                             </div>
 
                             <div class="form-group">
@@ -146,7 +152,7 @@ export default {
 
                             <div class="form-group">
                                 <label for="doctor-contact">Contact Number</label>
-                                <input type="text" id="doctor-contact" class="form-control" placeholder="e.g. 09171234567">
+                                <input type="text" id="doctor-contact" class="form-control" placeholder="e.g. 0917 123 4567">
                                 <div class="invalid-feedback" id="doctor-contact-error"></div>
                             </div>
 
@@ -161,7 +167,14 @@ export default {
 
                             <div class="form-group">
                                 <label for="doctor-password" id="doctor-password-label">Password <span class="required-star">*</span></label>
-                                <input type="password" id="doctor-password" class="form-control" placeholder="Min. 6 characters">
+                                <div style="position: relative;">
+                                    <input type="password" id="doctor-password" class="form-control" placeholder="Min. 6 characters" style="padding-right: 40px;">
+                                    <button type="button" id="btn-toggle-password" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: #6c757d; padding: 0;">
+                                        <svg id="icon-eye-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: block;"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>
+                                        <svg id="icon-eye-on" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    </button>
+                                </div>
+                                <small class="text-muted" style="display: block; margin-top: 0.25rem;">Must contain an uppercase letter, lowercase letter, number, and special character.</small>
                                 <div class="invalid-feedback" id="doctor-password-error"></div>
                                 <small class="text-muted" id="doctor-password-hint" style="display: none; margin-top: 0.25rem;">Leave blank to keep password unchanged.</small>
                             </div>
@@ -201,6 +214,72 @@ export default {
                 this.loadData();
             }, 300);
         });
+
+        // Custom gender toggle
+        const genderSelect = this.container.querySelector('#doctor-gender');
+        const customGenderGroup = this.container.querySelector('#doctor-custom-gender-group');
+        if (genderSelect && customGenderGroup) {
+            genderSelect.addEventListener('change', (e) => {
+                if (e.target.value === 'Other') {
+                    customGenderGroup.style.display = 'block';
+                } else {
+                    customGenderGroup.style.display = 'none';
+                    this.container.querySelector('#doctor-custom-gender').value = '';
+                }
+            });
+        }
+
+        // Contact Number format (09XX XXX XXXX)
+        const contactInput = this.container.querySelector('#doctor-contact');
+        if (contactInput) {
+            contactInput.addEventListener('input', (e) => {
+                const input = e.target;
+                const oldSelectionStart = input.selectionStart;
+                const oldVal = input.value;
+                
+                let val = oldVal.replace(/\D/g, ''); // strip non-numeric
+                if (val.length > 11) val = val.slice(0, 11);
+                
+                let formatted = '';
+                for (let i = 0; i < val.length; i++) {
+                    if (i === 4 || i === 7) formatted += ' ';
+                    formatted += val[i];
+                }
+                
+                input.value = formatted;
+
+                let newCursor = 0;
+                let digitsFound = 0;
+                const digitsBeforeCursor = oldVal.slice(0, oldSelectionStart).replace(/\D/g, '').length;
+                
+                for (let i = 0; i < formatted.length; i++) {
+                    if (digitsFound === digitsBeforeCursor) break;
+                    if (/\d/.test(formatted[i])) digitsFound++;
+                    newCursor++;
+                }
+                
+                if (document.activeElement === input) {
+                    input.setSelectionRange(newCursor, newCursor);
+                }
+            });
+        }
+
+        // Password visibility toggle
+        const toggleBtn = this.container.querySelector('#btn-toggle-password');
+        const passInput = this.container.querySelector('#doctor-password');
+        if (toggleBtn && passInput) {
+            toggleBtn.addEventListener('click', () => {
+                if (passInput.type === 'password') {
+                    passInput.type = 'text';
+                    this.container.querySelector('#icon-eye-off').style.display = 'none';
+                    this.container.querySelector('#icon-eye-on').style.display = 'block';
+                } else {
+                    passInput.type = 'password';
+                    this.container.querySelector('#icon-eye-on').style.display = 'none';
+                    this.container.querySelector('#icon-eye-off').style.display = 'block';
+                }
+            });
+        }
 
         this.container.querySelector('#doctors-specialty-filter').addEventListener('change', (e) => {
             this.state.specialtyId = e.target.value;
@@ -286,11 +365,18 @@ export default {
         tbody.innerHTML = items.map(d => {
             const fullName = `${d.last_name}, ${d.first_name}${d.middle_initial ? ' ' + d.middle_initial + '.' : ''}`;
 
+            let specialtyHtml = '<span class="badge badge-role">General Medicine</span>';
+            if (d.specialty_names) {
+                specialtyHtml = `<div style="display: flex; flex-wrap: wrap; gap: 4px; max-width: 250px;">
+                    ${d.specialty_names.split(',').map(s => `<span class="badge badge-role">${escapeHtml(s.trim())}</span>`).join('')}
+                </div>`;
+            }
+
             return `
                 <tr>
                     <td><strong>${escapeHtml(fullName)}</strong></td>
-                    <td><span class="badge badge-role">${escapeHtml(d.specialty_names || 'General Medicine')}</span></td>
-                    <td>${escapeHtml(d.contact_no || '—')}</td>
+                    <td>${specialtyHtml}</td>
+                    <td>${escapeHtml(d.contact_no || '-')}</td>
                     <td><span class="badge badge-active">Active</span></td>
                     <td>
                         <div class="actions-cell">
@@ -363,10 +449,19 @@ export default {
         this.clearFormErrors();
         this.container.querySelector('#doctor-form').reset();
         this.container.querySelector('#doctor-id').value = '';
+        this.container.querySelector('#doctor-gender').value = '';
+        this.container.querySelector('#doctor-custom-gender-group').style.display = 'none';
+        this.container.querySelector('#doctor-custom-gender').value = '';
         this.container.querySelector('#doctor-form-title').textContent = 'Add New Doctor';
         
         this.container.querySelector('#doctor-password-label').innerHTML = 'Password <span class="required-star">*</span>';
         this.container.querySelector('#doctor-password-hint').style.display = 'none';
+
+        // Reset password visibility to hidden
+        const passInput = this.container.querySelector('#doctor-password');
+        if (passInput) passInput.type = 'password';
+        this.container.querySelector('#icon-eye-on').style.display = 'none';
+        this.container.querySelector('#icon-eye-off').style.display = 'block';
 
         openModal('doctor-form-modal');
     },
@@ -382,8 +477,28 @@ export default {
             this.container.querySelector('#doctor-first-name').value = d.first_name || '';
             this.container.querySelector('#doctor-last-name').value = d.last_name || '';
             this.container.querySelector('#doctor-middle-initial').value = d.middle_initial || '';
-            this.container.querySelector('#doctor-gender').value = d.gender || 'Other';
-            this.container.querySelector('#doctor-contact').value = d.contact_no || '';
+            
+            const genderVal = d.gender || '';
+            const normalizedGender = genderVal.charAt(0).toUpperCase() + genderVal.slice(1).toLowerCase();
+            if (['Male', 'Female'].includes(normalizedGender)) {
+                this.container.querySelector('#doctor-gender').value = normalizedGender;
+                this.container.querySelector('#doctor-custom-gender-group').style.display = 'none';
+                this.container.querySelector('#doctor-custom-gender').value = '';
+            } else {
+                this.container.querySelector('#doctor-gender').value = 'Other';
+                this.container.querySelector('#doctor-custom-gender-group').style.display = 'block';
+                this.container.querySelector('#doctor-custom-gender').value = genderVal;
+            }
+
+            let val = (d.contact_no || '').replace(/\D/g, '');
+            if (val.length > 11) val = val.slice(0, 11);
+            let formatted = '';
+            for (let i = 0; i < val.length; i++) {
+                if (i === 4 || i === 7) formatted += ' ';
+                formatted += val[i];
+            }
+            this.container.querySelector('#doctor-contact').value = formatted;
+
             this.container.querySelector('#doctor-username').value = d.username || '';
             this.container.querySelector('#doctor-password').value = '';
 
@@ -398,6 +513,12 @@ export default {
             this.container.querySelector('#doctor-password-label').innerHTML = 'Password';
             this.container.querySelector('#doctor-password-hint').style.display = 'block';
 
+            // Reset password visibility to hidden
+            const passInput = this.container.querySelector('#doctor-password');
+            if (passInput) passInput.type = 'password';
+            this.container.querySelector('#icon-eye-on').style.display = 'none';
+            this.container.querySelector('#icon-eye-off').style.display = 'block';
+
             openModal('doctor-form-modal');
         } catch (err) {
             showToast(err.response?.data?.message || err.message, 'danger');
@@ -411,7 +532,10 @@ export default {
         const firstName = this.container.querySelector('#doctor-first-name').value.trim();
         const lastName = this.container.querySelector('#doctor-last-name').value.trim();
         const middleInitial = this.container.querySelector('#doctor-middle-initial').value.trim();
-        const gender = this.container.querySelector('#doctor-gender').value;
+        
+        let gender = this.container.querySelector('#doctor-gender').value;
+        const customGender = this.container.querySelector('#doctor-custom-gender').value.trim();
+        
         const specialtyIds = Array.from(this.container.querySelector('#doctor-specialty-id').selectedOptions).map(o => parseInt(o.value, 10));
         const contact = this.container.querySelector('#doctor-contact').value.trim();
         const username = this.container.querySelector('#doctor-username').value.trim();
@@ -426,23 +550,41 @@ export default {
             this.showFieldError('doctor-last-name', 'Last name is required.');
             hasErrors = true;
         }
+        
         if (!gender) {
             this.showFieldError('doctor-gender', 'Gender is required.');
             hasErrors = true;
+        } else if (gender === 'Other') {
+            if (!customGender) {
+                this.showFieldError('doctor-custom-gender', 'Please specify the custom gender.');
+                hasErrors = true;
+            } else {
+                gender = customGender;
+            }
         }
+        
         if (specialtyIds.length === 0) {
             this.showFieldError('doctor-specialty-id', 'Please select at least one specialty.');
             hasErrors = true;
         }
+        
+        const rawContact = contact.replace(/\s+/g, '');
+        if (rawContact && (rawContact.length !== 11 || !rawContact.startsWith('09'))) {
+            this.showFieldError('doctor-contact', 'Contact number must be exactly 11 digits and start with 09.');
+            hasErrors = true;
+        }
+
         if (!username) {
             this.showFieldError('doctor-username', 'Username is required.');
             hasErrors = true;
         }
-        if (!id && (!password || password.length < 6)) {
-            this.showFieldError('doctor-password', 'Password is required and must be at least 6 characters.');
+        
+        const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/;
+        if (!id && !password) {
+            this.showFieldError('doctor-password', 'Password is required.');
             hasErrors = true;
-        } else if (id && password && password.length < 6) {
-            this.showFieldError('doctor-password', 'Password must be at least 6 characters.');
+        } else if (password && !passwordRegex.test(password)) {
+            this.showFieldError('doctor-password', 'Password must be at least 6 characters, and include uppercase, lowercase, number, and special character.');
             hasErrors = true;
         }
 
@@ -454,7 +596,7 @@ export default {
             middle_initial: middleInitial,
             gender: gender,
             specialty_ids: specialtyIds,
-            contact_no: contact,
+            contact_no: rawContact,
             username: username,
             password: password
         };

@@ -34,15 +34,24 @@ Each of the following follows the same contract and requires **Administrator** (
 | `user_controller.php?meta=specialties` | Active specialties (for account forms) |
 | `doctor_controller.php?meta=specialties` | Active specialties (for doctor forms) |
 
+## Input validation rules
+Across all master-file create and update endpoints:
+- **Names**: `first_name` and `last_name` are required strings (max 80 chars). `middle_initial` is an optional string (max 5 chars).
+- **Gender**: Required string (max 50 chars); supports `"Male"`, `"Female"`, `"Other"` (with custom specified text), and `"Unknown"` (for patients).
+- **Contact Number**: `contact_no` is optional. If provided, spaces are stripped and it must be strictly numeric, exactly 11 digits, and start with `09` (e.g. `09171234567`).
+- **Password**: Minimum 6 characters. Must satisfy complexity requirements: at least 1 uppercase letter, 1 lowercase letter, 1 number, and 1 special character (`/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/`). On account updates, an empty password string preserves the existing password hash.
+
 ## Specialty payloads
 `user_controller.php` and `doctor_controller.php` accept **`specialty_ids`** (array) on create/update:
 ```json
 {
   "first_name": "Gregory",
   "last_name": "House",
+  "middle_initial": "R",
   "gender": "Male",
+  "contact_no": "09171234567",
   "username": "dr.house",
-  "password": "secret123",
+  "password": "Password123!",
   "specialty_ids": [2, 7]
 }
 ```

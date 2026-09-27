@@ -118,10 +118,11 @@ export default {
                                 <div class="form-group">
                                     <label for="patient-gender">Gender <span class="required-star">*</span></label>
                                     <select id="patient-gender" class="form-control" required>
-                                        <option value="male">Male</option>
-                                        <option value="female">Female</option>
-                                        <option value="other">Other</option>
-                                        <option value="unknown" selected>Unknown</option>
+                                        <option value="" disabled selected>Select Gender</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
+                                        <option value="Unknown">Unknown</option>
                                     </select>
                                     <div class="invalid-feedback" id="patient-gender-error"></div>
                                 </div>
@@ -130,6 +131,12 @@ export default {
                                     <input type="date" id="patient-dob" class="form-control" required>
                                     <div class="invalid-feedback" id="patient-dob-error"></div>
                                 </div>
+                            </div>
+
+                            <div class="form-group" id="patient-custom-gender-group" style="display: none;">
+                                <label for="patient-custom-gender">Specify Gender <span class="required-star">*</span></label>
+                                <input type="text" id="patient-custom-gender" class="form-control" placeholder="Please specify your gender">
+                                <div class="invalid-feedback" id="patient-custom-gender-error"></div>
                             </div>
 
                             <div class="form-group">
@@ -179,6 +186,57 @@ export default {
                 this.loadData();
             }, 300);
         });
+
+        // Custom gender toggle
+        const genderSelect = this.container.querySelector('#patient-gender');
+        const customGenderGroup = this.container.querySelector('#patient-custom-gender-group');
+        if (genderSelect && customGenderGroup) {
+            genderSelect.addEventListener('change', (e) => {
+                if (e.target.value === 'Other') {
+                    customGenderGroup.style.display = 'block';
+                } else {
+                    customGenderGroup.style.display = 'none';
+                    this.container.querySelector('#patient-custom-gender').value = '';
+                }
+            });
+        }
+
+        // Contact Number format (09XX XXX XXXX)
+        const contactInput = this.container.querySelector('#patient-contact');
+        if (contactInput) {
+            contactInput.addEventListener('input', (e) => {
+                const input = e.target;
+                const oldSelectionStart = input.selectionStart;
+                const oldVal = input.value;
+                
+                let val = oldVal.replace(/\D/g, ''); // strip non-numeric
+                if (val.length > 11) val = val.slice(0, 11);
+                
+                let formatted = '';
+                for (let i = 0; i < val.length; i++) {
+                    if (i === 4 || i === 7) {
+                        formatted += ' ';
+                    }
+                    formatted += val[i];
+                }
+                
+                input.value = formatted;
+
+                let newCursor = 0;
+                let digitsFound = 0;
+                const digitsBeforeCursor = oldVal.slice(0, oldSelectionStart).replace(/\D/g, '').length;
+                
+                for (let i = 0; i < formatted.length; i++) {
+                    if (digitsFound === digitsBeforeCursor) break;
+                    if (/\d/.test(formatted[i])) digitsFound++;
+                    newCursor++;
+                }
+                
+                if (document.activeElement === input) {
+                    input.setSelectionRange(newCursor, newCursor);
+                }
+            });
+        }
 
         this.container.querySelector('#patients-gender-filter').addEventListener('change', (e) => {
             this.state.gender = e.target.value;
@@ -344,7 +402,9 @@ export default {
         this.container.querySelector('#patient-form').reset();
         this.container.querySelector('#patient-id').value = '';
         this.container.querySelector('#patient-middle-initial').value = '';
-        this.container.querySelector('#patient-gender').value = 'unknown';
+        this.container.querySelector('#patient-gender').value = '';
+        this.container.querySelector('#patient-custom-gender-group').style.display = 'none';
+        this.container.querySelector('#patient-custom-gender').value = '';
         this.container.querySelector('#patient-form-title').textContent = 'Add New Patient';
         openModal('patient-form-modal');
     },
@@ -360,9 +420,30 @@ export default {
             this.container.querySelector('#patient-first-name').value = p.first_name;
             this.container.querySelector('#patient-middle-initial').value = p.middle_initial || '';
             this.container.querySelector('#patient-last-name').value = p.last_name;
-            this.container.querySelector('#patient-gender').value = p.gender;
+            
+            const genderVal = p.gender || '';
+            const normalizedGender = genderVal.charAt(0).toUpperCase() + genderVal.slice(1).toLowerCase();
+            if (['Male', 'Female', 'Unknown'].includes(normalizedGender)) {
+                this.container.querySelector('#patient-gender').value = normalizedGender;
+                this.container.querySelector('#patient-custom-gender-group').style.display = 'none';
+                this.container.querySelector('#patient-custom-gender').value = '';
+            } else {
+                this.container.querySelector('#patient-gender').value = 'Other';
+                this.container.querySelector('#patient-custom-gender-group').style.display = 'block';
+                this.container.querySelector('#patient-custom-gender').value = genderVal;
+            }
+
             this.container.querySelector('#patient-dob').value = p.date_of_birth;
-            this.container.querySelector('#patient-contact').value = p.contact_no || '';
+            
+            let val = (p.contact_no || '').replace(/\D/g, '');
+            if (val.length > 11) val = val.slice(0, 11);
+            let formatted = '';
+            for (let i = 0; i < val.length; i++) {
+                if (i === 4 || i === 7) formatted += ' ';
+                formatted += val[i];
+            }
+            this.container.querySelector('#patient-contact').value = formatted;
+
             this.container.querySelector('#patient-address').value = p.address || '';
 
             const fullName = `${p.last_name}, ${p.first_name}${p.middle_initial ? ' ' + p.middle_initial + '.' : ''}`;
@@ -380,7 +461,8 @@ export default {
         const firstName = this.container.querySelector('#patient-first-name').value.trim();
         const middleInitial = this.container.querySelector('#patient-middle-initial').value.trim();
         const lastName = this.container.querySelector('#patient-last-name').value.trim();
-        const gender = this.container.querySelector('#patient-gender').value;
+        let gender = this.container.querySelector('#patient-gender').value;
+        const customGender = this.container.querySelector('#patient-custom-gender').value.trim();
         const dob = this.container.querySelector('#patient-dob').value;
         const contact = this.container.querySelector('#patient-contact').value.trim();
         const address = this.container.querySelector('#patient-address').value.trim();
@@ -397,9 +479,22 @@ export default {
         if (!gender) {
             this.showFieldError('patient-gender', 'Gender is required.');
             hasErrors = true;
+        } else if (gender === 'Other') {
+            if (!customGender) {
+                this.showFieldError('patient-custom-gender', 'Please specify the custom gender.');
+                hasErrors = true;
+            } else {
+                gender = customGender;
+            }
         }
         if (!dob) {
             this.showFieldError('patient-dob', 'Date of birth is required.');
+            hasErrors = true;
+        }
+        
+        const rawContact = contact.replace(/\s+/g, '');
+        if (rawContact && (rawContact.length !== 11 || !rawContact.startsWith('09'))) {
+            this.showFieldError('patient-contact', 'Contact number must be exactly 11 digits and start with 09.');
             hasErrors = true;
         }
 
@@ -411,7 +506,7 @@ export default {
             last_name: lastName,
             gender: gender,
             date_of_birth: dob,
-            contact_no: contact,
+            contact_no: rawContact,
             address: address
         };
 

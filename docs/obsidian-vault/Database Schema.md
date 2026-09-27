@@ -40,12 +40,12 @@ erDiagram
 | Table | Key columns | Notes |
 | --- | --- | --- |
 | `roles` | `role_id`, `role_name` (unique) | Seeded: Administrator, Receptionist, Doctor, Cashier |
-| `users` | `user_id`, `role_id` → roles, `username` (unique), `password_hash`, `first_name`, `last_name`, `middle_initial`, `gender`, `deleted_at` | Bcrypt hashes |
+| `users` | `user_id`, `role_id` → roles, `username` (unique), `password_hash`, `first_name`, `last_name`, `middle_initial`, `gender` (VARCHAR 50), `deleted_at` | Bcrypt hashes; gender supports custom values |
 
 ### Master files
 | Table | Key columns | Notes |
 | --- | --- | --- |
-| `patients` | `patient_id`, names, `gender`, `date_of_birth`, `contact_no`, `address`, `deleted_at` | |
+| `patients` | `patient_id`, `first_name`, `middle_initial`, `last_name`, `gender` (VARCHAR 50), `date_of_birth`, `contact_no`, `address`, `deleted_at` | `gender` defaults to `'unknown'`; supports custom values |
 | `doctors` | `doctor_id`, `user_id` → users (unique), `contact_no`, `deleted_at` | Profile-only table: names/gender live on `users` (single source of truth, 1:0..1 link) |
 | `specialties` | `specialty_id`, `specialty_name` (unique), `deleted_at` | |
 | `doctor_specialty` | `doctor_id` + `specialty_id` (composite PK) | Many-to-many |
