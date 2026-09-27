@@ -42,17 +42,18 @@ erDiagram
 | `users` | `user_id`, `role_id` → roles, `username` (unique), `password_hash`, `first_name`, `last_name`, `middle_initial`, `gender`, `deleted_at` | Bcrypt hashes |
 
 ### Master files
-| Table | Key columns | Notes |
-| --- | --- | --- |
-| `patients` | `patient_id`, names, `gender`, `date_of_birth`, `contact_no`, `address`, `deleted_at` | |
-| `doctors` | `doctor_id`, `user_id` → users (unique), names, `gender`, `contact_no`, `deleted_at` | Optional link to a login account |
-| `specialties` | `specialty_id`, `specialty_name` (unique), `deleted_at` | |
-| `doctor_specialty` | `doctor_id` + `specialty_id` (composite PK) | Many-to-many |
-| `services` | `service_id`, `service_name` (unique), `price`, `deleted_at` | |
-| `discounts` | `discount_id`, `discount_name` (unique), `percentage`, `deleted_at` | |
+| Table              | Key columns                                                                           | Notes                            |
+| ------------------ | ------------------------------------------------------------------------------------- | -------------------------------- |
+| `patients`         | `patient_id`, names, `middle_initial`, `gender`, `date_of_birth`, `contact_no`, `address`, `deleted_at` |                                  |
+| `doctors`          | `doctor_id`, `user_id` → users (unique), names, `gender`, `contact_no`, `deleted_at`  | Optional link to a login account |
+| `specialties`      | `specialty_id`, `specialty_name` (unique), `deleted_at`                               |                                  |
+| `doctor_specialty` | `doctor_id` + `specialty_id` (composite PK)                                           | Many-to-many                     |
+| `services`         | `service_id`, `service_name` (unique), `price`, `deleted_at`                          |                                  |
+| `discounts`        | `discount_id`, `discount_name` (unique), `percentage`, `deleted_at`                   |                                  |
+| `medications`      | `medication_id`, `name`, `generic_name`, `manufacturer`, `unit_price`, `deleted_at`   |                                  |
 
 ### Transactions (schema present, UI planned — see [[Roadmap]])
-`appointments`, `consultation`, `diagnosis`, `lab_requests`, `medications`, `prescriptions`, `billing`, `invoice_items`, `vital_signs`.
+`appointments`, `consultation`, `diagnosis`, `lab_requests`, `prescriptions`, `billing`, `invoice_items`, `vital_signs`.
 
 ## Soft-delete / restore / hard-delete
 All master-file controllers expose the same actions:
