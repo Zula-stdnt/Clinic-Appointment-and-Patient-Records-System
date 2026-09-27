@@ -1,30 +1,9 @@
-<?php
-// login.php
-// Public entry point and login interface
-
-require_once __DIR__ . '/includes/auth.php';
-
-// If user is already logged in, redirect them to their respective dashboard
-if (is_logged_in()) {
-    $role = get_current_user_role();
-    if ($role === 'Administrator') {
-        header('Location: admin_dashboard.php');
-        exit;
-    } elseif ($role === 'Doctor') {
-        header('Location: doctor_dashboard.php');
-        exit;
-    } elseif ($role === 'Receptionist') {
-        header('Location: receptionist_dashboard.php');
-        exit;
-    }
-}
-?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Hospital Billing & Patient Information System</title>
+    <title>Login - Hospital Billing &amp; Patient Information System</title>
     <link rel="stylesheet" href="assets/css/style.css">
     <script src="assets/js/axios.min.js"></script>
 </head>
@@ -57,13 +36,32 @@ if (is_logged_in()) {
             </form>
 
             <div class="login-footer">
-                <p class="text-muted text-center"><small>&copy; <?= date('Y') ?> Hospital Information System. All rights reserved.</small></p>
+                <p class="text-muted text-center"><small>&copy; <span id="current-year"></span> Hospital Information System. All rights reserved.</small></p>
             </div>
         </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('current-year').textContent = new Date().getFullYear();
+
+            const dashboards = {
+                'Administrator': 'admin_dashboard.html',
+                'Doctor': 'doctor_dashboard.html',
+                'Receptionist': 'receptionist_dashboard.html'
+            };
+
+            axios.get('api/auth_controller.php?action=me', {
+                headers: { 'Accept': 'application/json' }
+            }).then((response) => {
+                const user = response.data && response.data.data ? response.data.data.user : null;
+                if (user && dashboards[user.role_name]) {
+                    window.location.replace(dashboards[user.role_name]);
+                }
+            }).catch(() => {
+                // No active session: keep showing the login form
+            });
+
             const form = document.getElementById('login-form');
             const alertBox = document.getElementById('login-alert');
             const btnLogin = document.getElementById('btn-login');
@@ -99,7 +97,7 @@ if (is_logged_in()) {
                     });
 
                     if (response.data && response.data.success) {
-                        window.location.href = response.data.data.redirect || 'admin_dashboard.php';
+                        window.location.href = response.data.data.redirect || 'admin_dashboard.html';
                     } else {
                         throw new Error(response.data.message || 'Login failed.');
                     }
@@ -120,4 +118,3 @@ if (is_logged_in()) {
     </script>
 </body>
 </html>
-

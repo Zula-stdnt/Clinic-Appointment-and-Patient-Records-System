@@ -102,11 +102,11 @@ function handle_login(PDO $pdo): void {
         reset_login_throttle();
 
         // Determine destination based on role
-        $redirect = 'admin_dashboard.php';
+        $redirect = 'admin_dashboard.html';
         if ($user['role_name'] === 'Doctor') {
-            $redirect = 'doctor_dashboard.php';
+            $redirect = 'doctor_dashboard.html';
         } elseif ($user['role_name'] === 'Receptionist') {
-            $redirect = 'receptionist_dashboard.php';
+            $redirect = 'receptionist_dashboard.html';
         }
 
         send_success('Login successful.', [
@@ -140,7 +140,7 @@ function handle_logout(): void {
     session_destroy();
 
     send_success('Logged out successfully.', [
-        'redirect' => 'login.php'
+        'redirect' => 'login.html'
     ]);
 }
 

@@ -37,7 +37,7 @@ apiClient.interceptors.response.use(
     (error) => {
         if (error.response && error.response.status === 401) {
             // Unauthenticated: redirect to login page immediately
-            window.location.href = 'login.php';
+            window.location.href = 'login.html';
             return Promise.reject(error);
         }
         return Promise.reject(error);
