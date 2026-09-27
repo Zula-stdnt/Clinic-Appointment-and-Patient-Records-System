@@ -165,7 +165,7 @@ CREATE TABLE `discounts` (
   PRIMARY KEY (`discount_id`),
   UNIQUE KEY `discount_name` (`discount_name`),
   CONSTRAINT `chk_discount_percentage` CHECK (`percentage` >= 0 and `percentage` <= 100)
-) ENGINE=InnoDB AUTO_INCREMENT=24 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=27 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -182,12 +182,12 @@ UNLOCK TABLES;
 -- Table structure for table `doctor_specialty`
 --
 
--- Personal identity fields (first_name, last_name, middle_initial, gender) live ONLY
--- on `users`. `doctors` stores the profile link and doctor-specific data.
-CREATE TABLE `doctors` (
-  `doctor_id` int(10) UNSIGNED NOT NULL,
-  `user_id` int(10) UNSIGNED DEFAULT NULL,
-  `contact_no` varchar(30) DEFAULT NULL,
+DROP TABLE IF EXISTS `doctor_specialty`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `doctor_specialty` (
+  `doctor_id` int(10) unsigned NOT NULL,
+  `specialty_id` int(10) unsigned NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`doctor_id`,`specialty_id`),
   KEY `fk_ds_specialty` (`specialty_id`),
@@ -200,15 +200,11 @@ CREATE TABLE `doctors` (
 -- Dumping data for table `doctor_specialty`
 --
 
-INSERT INTO `doctors` (`doctor_id`, `user_id`, `contact_no`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 2, '09171234567', '2026-09-20 13:09:00', '2026-09-21 06:46:43', NULL),
-(2, 4, '09181234568', '2026-09-20 13:09:00', '2026-09-20 14:55:02', NULL),
-(3, 5, '09191234569', '2026-09-20 13:09:00', '2026-09-20 14:55:02', NULL),
-(4, 6, '09201234570', '2026-09-20 13:09:00', '2026-09-20 14:55:02', NULL),
-(5, 7, '09211234571', '2026-09-20 13:09:00', '2026-09-21 06:46:29', NULL),
-(15, 1029, '09171234567', '2026-09-21 07:06:37', '2026-09-21 07:06:37', NULL);
-
--- --------------------------------------------------------
+LOCK TABLES `doctor_specialty` WRITE;
+/*!40000 ALTER TABLE `doctor_specialty` DISABLE KEYS */;
+INSERT INTO `doctor_specialty` VALUES (1,7,'2026-09-20 13:09:00'),(2,7,'2026-09-20 13:09:00'),(3,3,'2026-09-20 13:09:00'),(4,6,'2026-09-20 13:09:00'),(5,2,'2026-09-20 13:09:00'),(15,21,'2026-09-21 07:06:37'),(22,3,'2026-09-27 09:58:33'),(22,6,'2026-09-27 09:58:33'),(22,7,'2026-09-27 09:58:33');
+/*!40000 ALTER TABLE `doctor_specialty` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `doctors`
@@ -223,7 +219,7 @@ CREATE TABLE `doctors` (
   `first_name` varchar(80) NOT NULL,
   `last_name` varchar(80) NOT NULL,
   `middle_initial` varchar(10) DEFAULT NULL,
-  `gender` enum('male','female','other','unknown') NOT NULL DEFAULT 'unknown',
+  `gender` varchar(50) NOT NULL DEFAULT 'unknown',
   `contact_no` varchar(30) DEFAULT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -231,7 +227,7 @@ CREATE TABLE `doctors` (
   PRIMARY KEY (`doctor_id`),
   UNIQUE KEY `user_id` (`user_id`),
   CONSTRAINT `fk_doctor_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=21 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -240,7 +236,7 @@ CREATE TABLE `doctors` (
 
 LOCK TABLES `doctors` WRITE;
 /*!40000 ALTER TABLE `doctors` DISABLE KEYS */;
-INSERT INTO `doctors` VALUES (1,2,'Gregory','House',NULL,'male','09171234567','2026-09-20 13:09:00','2026-09-21 06:46:43',NULL),(2,4,'John','Watson',NULL,'male','09181234568','2026-09-20 13:09:00','2026-09-20 14:55:02',NULL),(3,5,'Meredith','Grey',NULL,'female','09191234569','2026-09-20 13:09:00','2026-09-20 14:55:02',NULL),(4,6,'Stephen','Strange',NULL,'male','09201234570','2026-09-20 13:09:00','2026-09-20 14:55:02',NULL),(5,7,'Doogie','Howser',NULL,'male','09211234571','2026-09-20 13:09:00','2026-09-21 06:46:29',NULL),(15,1029,'Jason','tatum','D','other','09171234567','2026-09-21 07:06:37','2026-09-21 07:06:37',NULL);
+INSERT INTO `doctors` VALUES (1,2,'Gregory','House',NULL,'male','09171234567','2026-09-20 13:09:00','2026-09-21 06:46:43',NULL),(2,4,'John','Watson',NULL,'male','09181234568','2026-09-20 13:09:00','2026-09-20 14:55:02',NULL),(3,5,'Meredith','Grey',NULL,'female','09191234569','2026-09-20 13:09:00','2026-09-20 14:55:02',NULL),(4,6,'Stephen','Strange',NULL,'male','09201234570','2026-09-20 13:09:00','2026-09-20 14:55:02',NULL),(5,7,'Doogie','Howser',NULL,'male','09211234571','2026-09-20 13:09:00','2026-09-21 06:46:29',NULL),(15,1029,'Jason','tatum','D','other','09171234567','2026-09-21 07:06:37','2026-09-21 07:06:37',NULL),(22,1050,'Boyoy','Oyoy','L','male','09171234234','2026-09-27 09:58:33','2026-09-27 09:58:33',NULL);
 /*!40000 ALTER TABLE `doctors` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -346,7 +342,7 @@ CREATE TABLE `patients` (
   `first_name` varchar(80) NOT NULL,
   `last_name` varchar(80) NOT NULL,
   `middle_initial` varchar(10) DEFAULT NULL,
-  `gender` enum('male','female','other','unknown') NOT NULL DEFAULT 'unknown',
+  `gender` varchar(50) NOT NULL DEFAULT 'unknown',
   `date_of_birth` date NOT NULL,
   `contact_no` varchar(30) DEFAULT NULL,
   `address` varchar(255) DEFAULT NULL,
@@ -354,7 +350,7 @@ CREATE TABLE `patients` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`patient_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=25 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -444,7 +440,7 @@ CREATE TABLE `services` (
   `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`service_id`),
   UNIQUE KEY `service_name` (`service_name`)
-) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -472,7 +468,7 @@ CREATE TABLE `specialties` (
   `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`specialty_id`),
   UNIQUE KEY `specialty_name` (`specialty_name`)
-) ENGINE=InnoDB AUTO_INCREMENT=28 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=31 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -498,7 +494,7 @@ CREATE TABLE `users` (
   `first_name` varchar(80) NOT NULL,
   `last_name` varchar(80) NOT NULL,
   `middle_initial` varchar(10) DEFAULT NULL,
-  `gender` enum('male','female','other','unknown') NOT NULL DEFAULT 'unknown',
+  `gender` varchar(50) NOT NULL DEFAULT 'unknown',
   `username` varchar(80) NOT NULL,
   `password_hash` varchar(255) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
@@ -508,26 +504,18 @@ CREATE TABLE `users` (
   UNIQUE KEY `username` (`username`),
   KEY `fk_users_role` (`role_id`),
   CONSTRAINT `fk_users_role` FOREIGN KEY (`role_id`) REFERENCES `roles` (`role_id`) ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=1047 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1058 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`user_id`, `role_id`, `first_name`, `last_name`, `middle_initial`, `gender`, `username`, `password_hash`, `created_at`, `updated_at`, `deleted_at`) VALUES
-(1, 1, 'Jamaica', 'Mcren', NULL, 'Female', 'Mcren', '$2y$10$2lvR.qmmiQIaA.trciq4DOAQ5bfSsKqSSz4PFSRVteeCdjIqzl0yW', '2026-09-20 09:21:24', '2026-09-20 14:55:02', NULL),
-(2, 3, 'Gregory', 'House', NULL, 'Male', 'dr.smith', '$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne', '2026-09-20 13:09:00', '2026-09-20 16:43:54', NULL),
-(3, 2, 'Jane', 'Doe', NULL, 'Female', 'recep.jane', '$2y$10$KbtbTTvMurQl1Itl1yPy1uDZsocnvB0RDv/Z34/6flK6utWnduaIy', '2026-09-20 13:09:00', '2026-09-20 14:55:02', NULL),
-(4, 3, 'John', 'Watson', NULL, 'Male', 'dr.watson', '$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne', '2026-09-20 14:26:50', '2026-09-20 14:55:02', NULL),
-(5, 3, 'Meredith', 'Grey', NULL, 'Female', 'dr.grey', '$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne', '2026-09-20 14:26:50', '2026-09-20 14:55:02', NULL),
-(6, 3, 'Stephen', 'Strange', NULL, 'Male', 'dr.strange', '$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne', '2026-09-20 14:26:50', '2026-09-20 14:55:02', NULL),
-(7, 3, 'Doogie', 'Howser', NULL, 'Male', 'dr.howser', '$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne', '2026-09-20 14:26:50', '2026-09-21 06:46:29', NULL),
-(8, 1, 'Test', 'Admin', NULL, 'Other', 'testadmin', '$2y$10$R.p0kSQvA.1fjWxfQxvn3OHAB2/hNk2P8iSFIykVqZw2P/TVxj40.', '2026-09-20 14:33:19', '2026-09-20 14:55:02', NULL),
-(1029, 3, 'Jason', 'tatum', 'D', 'Other', 'Dr.lab', '$2y$10$1zBWQSQy0RUXqYaYKMhvOuoTJUHkeMkdaM.rme9M0HMZpkqnJB49G', '2026-09-21 07:06:37', '2026-09-21 07:06:37', NULL),
-(1030, 1, 'Mikel', 'Admin', NULL, 'Other', 'mikel', '$2y$10$LEBB2/lVaaz1b06D9KVvVeuF0c92D6DAUu4QlyxgM8kqQb8SIJlzu', '2026-09-22 23:54:54', '2026-09-22 23:54:54', NULL);
-
--- --------------------------------------------------------
+LOCK TABLES `users` WRITE;
+/*!40000 ALTER TABLE `users` DISABLE KEYS */;
+INSERT INTO `users` VALUES (1,1,'Jamaica','Mcren',NULL,'female','Mcren','$2y$10$2lvR.qmmiQIaA.trciq4DOAQ5bfSsKqSSz4PFSRVteeCdjIqzl0yW','2026-09-20 09:21:24','2026-09-20 14:55:02',NULL),(2,3,'Gregory','House',NULL,'male','dr.smith','$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne','2026-09-20 13:09:00','2026-09-20 16:43:54',NULL),(3,2,'Jane','Doe',NULL,'female','recep.jane','$2y$10$KbtbTTvMurQl1Itl1yPy1uDZsocnvB0RDv/Z34/6flK6utWnduaIy','2026-09-20 13:09:00','2026-09-20 14:55:02',NULL),(4,3,'John','Watson',NULL,'male','dr.watson','$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne','2026-09-20 14:26:50','2026-09-20 14:55:02',NULL),(5,3,'Meredith','Grey',NULL,'female','dr.grey','$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne','2026-09-20 14:26:50','2026-09-20 14:55:02',NULL),(6,3,'Stephen','Strange',NULL,'male','dr.strange','$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne','2026-09-20 14:26:50','2026-09-20 14:55:02',NULL),(7,3,'Doogie','Howser',NULL,'male','dr.howser','$2y$10$Z7VmXRKKKFK.wqCj/9cUGeQ91BOn9up/LnWqkYYSJILfKIVanIpne','2026-09-20 14:26:50','2026-09-21 06:46:29',NULL),(8,1,'Test','Admin',NULL,'other','testadmin','$2y$10$R.p0kSQvA.1fjWxfQxvn3OHAB2/hNk2P8iSFIykVqZw2P/TVxj40.','2026-09-20 14:33:19','2026-09-20 14:55:02',NULL),(1029,3,'Jason','tatum','D','other','Dr.lab','$2y$10$1zBWQSQy0RUXqYaYKMhvOuoTJUHkeMkdaM.rme9M0HMZpkqnJB49G','2026-09-21 07:06:37','2026-09-21 07:06:37',NULL),(1050,3,'Boyoy','Oyoy','L','male','dr.boyoy','$2y$10$X9Jc/6l/P7maFf9M18E6rOtpsVGVLDY7WXmauFFvNtc/3g3WqmmcW','2026-09-27 09:58:33','2026-09-27 09:58:33',NULL),(1054,2,'Joy','Ladilene','A.','Bisexual','recep.joy','$2y$10$1fgaUChU8f2s2YZY/orF9e5hgkKe2aS3UVThkUBxq9AulktTpP/6.','2026-09-27 11:08:29','2026-09-27 11:08:29',NULL);
+/*!40000 ALTER TABLE `users` ENABLE KEYS */;
+UNLOCK TABLES;
 
 --
 -- Table structure for table `vital_signs`
@@ -568,4 +556,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2026-09-27 14:24:58
+-- Dump completed on 2026-09-27 21:41:02
