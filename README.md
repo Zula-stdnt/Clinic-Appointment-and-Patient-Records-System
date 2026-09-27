@@ -169,6 +169,7 @@ The database comes pre-seeded with sample accounts for testing all user roles:
 │   └── js/
 │       ├── api.js           # Centralized Axios API wrapper
 │       ├── main.js          # SPA Router & view controller
+│       ├── session-guard.js # Client-side session/role guard for HTML shells
 │       ├── ui.js            # Modals, toasts, and dialog handlers
 │       └── modules/         # SPA feature modules (users, archive, etc.)
 ├── config/
@@ -178,10 +179,11 @@ The database comes pre-seeded with sample accounts for testing all user roles:
 ├── migrations/              # SQL schema and seed files
 │   └── hospital_db.sql      # Complete database export
 ├── tests/                   # Automated PHP test scripts
-├── admin_dashboard.php      # Main Administrator panel view
-├── doctor_dashboard.php     # Doctor portal view
-├── receptionist_dashboard.php # Receptionist portal view
-├── login.php                # Authentication page
+├── admin_dashboard.html     # Main Administrator panel view (static shell + JS)
+├── doctor_dashboard.html    # Doctor portal view
+├── receptionist_dashboard.html # Receptionist portal view
+├── login.html               # Authentication page
+├── index.html               # Redirects to the login page
 ├── logout.php               # Session termination handler
 ├── walkthrough.md           # Implementation notes & architecture log
 └── README.md                # Project documentation

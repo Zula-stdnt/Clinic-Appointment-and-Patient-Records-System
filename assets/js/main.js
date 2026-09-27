@@ -1,6 +1,7 @@
 // assets/js/main.js
 // Single-Page Application Router and Module Orchestrator
 
+import { requireSession } from './session-guard.js?v=11';
 import overviewModule from './modules/overview.js?v=10';
 import usersModule from './modules/users.js?v=10';
 import patientsModule from './modules/patients.js?v=10';
@@ -112,7 +113,34 @@ function navigateTo(moduleKey) {
     }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+function populateShell(user) {
+    const initialEl = document.getElementById('user-avatar-initial');
+    if (initialEl) {
+        initialEl.textContent = (user.full_name || 'A').trim().charAt(0).toUpperCase();
+    }
+
+    const nameEl = document.getElementById('user-name');
+    if (nameEl) {
+        nameEl.textContent = user.full_name || 'Administrator';
+        nameEl.setAttribute('title', user.full_name || 'Administrator');
+    }
+
+    const roleEl = document.getElementById('user-role');
+    if (roleEl) {
+        roleEl.textContent = user.role_name || 'Administrator';
+    }
+
+    const dateEl = document.getElementById('current-date');
+    if (dateEl) {
+        dateEl.textContent = new Date().toLocaleDateString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }
+}
+
+function startApp() {
     // Bind sidebar navigation click events
     document.querySelectorAll('.sidebar-nav .nav-link[data-module]').forEach(link => {
         link.addEventListener('click', (e) => {
@@ -157,5 +185,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial load from URL hash or default to the dashboard overview
     const initialHash = window.location.hash.replace('#', '');
     navigateTo(initialHash || 'overview');
-});
+}
+
+const currentUser = await requireSession(['Administrator']);
+
+if (currentUser) {
+    populateShell(currentUser);
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', startApp);
+    } else {
+        startApp();
+    }
+}
 
