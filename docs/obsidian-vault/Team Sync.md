@@ -24,10 +24,11 @@ git pull --rebase
 
 ### 2. Commit your changes
 ```powershell
-git status
-git add <files>
+git status                 # see what changed
+git add -A                 # stage everything: new, modified, deleted
 git commit -m "feat: short description"
 ```
+`git add -A` stages all changes in the repo (run it from the repo root). If a file should **not** be in the commit, stage only what you want: `git add path/to/file`. Review what is staged with `git diff --cached`.
 
 ### 3. Before pushing — replay your work on top of theirs
 ```powershell
