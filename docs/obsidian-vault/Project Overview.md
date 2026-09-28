@@ -31,4 +31,4 @@ The system separates screens and permissions by staff role (**Role-Based Access 
 | Server | Apache via XAMPP / WAMP | Local web server software that hosts the PHP files and MySQL database |
 
 ## Repository layout
-See [[Architecture#Folder map]] for an overview of every folder and the project `README.md` for installation steps. [[Setup (WAMP)]] explains how to set up the project on a WAMP workstation.
+See [[Architecture#Folder map]] for an overview of every folder and the project `README.md` for installation steps. [[Setup (WAMP or XAMPP)]] explains how to set up the project on a WAMP or XAMPP workstation.
