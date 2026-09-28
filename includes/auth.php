@@ -86,7 +86,7 @@ function require_login(): void {
         if (is_api_request()) {
             send_error('Authentication required.', [], 401);
         } else {
-            header('Location: login.php');
+            header('Location: login.html');
             exit;
         }
     }
