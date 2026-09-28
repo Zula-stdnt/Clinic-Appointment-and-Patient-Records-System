@@ -98,5 +98,6 @@ After applying, re-run the Step 2 query to confirm.
 ## Related
 
 - [[Database Schema]] — current tables, conventions, and relationships.
+- [[Team Sync]] — daily pull/commit/rebase/push workflow for both developers.
 - [[Setup (WAMP)]] — fresh install of WAMP + import of `hospital_db.sql`.
 - [[Changelog]] — where schema-affecting changes are described.
