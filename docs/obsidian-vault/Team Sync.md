@@ -36,12 +36,12 @@ Your commit gets a **new SHA** while the content is kept; their commits end up u
 
 ## What happens in each situation
 
-| Situation | `sync-zur-test.ps1` | You do |
-| --- | --- | --- |
-| They pushed, you have no local commits | fast-forwards automatically | nothing |
-| They pushed, you have local commits | logs `cannot fast-forward`, changes nothing | `git pull --rebase` → fix conflicts → `git push` |
-| You have local commits, they haven't pushed | `already up to date` | `git push` |
-| You are mid-edit (uncommitted) | fast-forwards only if incoming files do not overlap; otherwise refuses | commit or stash, then rebase |
+| Situation                                   | `sync-zur-test.ps1`                                                    | You do                                           |
+| ------------------------------------------- | ---------------------------------------------------------------------- | ------------------------------------------------ |
+| They pushed, you have no local commits      | fast-forwards automatically                                            | nothing                                          |
+| They pushed, you have local commits         | logs `cannot fast-forward`, changes nothing                            | `git pull --rebase` → fix conflicts → `git push` |
+| You have local commits, they haven't pushed | `already up to date`                                                   | `git push`                                       |
+| You are mid-edit (uncommitted)              | fast-forwards only if incoming files do not overlap; otherwise refuses | commit or stash, then rebase                     |
 
 ### Conflicts (both edited the same lines)
 ```powershell
@@ -57,22 +57,38 @@ git pull --rebase
 git push
 ```
 
-## Auto-sync (optional)
+## Event-driven sync (no background process)
 
-`scripts/sync-zur-test.ps1` fetches `upstream` and fast-forwards `zur-test` when it is safe. It logs to `.git/auto-sync-zur-test.log` and warns when `migrations/` changed.
+Checks run only when a developer does something — nothing runs in the background.
 
-Run manually:
+### pre-push hook (the gate)
+
+Install once per clone:
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File "C:\wamp64\www\[1] hospital_billing\scripts\install-hooks.ps1"
+```
+
+On every `git push` while on `zur-test`:
+
+| State vs `upstream/zur-test` | Hook action |
+| --- | --- |
+| up to date, or ahead | push continues normally |
+| behind, no local commits | fast-forwards automatically, then asks you to run `git push` again |
+| diverged (both sides have commits) | aborts; run `git pull --rebase`, then push |
+| local edits block the update | aborts; commit or stash, then `git pull --rebase` |
+
+It only ever fast-forwards — it never rewrites commits and never runs in the background. Offline pushes are allowed.
+
+### VS Code folder-open
+
+`.vscode/tasks.json` runs `sync-zur-test.ps1` once when the project folder is opened (approve "allow automatic tasks" the first time). This brings you up to date before you start editing.
+
+### Manual sync
+
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File "C:\wamp64\www\[1] hospital_billing\scripts\sync-zur-test.ps1"
 ```
-
-Register it to run every 15 minutes (PowerShell; may need Administrator):
-```powershell
-$action  = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File "C:\wamp64\www\[1] hospital_billing\scripts\sync-zur-test.ps1"'
-$trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 15)
-Register-ScheduledTask -TaskName 'HospitalBilling-SyncZurTest' -Action $action -Trigger $trigger
-```
-Remove it with `Unregister-ScheduledTask -TaskName 'HospitalBilling-SyncZurTest'`.
+Logs to `.git/auto-sync-zur-test.log`; warns when `migrations/` changed so you can update `hospital_db` (see [[Database Migrations]]).
 
 ## Golden rules
 - `git pull --rebase` → `git push`. Never `git push --force`, never `git reset --hard` on shared work.

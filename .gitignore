@@ -4,7 +4,8 @@ Desktop.ini
 .DS_Store
 
 # IDE and Editor settings
-.vscode/
+.vscode/*
+!.vscode/tasks.json
 .idea/
 .obsidian/
 *.sublime-project
