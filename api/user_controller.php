@@ -1,6 +1,7 @@
 <?php
 // api/user_controller.php
 // Master-file CRUD for Users (strictly restricted to Doctor and Receptionist)
+// ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_insert_records, mysql_update_records & header_detail_forms (Prepared CRUD and PDO transaction across users, doctors, and doctor_specialty)
 
 require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';

@@ -7,33 +7,33 @@ tags: [module]
 **Route:** `#doctors` · **File:** `assets/js/modules/doctors.js` · **Controller:** `api/doctor_controller.php`
 
 ## Purpose
-Manage doctor profiles, their login account, and clinical specialties.
+Allows Administrators to manage doctor profiles, their linked login accounts, and their assigned medical specialties.
 
 ## UI
-- Search (name, specialty, contact), specialty filter, pagination.
-- **Doctors Table**: Multiple specialties are rendered as compact, wrapping badges (`<div style="display: flex; flex-wrap: wrap; gap: 4px; max-width: 250px;">`) to keep rows aligned and prevent horizontal stretching.
-- **Add/Edit modal**:
-  - First Name, Last Name, Middle Initial (optional, max 5 characters).
-  - **Gender** — "Select Gender" disabled placeholder. Selecting "Other" dynamically displays a text input for specifying custom gender.
-  - **Clinical Specialties** — `<select multiple size="6">` with Ctrl/Cmd multi-selection hint. At least one required.
-  - **Contact Number** — formatted dynamically as `09XX XXX XXXX` (4-3-4 grouping) with smart cursor-tracking logic.
-  - **Username & Password**:
-    - Password helper text detailing complexity requirements (uppercase, lowercase, number, special character, min 6 characters).
-    - Accessible eye-icon button to toggle password visibility.
-    - On Edit Doctor, leaving password blank leaves the existing password unchanged.
-- Create/Edit here creates or updates the linked `users` row (names/gender/credentials live on `users`, doctor profile holds specialties and `contact_no`).
-- Archive confirmation (soft deletes both doctor and linked user).
+- **Table toolbar & controls:** Search bar (searches doctor name, specialty, or phone number), specialty filter dropdown, and page navigation controls.
+- **Doctors Table:** When a doctor has multiple specialties, the table displays them as neat, wrapping pill badges inside a compact container (`<div style="display: flex; flex-wrap: wrap; gap: 4px; max-width: 250px;">`) so rows stay aligned and the table does not stretch sideways.
+- **Add/Edit pop-up form (modal):**
+  - **First Name**, **Last Name**, and **Middle Initial** (optional, up to 5 characters).
+  - **Gender** — Starts with an unselectable `"Select Gender"` prompt. Selecting `"Other"` reveals a text box for entering a custom gender.
+  - **Clinical Specialties** — Multi-select list (`<select multiple size="6">`) with a hint explaining how to hold `Ctrl` or `Cmd` to select more than one specialty. At least one specialty is required.
+  - **Contact Number** — Formats Philippine mobile numbers live as `09XX XXX XXXX` (4-3-4 grouping) with smooth cursor tracking.
+  - **Username & Password:**
+    - Displays helper text listing the password rules (at least 6 characters, including an uppercase letter, lowercase letter, number, and special character).
+    - Includes an accessible eye-icon button to show or hide the password.
+    - When editing an existing doctor, leaving the password blank keeps their current password unchanged.
+- **Synchronized Accounts:** Creating or editing a doctor here automatically creates or updates their linked login row in the `users` table inside a single database transaction (login credentials and name fields live on `users`, while `doctors` and `doctor_specialty` store clinical details and specialties).
+- **Archiving:** Confirming an archive action soft-deletes both the doctor profile and their linked user login account together.
 
 ## Specialties
-- Multiple selection (`specialty_ids` array); at least one required; all must be active.
-- On update the junction rows are deleted and re-inserted.
-- Table displays wrapped badges; detail modal shows combined names.
+- Supports choosing multiple specialties (`specialty_ids` array); at least one active specialty must be selected.
+- When a doctor's specialties are updated, their old links in `doctor_specialty` are replaced with the newly selected set.
+- The main table displays individual specialty badges, while the View Details pop-up lists the combined specialty names.
 
 ## Validation & Notes
-- **Server Validation** (`validateDoctorInput` in `api/doctor_controller.php`):
-  - Enforces required first/last name (max 80 chars).
-  - Enforces `gender` (max 50 chars).
-  - Enforces `contact_no` (must be exactly 11 digits starting with `09` when provided).
-  - Enforces password complexity regex (`/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/`) for new accounts or updated passwords.
-- `?meta=specialties` returns only active specialties.
-- Hard delete is blocked when appointments reference the doctor (`409`).
+- **Server Validation (`validateDoctorInput` in `api/doctor_controller.php`):**
+  - Requires first and last name (up to 80 characters).
+  - Validates `gender` (up to 50 characters).
+  - Validates `contact_no` (must be 11 digits starting with `09` when provided).
+  - Enforces the password complexity rule (`/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/`) for new accounts or password changes.
+- Calling `?meta=specialties` returns only active specialties.
+- Permanently deleting a doctor from the Archive is blocked (`409 Conflict`) if patient appointments are linked to that doctor.

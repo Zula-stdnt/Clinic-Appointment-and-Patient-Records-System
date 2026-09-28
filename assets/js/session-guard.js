@@ -1,5 +1,6 @@
 // assets/js/session-guard.js
 // Client-side session guard for the static HTML page shells
+// ITE 387 Lesson applied: 03 APIs and Database Operations/javascript_working_with_apis (Async/await Axios session verification)
 
 const DASHBOARDS = {
     'Administrator': 'admin_dashboard.html',

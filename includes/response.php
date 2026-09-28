@@ -1,6 +1,7 @@
 <?php
 // includes/response.php
 // Standardized JSON response helpers adhering to Section 10 specification
+// ITE 387 Lesson applied: 03 APIs and Database Operations/javascript_working_with_apis (JSON serialization via json_encode / json_decode with HTTP status codes)
 
 function send_json(array $payload, int $statusCode = 200): void {
     if (!headers_sent()) {

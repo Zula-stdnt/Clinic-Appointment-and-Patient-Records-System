@@ -1,5 +1,14 @@
 // assets/js/ui.js
 // UI Utilities: Modals with focus trapping, Non-blocking Toasts, XSS escaping, and Confirmations
+// ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_modules (DOM helper aliases create/gId), 02 DOM and UI/dom_apply_styles (classList API), and 03 APIs and Database Operations/header_detail_forms (Intl.NumberFormat PHP currency helper)
+
+// Reusable DOM & formatting helpers (javascript_modules.md / header_detail_forms.md)
+export const create = (tagName) => document.createElement(tagName);
+export const gId = (id) => document.getElementById(id);
+export const formatCurrency = (amount) => new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP'
+}).format(Number(amount) || 0);
 
 // Secure HTML escaping to prevent Cross-Site Scripting (XSS)
 export function escapeHtml(str) {

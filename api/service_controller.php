@@ -1,6 +1,7 @@
 <?php
 // api/service_controller.php
 // Master-file CRUD for Hospital Services
+// ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_records, mysql_insert_records & mysql_update_records (Prepared PDO CRUD for service master records)
 
 require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';

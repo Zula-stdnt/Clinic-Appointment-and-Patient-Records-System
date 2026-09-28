@@ -1,6 +1,7 @@
 <?php
 // api/specialty_controller.php
 // Master-file CRUD for Specialties
+// ITE 387 Lessons applied: 04 Database Design/database_normalization & 03 APIs and Database Operations/mysql_retrieve_records (Normalized specialty lookup entity with prepared PDO CRUD)
 
 require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';

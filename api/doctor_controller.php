@@ -1,6 +1,7 @@
 <?php
 // api/doctor_controller.php
 // Master-file CRUD for Doctors and doctor_specialty junction
+// ITE 387 Lessons applied: 04 Database Design/database_normalization & database_master_detail_design_part_2 (3NF separation of users/doctors and associative junction table doctor_specialty)
 
 require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';

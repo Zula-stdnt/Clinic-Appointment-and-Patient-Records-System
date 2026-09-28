@@ -1,5 +1,6 @@
 // assets/js/api.js
 // Centralized Axios API client with CSRF injection and authentication error interception
+// ITE 387 Lesson applied: 03 APIs and Database Operations/javascript_working_with_apis (Centralized Axios request/response cycle & status handling)
 
 // Fetch CSRF token from meta tag
 export function getCsrfToken() {

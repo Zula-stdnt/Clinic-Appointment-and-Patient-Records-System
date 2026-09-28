@@ -1,8 +1,9 @@
 // assets/js/modules/overview.js
 // Administrator dashboard overview: KPI cards, quick actions, and recent patients
+// ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays (Arrays of configuration objects mapped to UI cards) & 03 APIs and Database Operations/javascript_working_with_apis
 
 import api from '../api.js?v=7';
-import { escapeHtml } from '../ui.js?v=7';
+import { escapeHtml } from '../ui.js?v=22';
 
 const STATS = [
     { key: 'patients',    label: 'Registered Patients', endpoint: 'api/patient_controller.php',   tone: 'primary',   href: '#patients' },

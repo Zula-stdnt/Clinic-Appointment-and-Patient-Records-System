@@ -1,6 +1,7 @@
 <?php
 // api/discount_controller.php
 // Master-file CRUD for Discounts
+// ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_records, mysql_insert_records & mysql_update_records (Prepared PDO CRUD for discount master records)
 
 require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';

@@ -1,15 +1,16 @@
 // assets/js/main.js
 // Single-Page Application Router and Module Orchestrator
+// ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_modules (ES module orchestration) & javascript_fundamentals (DOMContentLoaded initialization)
 
-import { requireSession } from './session-guard.js?v=11';
-import overviewModule from './modules/overview.js?v=13';
-import usersModule from './modules/users.js?v=13';
-import patientsModule from './modules/patients.js?v=13';
-import doctorsModule from './modules/doctors.js?v=13';
-import servicesModule from './modules/services.js?v=13';
-import specialtiesModule from './modules/specialties.js?v=13';
-import discountsModule from './modules/discounts.js?v=13';
-import archiveModule from './modules/archive.js?v=13';
+import { requireSession } from './session-guard.js?v=22';
+import overviewModule from './modules/overview.js?v=22';
+import usersModule from './modules/users.js?v=22';
+import patientsModule from './modules/patients.js?v=22';
+import doctorsModule from './modules/doctors.js?v=22';
+import servicesModule from './modules/services.js?v=22';
+import specialtiesModule from './modules/specialties.js?v=22';
+import discountsModule from './modules/discounts.js?v=22';
+import archiveModule from './modules/archive.js?v=22';
 
 const modules = {
     'overview': {

@@ -7,20 +7,21 @@ tags: [module]
 **Route:** `#overview` (default) · **File:** `assets/js/modules/overview.js` · **Role:** Administrator
 
 ## Purpose
-Landing page summarising master-file records and recent patient activity.
+The default home screen for Administrators, giving an at-a-glance summary of all core hospital records (**Master Files**) and the newest patient registrations.
 
 ## Data sources
-Uses the existing list endpoints with `page_size=1` and reads `data.total`:
+To get total counts quickly without downloading every row, this screen calls the existing list endpoints with `page_size=1` and reads the `data.total` number returned by each controller:
 - `api/patient_controller.php`, `api/doctor_controller.php`, `api/user_controller.php`
 - `api/service_controller.php`, `api/specialty_controller.php`, `api/discount_controller.php`
 
-Recent patient registrations: `api/patient_controller.php?page=1&page_size=5&status=active&sort_by=created_at&sort_order=DESC`.
+For the recent patients table, it requests the five newest active patient records:
+`api/patient_controller.php?page=1&page_size=5&status=active&sort_by=created_at&sort_order=DESC`.
 
 ## UI
-- **KPI cards** — six clickable cards that navigate to the matching module via hash links; shimmer placeholder while loading, em dash + tooltip on failure.
-- **Recent Patient Registrations** — latest five active patients (name, gender badge, contact, registered date).
-- **Quick Actions** — links to patients, users, doctors, services, and archive.
+- **KPI summary cards** — Six clickable counter cards (Patients, Doctors, Staff Users, Services, Specialties, and Discounts) that open the matching management screen when clicked. While numbers are loading, a gentle shimmer animation appears; if a request fails, an em dash (`—`) with a hover note is shown.
+- **Recent Patient Registrations** — Shows the five most recently added active patients (full name, gender badge, phone number, and registration date).
+- **Quick Actions** — Shortcut buttons to jump straight to Patients, Users, Doctors, Services, and Manage Archive.
 
 ## Notes
-- No dedicated backend endpoint; purely reads existing controllers (UI-only addition).
-- Stat cards use `<a href="#module">`, so navigation flows through the router in [[Architecture]].
+- This module does not need its own separate PHP controller; it reads directly from the existing master-file controllers.
+- Summary cards use standard hash links (`<a href="#module">`), so clicking a card smoothly switches screens through the navigation router described in [[Architecture]].

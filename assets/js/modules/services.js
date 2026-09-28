@@ -1,8 +1,9 @@
 // assets/js/modules/services.js
 // Manage Services module (Non-negative price validation and CRUD)
+// ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_records, mysql_insert_records & mysql_update_records (Async Axios CRUD with semantic hook classes .btn-view / .btn-edit / .btn-archive)
 
 import api from '../api.js?v=7';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=7';
+import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=22';
 
 export default {
     state: {

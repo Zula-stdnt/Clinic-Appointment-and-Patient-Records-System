@@ -7,12 +7,12 @@ tags: [module]
 **Route:** `#services` · **File:** `assets/js/modules/services.js` · **Controller:** `api/service_controller.php`
 
 ## Purpose
-Catalog billable hospital services and prices (consultations, labs, imaging, procedures).
+Allows Administrators to maintain the hospital's catalog of billable medical services and their standard prices (such as consultations, lab tests, X-rays, and clinical procedures).
 
 ## UI
-- Search, pagination, sortable columns.
-- Add/Edit modal: service name, standard price (non-negative, two decimals).
-- View modal, archive confirmation.
+- **Table controls:** Search bar, sortable column headers, and page navigation buttons.
+- **Add/Edit pop-up form (modal):** Service Name (required, unique) and Standard Price (must be zero or greater, formatted to two decimal places).
+- **View & Archive modals:** Read-only service details pop-up and a confirmation box for moving a service to the Archive.
 
 ## Business use
-Service rows feed future invoice items (`billing` / `invoice_items`), so prices should stay current. See [[Database Schema]].
+Active rows in the `services` table provide the official price list for patient billing and itemized invoice charges (`billing` and `invoice_items`). Keeping prices accurate here ensures future invoices calculate properly. See [[Database Schema]].

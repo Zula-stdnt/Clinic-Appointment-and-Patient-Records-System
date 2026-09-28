@@ -4,19 +4,22 @@ tags: [roadmap]
 
 # Roadmap
 
+This note tracks recently completed milestones and upcoming features planned for the system.
+
+## Completed recently
+- **Doctor portal** — Completed the full Single-Page Application workspace (`doctor_dashboard.html`, `assets/js/doctor_main.js`) including [[Doctor Dashboard]], [[Doctor Appointments]], [[Doctor Consultation]], [[Doctor Patient Records]], and [[Doctor Profile]].
+
 ## In progress / next
-- **Doctor portal** — replace the `doctor_dashboard.php` placeholder with a real shell: appointment queue, consultation notes, diagnosis, prescriptions, lab requests.
-- **Receptionist portal** — patient registration, appointment scheduling, queue management.
-- **Appointments module** — the schema exists (`appointments`) but has no controller/UI yet.
-- **Billing module** — invoices, invoice items, payments (schema exists).
+- **Receptionist portal** — Front-desk screens for registering patients, booking appointments, recording triage vital signs, and managing the waiting queue.
+- **Billing module** — Screens for generating patient invoices, adding billable service items, applying discounts, and recording payments (the `billing` and `invoice_items` database tables are already in place).
 
 ## UI backlog
-- Topbar upgrades: global search, notifications, user dropdown, breadcrumbs.
-- Login polish: show/hide password (completed), caps-lock hint, remember me.
-- Print stylesheet for invoices/receipts (`@media print`).
-- Skeleton loaders for all module tables (currently text placeholders).
-- Optimize `logo.png` (≈200 KB) and add a favicon.
+- **Top navigation bar upgrades:** Global search bar, notification bell, user profile dropdown menu, and breadcrumb navigation links.
+- **Login screen polish:** Show/hide password toggle (completed), Caps Lock warning hint, and "Remember me" option.
+- **Print-friendly invoices:** Dedicated print layout rules (`@media print`) for clean paper and PDF receipts.
+- **Table loading placeholders:** Animated shimmer rows for module tables while data loads (currently shown as text placeholders).
+- **Image optimization:** Compress `logo.png` (currently around 200 KB) and add a browser tab icon (`favicon`).
 
 ## Security backlog
-- Move login throttling server-side (currently per-session, so it resets when cookies clear).
-- Optional permission cache in `$_SESSION` with a rules version (see conversation notes) if finer-grained roles are needed beyond `require_role()`.
+- **Database-backed login rate limiting:** Store failed login counts on the server database instead of the browser session so clearing cookies cannot reset the counter.
+- **Session permission caching:** Optionally cache fine-grained permission rules inside `$_SESSION` with a version tag if future roles need more detailed permissions beyond `require_role()`.

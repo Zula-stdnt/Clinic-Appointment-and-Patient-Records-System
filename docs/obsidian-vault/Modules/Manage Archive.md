@@ -7,24 +7,24 @@ tags: [module]
 **Route:** `#archive` · **File:** `assets/js/modules/archive.js` · **Role:** Administrator
 
 ## Purpose
-Central recycle bin for every master file. Deleted records land here and can be restored or permanently purged.
+Acts as the central recycle bin for every core hospital table (**Master Files**). Whenever an Administrator archives (soft-deletes) a record from a main screen, it lands here so it can either be restored to active use or permanently erased from the database.
 
 ## UI
-- Entity selector: Users, Patients, Doctors, Services, Specialties, Discounts.
-- Search (debounced), page-size selector, pagination.
-- Rows are shaded (`row-soft-deleted`); actions: **Restore** and **Delete** (hard).
+- **Category (Entity) selector:** A dropdown menu that switches between archived Users, Patients, Doctors, Services, Specialties, and Discounts.
+- **Table toolbar & controls:** Live search bar (**debounced** so it waits briefly while you finish typing), rows-per-page selector, and page navigation buttons.
+- **Archived rows:** Styled with a muted background (`row-soft-deleted`) and two action buttons: **Restore** (returns the record to its main screen) and **Delete** (permanently erases it).
 
 ## Dynamic columns
-Each entity defines `columns` + `renderRow` in the module's `CONFIG` object; headers and colspans are generated at runtime, including the Actions column.
+Because each record type has different fields, the module's `CONFIG` settings define the `columns` and `renderRow` template for each category. Whenever you pick a different category from the dropdown, the table headers and row layout rebuild automatically on the spot.
 
 ## Request mapping
-All entities reuse the standard controllers with `status=deleted`:
-- Restore → `PUT ?action=restore&id=…`
-- Hard delete → `DELETE ?id=…` (typed `DELETE` confirmation; blocked by FK references with `409`).
+Instead of using a separate archive controller, Manage Archive calls the standard master-file controllers with `status=deleted`:
+- **Restore** → Sends `PUT ?action=restore&id=…` (clears `deleted_at` back to `NULL`).
+- **Hard delete (Permanent)** → Sends `DELETE ?id=…` after asking the Administrator to type `DELETE` in a confirmation box. If the record is still referenced by hospital activity (such as a patient or doctor tied to existing appointments), the database's **foreign key** safety check blocks the deletion and returns a `409 Conflict` message.
 
 ## Behavior notes
-- Restoring a doctor also restores the linked user account, and vice versa (handled in [[Manage Doctors]] / [[Manage Users]] controllers).
-- Hard-deleting a doctor removes the linked user; the join rows cascade.
-- **Doctor controller integration**:
-  - `doctor_controller.php` query builder handles omitted `sort_by` parameters by defaulting to `doctor_id` before prefixing `d.`, preventing `d.d.doctor_id` column errors.
-  - The doctor count query explicitly joins `users u` on `d.user_id = u.user_id` so searching archived doctors by name functions without SQL errors.
+- Restoring an archived doctor automatically restores their linked user login account as well (and vice versa), handled inside the [[Manage Doctors]] and [[Manage Users]] controllers.
+- Permanently deleting an archived doctor also deletes their linked user account and removes their specialty links from `doctor_specialty`.
+- **Doctor controller integration:**
+  - When no `sort_by` column is specified, `doctor_controller.php` defaults to `'doctor_id'` before adding the `'d.'` table prefix, preventing SQL `d.d.doctor_id` column errors.
+  - The doctor total-count query includes `LEFT JOIN users u ON d.user_id = u.user_id` so searching archived doctors by first or last name works smoothly without SQL errors.

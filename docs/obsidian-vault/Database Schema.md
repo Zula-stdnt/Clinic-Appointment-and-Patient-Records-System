@@ -4,15 +4,17 @@ tags: [database]
 
 # Database Schema
 
-Database: `hospital_db` (utf8mb4 / utf8mb4_unicode_ci). Full dump: `migrations/hospital_db.sql`.
+The system uses a MySQL / MariaDB database named `hospital_db` (configured with `utf8mb4` / `utf8mb4_unicode_ci` so international characters and symbols are stored cleanly). The full database structure and starter data are saved in `migrations/hospital_db.sql`.
 
 ## Conventions
-- Every master table has `created_at`, `updated_at`, and `deleted_at`. `deleted_at IS NULL` means active; non-null means archived (soft delete).
-- `roles` is a lookup table: Administrator, Receptionist, Doctor, Cashier.
-- `doctor_specialty` is a junction table so one doctor can have **many** specialties.
-- Personal identity data (`first_name`, `last_name`, `middle_initial`, `gender`) is stored **only** on `users`. `doctors` holds doctor-specific data and links to the account via `user_id` (no name duplication).
+- **Timestamps & Soft Deletes:** Every core record table (**Master File**) includes `created_at` (when the record was made), `updated_at` (when it was last changed), and `deleted_at` (when it was archived). When `deleted_at IS NULL` (empty), the record is **active**. When `deleted_at` has a date and time, the record is **archived (soft-deleted)** and hidden from active lists.
+- **Role Lookup Table:** `roles` stores the staff job titles: `Administrator`, `Receptionist`, `Doctor`, and `Cashier`.
+- **Many-to-Many Specialties (`doctor_specialty`):** Because one doctor can practice multiple specialties and one specialty can belong to multiple doctors, the `doctor_specialty` **junction table** (linking table) pairs `doctor_id` with `specialty_id`.
+- **Synchronized Doctor Identity:** Personal identity fields (`first_name`, `last_name`, `middle_initial`, `gender`) live on `users` and are kept in sync with `doctors` whenever an Administrator edits a doctor in [[Manage Doctors]] or a doctor updates their own info in [[Doctor Profile]].
 
 ## Core relationships
+The **Entity-Relationship Diagram (ERD)** below shows how the database tables connect to one another:
+
 ```mermaid
 erDiagram
     ROLES ||--o{ USERS : assigns
@@ -37,26 +39,35 @@ erDiagram
 
 ## Tables
 ### Access control
-| Table | Key columns | Notes |
+| Table | Key columns | Notes (Plain English) |
 | --- | --- | --- |
-| `roles` | `role_id`, `role_name` (unique) | Seeded: Administrator, Receptionist, Doctor, Cashier |
-| `users` | `user_id`, `role_id` → roles, `username` (unique), `password_hash`, `first_name`, `last_name`, `middle_initial`, `gender` (VARCHAR 50), `deleted_at` | Bcrypt hashes; gender supports custom values |
+| `roles` | `role_id`, `role_name` (unique) | Pre-loaded staff roles: Administrator, Receptionist, Doctor, Cashier |
+| `users` | `user_id`, `role_id` → roles, `username` (unique), `password_hash`, `first_name`, `last_name`, `middle_initial`, `gender` (VARCHAR 50), `deleted_at` | Stores staff login accounts, scrambled (`bcrypt`) passwords, and custom gender text |
 
 ### Master files
-| Table | Key columns | Notes |
+| Table | Key columns | Notes (Plain English) |
 | --- | --- | --- |
-| `patients` | `patient_id`, `first_name`, `middle_initial`, `last_name`, `gender` (VARCHAR 50), `date_of_birth`, `contact_no`, `address`, `deleted_at` | `gender` defaults to `'unknown'`; supports custom values |
-| `doctors` | `doctor_id`, `user_id` → users (unique), `contact_no`, `deleted_at` | Profile-only table: names/gender live on `users` (single source of truth, 1:0..1 link) |
-| `specialties` | `specialty_id`, `specialty_name` (unique), `deleted_at` | |
-| `doctor_specialty` | `doctor_id` + `specialty_id` (composite PK) | Many-to-many |
-| `services` | `service_id`, `service_name` (unique), `price`, `deleted_at` | |
-| `discounts` | `discount_id`, `discount_name` (unique), `percentage`, `deleted_at` | |
+| `patients` | `patient_id`, `first_name`, `middle_initial`, `last_name`, `gender` (VARCHAR 50), `date_of_birth`, `contact_no`, `address`, `deleted_at` | Patient profiles; `gender` defaults to `'unknown'` for emergency intake and supports custom values |
+| `doctors` | `doctor_id`, `user_id` → users (unique), `first_name`, `last_name`, `middle_initial`, `gender`, `contact_no`, `deleted_at` | Linked one-to-one with `users` (`user_id`); kept in sync when a doctor's profile changes |
+| `specialties` | `specialty_id`, `specialty_name` (unique), `deleted_at` | List of hospital medical specialties / departments |
+| `doctor_specialty` | `doctor_id` + `specialty_id` (composite PK) | Linking table that connects doctors to one or more specialties |
+| `services` | `service_id`, `service_name` (unique), `price`, `deleted_at` | Price list of hospital procedures, exams, and lab services |
+| `discounts` | `discount_id`, `discount_name` (unique), `percentage`, `deleted_at` | Discount programs (such as Senior Citizen or PWD) and their percentage rates |
+| `medications` | `medication_id`, `name`, `generic_name`, `manufacturer`, `unit_price`, `deleted_at` | Active medicine catalog shown in the [[Doctor Consultation]] prescription dropdown |
 
-### Transactions (schema present, UI planned — see [[Roadmap]])
-`appointments`, `consultation`, `diagnosis`, `lab_requests`, `prescriptions`, `billing`, `invoice_items`, `vital_signs`.
+### Clinical & transactional tables
+| Table | Key columns | Notes (Plain English) |
+| --- | --- | --- |
+| `appointments` | `appointment_id`, `patient_id`, `doctor_id`, `created_by`, `appointment_date`, `appointment_time`, `chief_complaint`, `status` | Patient visits assigned to a doctor; status can be `'scheduled'`, `'confirmed'`, `'completed'`, `'cancelled'`, or `'no_show'` |
+| `vital_signs` | `vital_sign_id`, `appointment_id`, `blood_pressure`, `temperature`, `oxygen_saturation` | Triage measurements shown during [[Doctor Consultation]] and inside [[Doctor Patient Records]] |
+| `consultation` | `consultation_id`, `appointment_id` (unique), `consultation_date`, `notes` | Main clinical encounter record created or updated when a doctor saves a consultation |
+| `diagnosis` | `diagnosis_id`, `consultation_id`, `icd10_code`, `diagnosis_name`, `notes` | Diagnosis items attached to a consultation; refreshed inside a transaction whenever the consultation is saved |
+| `prescriptions` | `prescription_id`, `consultation_id`, `medication_id`, `dosage`, `frequency`, `start_date`, `end_date` | Prescribed medicines, dosage instructions, and dates attached to a consultation |
+| `lab_requests` | `lab_request_id`, `consultation_id`, `test_name`, `status`, `request_date` | Lab tests ordered during a consultation (`'requested'`, `'in_progress'`, `'completed'`, `'cancelled'`) |
+| `billing` & `invoice_items` | `invoice_id`, `consultation_id`, `patient_id`, `discount_id`, `total_amount`, `status` | Database tables ready for patient invoices and itemized charges; screen UI planned (see [[Roadmap]]) |
 
 ## Soft-delete / restore / hard-delete
-All master-file controllers expose the same actions:
-1. `soft_delete` — sets `deleted_at = NOW()`; record appears in [[Manage Archive]].
-2. `restore` — sets `deleted_at = NULL`.
-3. `hard_delete` — removes the row; foreign keys can block this when transactions reference it (surfaced as a 409 error).
+Every master-file controller supports three lifecycle steps for removing or recovering records:
+1. `soft_delete` — Sets `deleted_at = NOW()` (current date and time). The record is hidden from active screens and appears in [[Manage Archive]].
+2. `restore` — Clears the timestamp (`deleted_at = NULL`), returning the record to active lists.
+3. `hard_delete` — Permanently deletes the row from the database. If other records (such as patient appointments) still depend on that row, the database's **foreign key** safety rules block the deletion and the server returns a `409 Conflict` message explaining why it cannot be permanently removed.

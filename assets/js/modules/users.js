@@ -1,8 +1,9 @@
 // assets/js/modules/users.js
 // Manage Users module (Strictly restricted to Receptionist)
+// ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays (Dynamic <select> option population from lookup arrays) & 03 APIs and Database Operations/mysql_insert_records / mysql_update_records
 
 import api from '../api.js?v=7';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=7';
+import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=22';
 
 export default {
     state: {

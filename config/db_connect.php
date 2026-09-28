@@ -1,6 +1,7 @@
 <?php
 // config/db_connect.php
 // Single source of database credentials and PDO connection
+// ITE 387 Lesson applied: 03 APIs and Database Operations/mysql_retrieve_records (PDO connection with ERRMODE_EXCEPTION & FETCH_ASSOC)
 
 $db_host = '127.0.0.1';
 $db_port = '3306';

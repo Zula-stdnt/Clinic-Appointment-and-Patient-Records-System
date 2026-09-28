@@ -89,7 +89,7 @@ run_test("1.1: Valid Administrator credentials reach dashboard", function() use 
     if ($res['status'] !== 200 || !($res['json']['success'] ?? false)) {
         return "Login failed: " . json_encode($res['json']);
     }
-    if ($res['json']['data']['redirect'] !== 'admin_dashboard.php') {
+    if ($res['json']['data']['redirect'] !== 'admin_dashboard.html') {
         return "Redirect mismatch: " . ($res['json']['data']['redirect'] ?? 'null');
     }
     return true;
@@ -162,17 +162,18 @@ run_test("1.4: User with unauthorized role cannot log in", function() use ($base
     return true;
 });
 
-run_test("1.5: Requesting admin_dashboard.php while logged out redirects to login.php without HTML", function() use ($baseUrl, $cookieAnon) {
-    $res = http_request('GET', "$baseUrl/admin_dashboard.php", null, $cookieAnon);
+run_test("1.5: Unauthenticated session guard check returns 401 and static shell contains no session data", function() use ($baseUrl, $cookieAnon) {
+    $meRes = http_request('GET', "$baseUrl/api/auth_controller.php?action=me", null, $cookieAnon);
+    if ($meRes['status'] !== 401) {
+        return "Expected 401 from action=me when logged out, got {$meRes['status']}";
+    }
 
-    if ($res['status'] !== 302) {
-        return "Expected 302 redirect, got {$res['status']}";
+    $shellRes = http_request('GET', "$baseUrl/admin_dashboard.html", null, $cookieAnon);
+    if ($shellRes['status'] !== 200) {
+        return "Expected 200 for static HTML shell, got {$shellRes['status']}";
     }
-    if (strpos($res['headers'], 'Location: login.php') === false) {
-        return "Missing Location: login.php header";
-    }
-    if (strpos($res['body'], '<div class="dashboard-layout">') !== false) {
-        return "Leaked dashboard HTML on unauthenticated request";
+    if (strpos($shellRes['body'], '<meta name="csrf-token" content="">') === false) {
+        return "Static shell should have empty csrf-token meta tag before JS hydration";
     }
     return true;
 });
@@ -466,7 +467,7 @@ run_test("4.2: SQL injection payload has no effect on queries", function() use (
 
 run_test("4.3: No raw SQL errors ever leak to response", function() use ($baseUrl, $cookieAdmin, $adminCsrf) {
     // Force a constraint failure by creating duplicate discount name
-    http_request('POST', "$baseUrl/api/discount_controller.php", [
+    $created = http_request('POST', "$baseUrl/api/discount_controller.php", [
         'discount_name' => 'Fixed Discount Name',
         'percentage' => 10
     ], $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
@@ -476,6 +477,12 @@ run_test("4.3: No raw SQL errors ever leak to response", function() use ($baseUr
         'percentage' => 10
     ], $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
 
+    // Clean up temporary discount
+    if (!empty($created['json']['data']['discount_id'])) {
+        $delId = (int)$created['json']['data']['discount_id'];
+        http_request('DELETE', "$baseUrl/api/discount_controller.php?id=$delId", null, $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
+    }
+
     $body = $dup['body'];
     if (stripos($body, 'SQLSTATE') !== false || stripos($body, 'syntax error') !== false || stripos($body, 'QueryException') !== false) {
         return "Raw SQL error detected in response: $body";
@@ -483,14 +490,17 @@ run_test("4.3: No raw SQL errors ever leak to response", function() use ($baseUr
     return true;
 });
 
-run_test("4.4: Logout destroys session and redirects to login.php", function() use ($baseUrl, $cookieAdmin) {
+run_test("4.4: Logout destroys session and redirects to login.html", function() use ($baseUrl, $cookieAdmin) {
     $logout = http_request('GET', "$baseUrl/logout.php", null, $cookieAdmin);
     if ($logout['status'] !== 302) return "Logout did not redirect: {$logout['status']}";
+    if (strpos($logout['headers'], 'Location: login.html') === false) {
+        return "Missing Location: login.html header";
+    }
 
-    // Attempt to access dashboard again with the same cookie
-    $dash = http_request('GET', "$baseUrl/admin_dashboard.php", null, $cookieAdmin);
-    if ($dash['status'] !== 302) {
-        return "Dashboard still accessible after logout! Status: {$dash['status']}";
+    // Attempt to access session endpoint again with the same cookie
+    $me = http_request('GET', "$baseUrl/api/auth_controller.php?action=me", null, $cookieAdmin);
+    if ($me['status'] !== 401) {
+        return "Session still active after logout! Status: {$me['status']}";
     }
     return true;
 });

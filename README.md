@@ -1,8 +1,8 @@
 # Hospital Billing & Patient Information System
 
-A responsive web application designed for healthcare facilities to manage patient records, doctor profiles, medical services, specialties, discounts, user access control, and centralized record archiving.
+A web application built for hospitals and clinics to manage patient records, doctor profiles, medical consultations, hospital services, clinical specialties, billing discounts, staff accounts, and archived records in one place.
 
-Built with native PHP, MySQL (PDO), vanilla JavaScript (ES6+ modular SPA architecture), and CSS.
+It is built with **PHP** (for server-side logic), **MySQL** via **PDO** (a secure database connector), **vanilla JavaScript** organized as a **Single-Page Application (SPA)** (a web app that switches screens smoothly without reloading the whole browser page), and custom **CSS**.
 
 ---
 
@@ -21,59 +21,65 @@ Built with native PHP, MySQL (PDO), vanilla JavaScript (ES6+ modular SPA archite
 
 ## Features
 
-- **Role-Based Access Control (RBAC):**
-  - **Administrator:** Full management over Master Files (Users, Patients, Doctors, Services, Specialties, Discounts) and the Central Archive.
-  - **Doctor & Receptionist:** Dedicated portal views with strict session access enforcement.
-- **Master Files Management:**
-  - **Users:** Create, view, edit, and archive staff accounts with dynamic role assignment and doctor profile linkage.
-  - **Patients:** Maintain patient demographic profiles, contact details, and emergency information.
-  - **Doctors:** Manage clinical profiles with linked specialties and contact records.
-  - **Services:** Catalog medical procedures, exams, and tests with pricing controls.
-  - **Specialties:** Classify clinical departments and medical specialties.
-  - **Discounts:** Configure standard and promotional discount percentages.
+- **Role-Based Access Control (RBAC — permissions based on a staff member's job role):**
+  - **Administrator:** Full control over the hospital's core records (**Master Files**: Users, Patients, Doctors, Services, Specialties, and Discounts) and the **Central Archive**.
+  - **Doctor:** A dedicated clinical workspace with daily appointment counts, an appointment queue, a consultation charting screen (clinical notes, diagnoses, prescriptions, and lab requests), patient medical histories, and personal profile settings.
+  - **Receptionist:** A dedicated front-desk portal protected by login session checks.
+- **Master Files Management (Administrator):**
+  - **Users:** Create, view, edit, and archive staff login accounts. Creating a Doctor user automatically creates a matching clinical profile.
+  - **Patients:** Store patient personal details, birth dates, phone numbers, and home addresses.
+  - **Doctors:** Manage doctor profiles, contact numbers, and one or more assigned medical specialties.
+  - **Services:** Maintain a price list of hospital procedures, consultations, lab tests, and imaging services.
+  - **Specialties:** Organize medical departments and clinical specialties (such as Cardiology or Pediatrics).
+  - **Discounts:** Set up percentage discounts (such as Senior Citizen, PWD, or PhilHealth).
+- **Doctor Clinical Portal:**
+  - **Dashboard / Today:** Shows live counters for today's total appointments and pending consultations.
+  - **Appointments & Consultation:** Doctors can view their scheduled patients, check triage vital signs (blood pressure, temperature, and oxygen level), and record **SOAP notes** (structured clinical notes covering a patient's symptoms, exam findings, assessment, and care plan), **ICD-10 diagnoses** (standard international medical codes), medication prescriptions, and lab test orders in a single all-or-nothing save operation (**database transaction**).
+  - **Patient Records:** Browse assigned patients and read a timeline of their past visits, vitals, diagnoses, prescriptions, and lab requests.
+  - **My Profile:** View assigned specialty badges and update personal details, phone number, username, and password.
 - **Centralized Archive ("Recycle Bin"):**
-  - All deletions operate as non-destructive soft deletes (moving records to the **Manage Archive** section).
-  - Archived records can be safely **Restored** to active status or permanently **Hard Deleted**.
+  - Deleting a record from any main table performs a **soft delete**—instead of erasing the data right away, the system hides it from active lists and moves it to **Manage Archive**.
+  - From the Archive, an Administrator can **Restore** a record back to active use or **Hard Delete** it (permanently erase it from the database, as long as no medical or appointment history depends on it).
 - **Security & Validation:**
-  - PDO prepared statements against SQL injection.
-  - Token-based Cross-Site Request Forgery (CSRF) validation.
-  - HTML entity escaping against Cross-Site Scripting (XSS).
-  - Secure password hashing using `PASSWORD_DEFAULT` (bcrypt).
+  - **PDO Prepared Statements:** Keeps user input separate from database commands to block **SQL injection** (attempts to trick the database using specially crafted text).
+  - **CSRF (Cross-Site Request Forgery) Protection:** Attaches a secret security token to every save or delete action to confirm the request came from the real hospital dashboard.
+  - **XSS (Cross-Site Scripting) Protection:** Converts special characters into safe plain text (`escapeHtml`) so user-entered text can never run hidden scripts in the browser.
+  - **Password Hashing:** Scrambles passwords into unreadable text using PHP's `PASSWORD_DEFAULT` (**bcrypt**) algorithm so plain-text passwords are never stored.
 
 ---
 
 ## Technologies Used
 
-- **Backend:** PHP 8.x (compatible with PHP 7.4+)
-- **Database:** MySQL / MariaDB (via PHP Data Objects - PDO)
-- **Frontend:** Modular Vanilla JavaScript (ES6 Modules), Axios for HTTP requests
-- **Styling:** Custom Responsive CSS (Hospital Green Design System)
-- **Environment:** Apache / XAMPP on Windows, macOS, or Linux
+- **Backend (Server Logic):** PHP 8.x (compatible with PHP 7.4+)
+- **Database (Data Storage):** MySQL / MariaDB (connected through **PDO** — PHP Data Objects)
+- **Frontend (Browser Interface):** Modular Vanilla JavaScript (**ES6 Modules** — separate, reusable script files), **Axios** (a helper library for sending requests between the browser and the server)
+- **Styling:** Custom Responsive CSS (Hospital Green Design System that adapts to desktop, tablet, and phone screens)
+- **Environment (Local Web Server):** Apache / XAMPP (or WAMP) on Windows, macOS, or Linux
 
 ---
 
 ## Requirements
 
-Before starting, ensure you have the following installed on your computer:
-1. **XAMPP** (or WampServer / LAMP / MAMP) with:
+Before starting, make sure you have the following installed on your computer:
+1. **XAMPP** (or WampServer / LAMP / MAMP) which bundles:
    - PHP 7.4 or higher (PHP 8.1+ recommended)
    - MySQL 5.7+ or MariaDB 10.4+
    - Apache Web Server
 2. A modern web browser (Google Chrome, Mozilla Firefox, Microsoft Edge, etc.)
-3. Git (for cloning and version control)
+3. **Git** (optional, for downloading and tracking code updates)
 
 ---
 
 ## Installation & Setup
 
 ### Step 1: Clone or Copy the Repository
-Place the project inside your web server's public root directory (`htdocs` in XAMPP):
+Place the project folder inside your web server's public folder (`htdocs` in XAMPP, or `www` in WAMP):
 
 ```bash
-# If using Windows default XAMPP path:
+# If using the default Windows XAMPP path:
 cd "C:\xampp\htdocs"
 
-# Clone the repository
+# Download (clone) the project folder
 git clone https://github.com/Zula-stdnt/Hospital-Billing-and-Patient-Information-System.git "Hospital Billing And Patient Information System"
 ```
 
@@ -82,23 +88,23 @@ git clone https://github.com/Zula-stdnt/Hospital-Billing-and-Patient-Information
 ## Database Setup
 
 ### Option A: Using phpMyAdmin (Recommended for Beginners)
-1. Open the **XAMPP Control Panel** and start **Apache** and **MySQL**.
-2. Open your web browser and navigate to: [http://localhost/phpmyadmin](http://localhost/phpmyadmin)
+1. Open the **XAMPP Control Panel** and click **Start** next to both **Apache** and **MySQL**.
+2. Open your web browser and go to: [http://localhost/phpmyadmin](http://localhost/phpmyadmin)
 3. In the left sidebar, click **New** and create a database named:
    ```text
    hospital_db
    ```
-   *(Select `utf8mb4_unicode_ci` or `utf8mb4_general_ci` as collation, then click **Create**)*.
-4. Select `hospital_db` from the list.
-5. Click on the **Import** tab at the top.
-6. Click **Choose File** and browse to:
+   *(Choose `utf8mb4_unicode_ci` or `utf8mb4_general_ci` from the character formatting dropdown, then click **Create**)*.
+4. Click `hospital_db` in the left sidebar to select it.
+5. Click the **Import** tab along the top menu.
+6. Click **Choose File** and select the SQL setup file inside the project folder:
    ```text
    migrations/hospital_db.sql
    ```
-7. Scroll to the bottom and click **Import** (or **Go**).
+7. Scroll to the bottom and click **Import** (or **Go**). This automatically creates all tables and loads sample test accounts.
 
 ### Option B: Using the MySQL Command Line
-If you prefer the command line, run:
+If you prefer using a terminal or command prompt, run:
 
 ```bash
 # Windows XAMPP path
@@ -110,9 +116,9 @@ C:\xampp\mysql\bin\mysql.exe -u root -p hospital_db < "migrations/hospital_db.sq
 
 ## Configuration
 
-Database credentials are concentrated in [`config/db_connect.php`](config/db_connect.php).
+Database connection settings are stored in [`config/db_connect.php`](config/db_connect.php).
 
-By default, XAMPP uses user `root` with an empty password. If your MySQL server has a password or runs on a different port, update the values accordingly:
+By default, XAMPP uses the username `root` with a blank password. If your MySQL server uses a password or a different port number, open [`config/db_connect.php`](config/db_connect.php) and update these lines:
 
 ```php
 // config/db_connect.php
@@ -128,19 +134,19 @@ $db_charset = 'utf8mb4';
 
 ## Running the Application
 
-1. Make sure **Apache** and **MySQL** are running in your XAMPP Control Panel.
-2. Open your browser and visit:
+1. Confirm that **Apache** and **MySQL** are both running in your XAMPP Control Panel.
+2. Open your web browser and visit:
    ```text
    http://localhost/Hospital%20Billing%20And%20Patient%20Information%20System/
    ```
-   *(Or the folder name you chose under `htdocs`)*.
-3. You will be greeted by the **Login** screen.
+   *(If you placed the project inside a subfolder—such as `3rd Year/ITE 387/Hospital Billing And Patient Information System`—include that subfolder path in the URL).*
+3. The browser will open the **Login** screen.
 
 ---
 
 ## Default User Accounts
 
-The database comes pre-seeded with sample accounts for testing all user roles:
+The database comes pre-loaded with sample login accounts so you can test each staff role right away:
 
 | Role | Username | Default Password |
 | :--- | :--- | :--- |
@@ -148,50 +154,56 @@ The database comes pre-seeded with sample accounts for testing all user roles:
 | **Doctor** | `dr.smith` | `DoctorPass123!` |
 | **Receptionist** | `recep.jane` | `RecepPass123!` |
 
-*(Passphrases are case-sensitive)*.
+*(Passwords are case-sensitive.)*
 
 ---
 
 ## Project Structure
 
+Here is how the files and folders are organized inside the project:
+
 ```text
-├── api/                     # Backend REST API controllers
+├── api/                     # Server-side PHP scripts (API controllers) that process data requests
 │   ├── auth_controller.php
 │   ├── user_controller.php
 │   ├── doctor_controller.php
 │   ├── patient_controller.php
 │   ├── service_controller.php
 │   ├── specialty_controller.php
-│   └── discount_controller.php
-├── assets/                  # Frontend static assets
+│   ├── discount_controller.php
+│   ├── appointment_controller.php
+│   ├── consultation_controller.php
+│   ├── medication_controller.php
+│   ├── doctor_patients_controller.php
+│   └── doctor_profile_controller.php
+├── assets/                  # Browser files (styles, scripts, and images)
 │   ├── css/
-│   │   └── style.css        # Hospital Green design system
+│   │   └── style.css        # Hospital Green visual theme and responsive layout rules
 │   └── js/
-│       ├── api.js           # Centralized Axios API wrapper
-│       ├── main.js          # SPA Router & view controller
-│       ├── session-guard.js # Client-side session/role guard for HTML shells
-│       ├── ui.js            # Modals, toasts, and dialog handlers
-│       └── modules/         # SPA feature modules (users, archive, etc.)
+│       ├── api.js           # Central helper that sends requests to api/ and attaches security tokens
+│       ├── main.js          # Administrator dashboard navigation router
+│       ├── doctor_main.js   # Doctor portal navigation router
+│       ├── session-guard.js # Checks that a user is logged in with the right role before showing a page
+│       ├── ui.js            # Shared screen helpers (pop-up modals, toast alerts, confirm boxes, formatting)
+│       └── modules/         # Individual screen modules for the Admin and Doctor portals
 ├── config/
-│   └── db_connect.php       # PDO database connection
+│   └── db_connect.php       # Database connection setup (PDO)
 ├── includes/
-│   └── auth.php             # Session management & CSRF protection
-├── migrations/              # SQL schema and seed files
-│   └── hospital_db.sql      # Complete database export
-├── tests/                   # Automated PHP test scripts
-├── admin_dashboard.html     # Main Administrator panel view (static shell + JS)
-├── doctor_dashboard.html    # Doctor portal view
-├── receptionist_dashboard.html # Receptionist portal view
-├── login.html               # Authentication page
-├── index.html               # Redirects to the login page
-├── logout.php               # Session termination handler
-├── walkthrough.md           # Implementation notes & architecture log
-└── README.md                # Project documentation
+│   └── auth.php             # Login session checks, role permissions, and CSRF token verification
+├── migrations/              # Database structure and starter data
+│   └── hospital_db.sql      # Complete SQL database file for importing
+├── tests/                   # Automated PHP verification scripts
+├── admin_dashboard.html     # Main Administrator workspace page
+├── doctor_dashboard.html    # Main Doctor clinical portal page
+├── receptionist_dashboard.html # Receptionist workspace page
+├── login.html               # Sign-in page
+├── index.html               # Entry page that forwards visitors to the login screen
+├── logout.php               # Ends the user's login session
+├── walkthrough.md           # Step-by-step history of features and fixes built in the project
+└── README.md                # Main project guide (this file)
 ```
 
 ---
 
 ## License
 Educational project developed for ITE 387. All rights reserved.
-weh dinga
-:D

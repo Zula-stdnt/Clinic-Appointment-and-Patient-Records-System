@@ -1,6 +1,7 @@
 <?php
 // api/patient_controller.php
 // Master-file CRUD for Patients
+// ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_records, mysql_retrieve_specific_record, mysql_insert_records & mysql_update_records (Parameterized PDO CRUD with bindValue)
 
 require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';
