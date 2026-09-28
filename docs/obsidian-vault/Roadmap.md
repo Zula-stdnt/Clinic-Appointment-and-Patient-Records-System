@@ -12,7 +12,7 @@ tags: [roadmap]
 
 ## UI backlog
 - Topbar upgrades: global search, notifications, user dropdown, breadcrumbs.
-- Login polish: show/hide password, caps-lock hint, remember me.
+- Login polish: show/hide password (completed), caps-lock hint, remember me.
 - Print stylesheet for invoices/receipts (`@media print`).
 - Skeleton loaders for all module tables (currently text placeholders).
 - Optimize `logo.png` (≈200 KB) and add a favicon.

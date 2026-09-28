@@ -158,8 +158,10 @@ function validatePatientInput(array $input): array {
         $errors['last_name'] = 'Last name cannot exceed 80 characters.';
     }
 
-    if (!in_array($gender, ['male', 'female', 'other', 'unknown'], true)) {
-        $errors['gender'] = 'Invalid gender selected.';
+    if ($gender === '') {
+        $errors['gender'] = 'Gender is required.';
+    } elseif (strlen($gender) > 50) {
+        $errors['gender'] = 'Gender cannot exceed 50 characters.';
     }
 
     if ($dob === '') {
@@ -170,6 +172,13 @@ function validatePatientInput(array $input): array {
             $errors['date_of_birth'] = 'Date of birth must be a valid date in YYYY-MM-DD format.';
         } elseif ($d > new DateTime()) {
             $errors['date_of_birth'] = 'Date of birth cannot be in the future.';
+        }
+    }
+
+    $contactNo = trim($input['contact_no'] ?? '');
+    if ($contactNo !== '') {
+        if (!ctype_digit($contactNo) || strlen($contactNo) !== 11 || !str_starts_with($contactNo, '09')) {
+            $errors['contact_no'] = 'Contact number must be exactly 11 digits and start with 09.';
         }
     }
 

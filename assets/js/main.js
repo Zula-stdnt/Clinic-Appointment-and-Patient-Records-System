@@ -1,15 +1,15 @@
 // assets/js/main.js
 // Single-Page Application Router and Module Orchestrator
 
-import { requireSession } from './session-guard.js?v=11';
-import overviewModule from './modules/overview.js?v=10';
-import usersModule from './modules/users.js?v=10';
-import patientsModule from './modules/patients.js?v=10';
-import doctorsModule from './modules/doctors.js?v=10';
-import servicesModule from './modules/services.js?v=10';
-import specialtiesModule from './modules/specialties.js?v=10';
-import discountsModule from './modules/discounts.js?v=10';
-import archiveModule from './modules/archive.js?v=10';
+import { requireSession } from './session-guard.js?v=13';
+import overviewModule from './modules/overview.js?v=13';
+import usersModule from './modules/users.js?v=13';
+import patientsModule from './modules/patients.js?v=13';
+import doctorsModule from './modules/doctors.js?v=13';
+import servicesModule from './modules/services.js?v=13';
+import specialtiesModule from './modules/specialties.js?v=13';
+import discountsModule from './modules/discounts.js?v=13';
+import archiveModule from './modules/archive.js?v=13';
 
 const modules = {
     'overview': {

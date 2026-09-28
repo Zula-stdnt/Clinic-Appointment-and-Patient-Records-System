@@ -89,14 +89,14 @@ function listDoctors(PDO $pdo): void {
     $whereSql = implode(' AND ', $where);
 
     $allowedSort = ['doctor_id', 'first_name', 'last_name', 'specialty_name', 'created_at', 'deleted_at'];
-    $sortBy = in_array($_GET['sort_by'] ?? '', $allowedSort, true) ? $_GET['sort_by'] : 'd.doctor_id';
+    $sortBy = in_array($_GET['sort_by'] ?? '', $allowedSort, true) ? $_GET['sort_by'] : 'doctor_id';
     if ($sortBy === 'specialty_name') {
         $sortBy = 's.specialty_name';
     } elseif ($sortBy === 'first_name') {
         $sortBy = 'u.first_name';
     } elseif ($sortBy === 'last_name') {
         $sortBy = 'u.last_name';
-    } elseif ($sortBy !== 'doctor_id') {
+    } else {
         $sortBy = 'd.' . $sortBy;
     }
     $sortOrder = strtoupper($_GET['sort_order'] ?? 'ASC') === 'DESC' ? 'DESC' : 'ASC';
@@ -104,6 +104,7 @@ function listDoctors(PDO $pdo): void {
     // Count query
     $countSql = "SELECT COUNT(DISTINCT d.doctor_id)
                  FROM doctors d
+                 LEFT JOIN users u ON d.user_id = u.user_id
                  LEFT JOIN doctor_specialty ds ON d.doctor_id = ds.doctor_id
                  LEFT JOIN specialties s ON ds.specialty_id = s.specialty_id
                  WHERE {$whereSql}";
@@ -209,10 +210,25 @@ function validateDoctorInput(PDO $pdo, array $input): array {
         }
     }
 
-    if ($userId === 0 && ($password === '' || strlen($password) < 6)) {
-        $errors['password'] = 'Password is required and must be at least 6 characters.';
-    } elseif ($userId > 0 && $password !== '' && strlen($password) < 6) {
-        $errors['password'] = 'Password must be at least 6 characters.';
+    $gender = trim($input['gender'] ?? '');
+    if ($gender === '') {
+        $errors['gender'] = 'Gender is required.';
+    } elseif (strlen($gender) > 50) {
+        $errors['gender'] = 'Gender cannot exceed 50 characters.';
+    }
+
+    $contactNo = trim($input['contact_no'] ?? '');
+    if ($contactNo !== '') {
+        if (!ctype_digit($contactNo) || strlen($contactNo) !== 11 || !str_starts_with($contactNo, '09')) {
+            $errors['contact_no'] = 'Contact number must be exactly 11 digits and start with 09.';
+        }
+    }
+
+    $passwordRegex = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[\W_]).{6,}$/';
+    if ($userId === 0 && $password === '') {
+        $errors['password'] = 'Password is required.';
+    } elseif ($password !== '' && !preg_match($passwordRegex, $password)) {
+        $errors['password'] = 'Password must be at least 6 characters, and include uppercase, lowercase, number, and special character.';
     }
 
     return $errors;
