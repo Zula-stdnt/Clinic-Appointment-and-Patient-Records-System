@@ -1,11 +1,11 @@
 {
 	"nodes":[
-		{"id":"modules","type":"text","text":"## Feature Modules\n`assets/js/modules/*.js`\n\n`init(container)` contract\noverview · users · patients\ndoctors · services · specialties\ndiscounts · archive","x":20,"y":-120,"width":300,"height":200,"color":"4"},
 		{"id":"controllers","type":"text","text":"## API Controllers\n`api/*_controller.php`\n\nPDO prepared statements\nCSRF on writes\nJSON responses","x":20,"y":180,"width":300,"height":180,"color":"5"},
 		{"id":"db","type":"text","text":"## Database\nMySQL `hospital_db`\n\nMySQL via PDO\nSoft delete `deleted_at`\n`doctor_specialty` junction","x":440,"y":180,"width":280,"height":180,"color":"6"},
 		{"id":"includes","type":"text","text":"## Shared Includes\n`includes/auth.php`\nSession · RBAC · CSRF · throttle\n\n`includes/response.php`\nsend_success / send_error","x":-500,"y":180,"width":300,"height":180,"color":"5"},
-		{"id":"shell","type":"text","text":"## Page Shells\n`admin_dashboard.php`\n`doctor_dashboard.php`\n`receptionist_dashboard.php`\n`login.php`\n\nRole checks before output","x":-860,"y":-120,"width":300,"height":200,"color":"4"},
-		{"id":"router","type":"text","text":"## SPA Router\n`assets/js/main.js`\n\nHash routes\nModule registry\nOff-canvas sidebar","x":-400,"y":-120,"width":280,"height":200,"color":"4"}
+		{"id":"modules","type":"text","text":"## Feature Modules\n`assets/js/modules/*.js`\n\n`init(container)` contract\noverview · users · patients\ndoctors · services · specialties\ndiscounts · archive","x":20,"y":-220,"width":300,"height":240,"color":"4"},
+		{"id":"router","type":"text","text":"## SPA Router\n`assets/js/main.js`\n\nHash routes\nModule registry\nOff-canvas sidebar","x":-420,"y":-220,"width":280,"height":240,"color":"4"},
+		{"id":"shell","type":"text","text":"## Page Shells\n`admin_dashboard.php`\n`doctor_dashboard.php`\n`receptionist_dashboard.php`\n`login.php`\n\nRole checks before output","x":-900,"y":-200,"width":300,"height":200,"color":"4"}
 	],
 	"edges":[
 		{"id":"e1","fromNode":"shell","fromSide":"right","toNode":"router","toSide":"left","label":"loads"},

@@ -18,5 +18,6 @@ tags: [roadmap]
 - Optimize `logo.png` (≈200 KB) and add a favicon.
 
 ## Security backlog
+- Test
 - Move login throttling server-side (currently per-session, so it resets when cookies clear).
 - Optional permission cache in `$_SESSION` with a rules version (see conversation notes) if finer-grained roles are needed beyond `require_role()`.
