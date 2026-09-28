@@ -7,6 +7,7 @@ tags: [moc]
 Knowledge base for the ITE 387 project. Built with native PHP 8, MySQL/MariaDB (PDO), and a modular vanilla-JavaScript SPA front end.
 
 ## Core notes
+- [[New Developer Manual]]
 - [[Project Overview]]
 - [[Architecture]]
 - [[Database Schema]]

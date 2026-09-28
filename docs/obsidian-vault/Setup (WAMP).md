@@ -41,9 +41,9 @@ This makes plain `git pull` a rebase, and installs the pre-push hook that keeps 
 
 ## 2. Place the project
 Put the folder under the WAMP web root, e.g. `C:\wamp64\www\hospital_billing`. The URL will mirror the folder name:
-`http://localhost/hospital_billing/login.php`
+`http://localhost/hospital_billing/login.html`
 
-(Names with spaces/brackets are URL-encoded: `http://localhost/[1]%20hospital_billing/login.php`.)
+(Names with spaces/brackets are URL-encoded: `http://localhost/[1]%20hospital_billing/login.html`.)
 
 If you cloned somewhere else, move or re-clone the folder into the web root.
 
@@ -67,7 +67,7 @@ $db_pass = '';
 ```
 
 ## 6. Sign in
-Open `login.php` and use a seeded account (see the project `README.md`). Insert additional accounts with `password_hash()` — never plain text.
+Open `login.html` and use a seeded account (see the project `README.md`). Insert additional accounts with `password_hash()` — never plain text.
 
 ## 7. After changing front-end assets
 The shell loads `style.css?v=N` and `main.js?v=N`, and module imports use the same `?v=N`. When you edit CSS/JS, bump `N` in `admin_dashboard.html` (and the imports) so browsers fetch fresh files, or hard-refresh with **Ctrl+F5**.
@@ -82,5 +82,6 @@ After every repo sync, check `migrations/` for new or changed SQL and apply it t
 - **Push rejected / hook says diverged** — run `git pull --rebase`, then push again (see [[Team Sync]]).
 
 ## Related
+- [[New Developer Manual]] — full onboarding checklist for new teammates.
 - [[Team Sync]] — daily pull / commit / rebase / push workflow.
 - [[Database Migrations]] — schema updates after syncing.
