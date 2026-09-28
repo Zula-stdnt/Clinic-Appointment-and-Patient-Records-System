@@ -11,6 +11,8 @@ Both developers work directly in the same repository and branch:
 - Each developer has their own local clone; both have push access.
 
 > Forks are optional (backup only). There is no PR step for daily work.
+>
+> **Joining the project for the first time?** Do the clone + remote setup in [[Setup (WAMP)]] section 1 first.
 
 ## Daily protocol
 
