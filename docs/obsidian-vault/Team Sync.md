@@ -66,9 +66,9 @@ Checks run only when a developer does something — nothing runs in the backgrou
 
 ### pre-push hook (the gate)
 
-Install once per clone:
+Install once per clone (run from the repo root — works on WAMP, XAMPP, or any folder name):
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "C:\wamp64\www\[1] hospital_billing\scripts\install-hooks.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\install-hooks.ps1"
 ```
 
 On every `git push` while on `zur-test`:
@@ -89,7 +89,7 @@ It only ever fast-forwards — it never rewrites commits and never runs in the b
 ### Manual sync
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File "C:\wamp64\www\[1] hospital_billing\scripts\sync-zur-test.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\sync-zur-test.ps1"
 ```
 Logs to `.git/auto-sync-zur-test.log`; warns when `migrations/` changed so you can update `hospital_db` (see [[Database Migrations]]).
 
@@ -100,5 +100,5 @@ Logs to `.git/auto-sync-zur-test.log`; warns when `migrations/` changed so you c
 
 ## Related
 - [[Database Migrations]] — check/apply schema updates after each sync.
-- [[Setup (WAMP)]] — local environment setup.
+- [[Setup (WAMP or XAMPP)]] — local environment setup.
 - [[Changelog]] — what changed and why.

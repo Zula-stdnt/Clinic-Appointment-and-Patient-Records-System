@@ -42,10 +42,14 @@ If any file is new or changed, identify what it expects (columns/tables) before 
 
 ## Step 2 — compare against your machine (read-only)
 
-Adjust the MySQL path to your installed version (`Get-ChildItem C:\wamp64\bin\mysql`).
+Point `$mysql` at your stack's MySQL client:
+- WAMP: `C:\wamp64\bin\mysql\<version>\bin\mysql.exe` (list versions with `Get-ChildItem C:\wamp64\bin\mysql`)
+- XAMPP: `C:\xampp\mysql\bin\mysql.exe`
 
 ```powershell
-& "C:\wamp64\bin\mysql\mysql8.4.7\bin\mysql.exe" --host=127.0.0.1 --port=3306 --user=root --database=hospital_db --batch --execute="SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='hospital_db' AND TABLE_NAME IN ('users','doctors','patients','medications','billing') ORDER BY TABLE_NAME, ORDINAL_POSITION;"
+$mysql = "C:\wamp64\bin\mysql\mysql8.4.7\bin\mysql.exe"   # XAMPP: "C:\xampp\mysql\bin\mysql.exe"
+
+& $mysql --host=127.0.0.1 --port=3306 --user=root --database=hospital_db --batch --execute="SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA='hospital_db' AND TABLE_NAME IN ('users','doctors','patients','medications','billing') ORDER BY TABLE_NAME, ORDINAL_POSITION;"
 ```
 
 Spot checks:
@@ -74,7 +78,7 @@ SHOW INDEX  FROM billing   WHERE Key_name = 'fk_billing_consultation';
 Run migrations in numeric order, then `update_schema.sql`. Pipe the file through the MySQL client (works for both DDL and `USE`/multi-statement files):
 
 ```powershell
-Get-Content .\migrations\005_normalize_doctors_users.sql | & "C:\wamp64\bin\mysql\mysql8.4.7\bin\mysql.exe" --host=127.0.0.1 --port=3306 --user=root --database=hospital_db
+Get-Content .\migrations\005_normalize_doctors_users.sql | & $mysql --host=127.0.0.1 --port=3306 --user=root --database=hospital_db
 ```
 
 One-off schema fixes that are not yet a numbered file (apply manually, then record them below):
@@ -99,5 +103,5 @@ After applying, re-run the Step 2 query to confirm.
 
 - [[Database Schema]] — current tables, conventions, and relationships.
 - [[Team Sync]] — daily pull/commit/rebase/push workflow for both developers.
-- [[Setup (WAMP)]] — fresh install of WAMP + import of `hospital_db.sql`.
+- [[Setup (WAMP or XAMPP)]] — fresh install of WAMP + import of `hospital_db.sql`.
 - [[Changelog]] — where schema-affecting changes are described.

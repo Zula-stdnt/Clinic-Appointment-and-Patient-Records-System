@@ -15,7 +15,7 @@ Knowledge base for the ITE 387 project. Built with native PHP 8, MySQL/MariaDB (
 - [[Team Sync]]
 - [[API Endpoints]]
 - [[Security]]
-- [[Setup (WAMP)]]
+- [[Setup (WAMP or XAMPP)]]
 - [[Changelog]]
 - [[Roadmap]]
 

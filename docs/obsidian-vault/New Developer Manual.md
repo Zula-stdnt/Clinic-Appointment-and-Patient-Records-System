@@ -4,12 +4,12 @@ tags: [setup, onboarding]
 
 # New Developer Manual
 
-One-page onboarding for joining the Hospital Billing project. Details live in [[Setup (WAMP)]], [[Team Sync]], and [[Database Migrations]].
+One-page onboarding for joining the Hospital Billing project. Details live in [[Setup (WAMP or XAMPP)]], [[Team Sync]], and [[Database Migrations]].
 
 ## 0. Before you start
 - Ask the owner (`Zula-stdnt`) to add your GitHub account as a **collaborator** on:
   `https://github.com/Zula-stdnt/Hospital-Billing-and-Patient-Information-System.git`
-- Install **WAMP** (Apache + MySQL + PHP 8), **Git for Windows**, optionally **VS Code**.
+- Install **WAMP** or **XAMPP** (Apache + MySQL + PHP 8), **Git for Windows**, optionally **VS Code**.
 - Accept the GitHub invitation (email or repo page → **Accept invitation**).
 
 ## 1. Clone the repo with the right remote
@@ -17,7 +17,7 @@ One-page onboarding for joining the Hospital Billing project. Details live in [[
 The shared repo must be your remote named **`upstream`** — scripts and hooks assume that name.
 
 ```powershell
-cd C:\wamp64\www
+cd C:\wamp64\www                       # WAMP; XAMPP uses C:\xampp\htdocs
 git clone https://github.com/Zula-stdnt/Hospital-Billing-and-Patient-Information-System.git hospital_billing
 cd hospital_billing
 git remote rename origin upstream
@@ -26,7 +26,7 @@ git checkout zur-test
 git remote -v
 ```
 
-Already cloned a fork? Use **Option B** in [[Setup (WAMP)]] section 1 instead.
+Already cloned a fork? Use **Option B** in [[Setup (WAMP or XAMPP)]] section 1 instead.
 
 ## 2. One-time git setup
 
@@ -39,15 +39,23 @@ powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\install-hooks.ps1
 - Plain `git pull` becomes a rebase (no surprise merge commits).
 - The `pre-push` hook auto-syncs you with `upstream/zur-test` before every push — details in [[Team Sync]].
 
-## 3. Environment (WAMP + database)
+## 3. Environment (WAMP or XAMPP + database)
 
-1. Start **Apache** and **MySQL** from the WAMP tray menu.
+Web root and MySQL client differ per stack — adjust commands to yours:
+
+| | WAMP | XAMPP |
+| --- | --- | --- |
+| Web root | `C:\wamp64\www\` | `C:\xampp\htdocs\` |
+| MySQL client | `C:\wamp64\bin\mysql\mysql8.4.7\bin\mysql.exe` | `C:\xampp\mysql\bin\mysql.exe` |
+| Start services | WAMP tray icon | XAMPP Control Panel |
+
+1. Start **Apache** and **MySQL**.
 2. Open `http://localhost/phpmyadmin` → create database `hospital_db`, collation `utf8mb4_unicode_ci`.
 3. Select it → **Import** → choose `migrations/hospital_db.sql` → **Go**.
 4. Apply any newer migrations listed in [[Database Migrations]].
-5. Open the app and sign in with a seeded account (see `README.md`).
+5. Open the app (`http://localhost/<folder>/login.html`) and sign in with a seeded account (see `README.md`).
 
-Credentials are in `config/db_connect.php` (WAMP defaults: `root`, empty password, port 3306).
+Credentials are in `config/db_connect.php` (defaults on both: `root`, empty password, port 3306).
 
 ## 4. Daily workflow
 
@@ -92,7 +100,7 @@ Check `migrations/` for new/changed SQL and apply it to your local `hospital_db`
 | Tables empty in UI | API needs an authenticated session with the right role |
 
 ## Related
-- [[Setup (WAMP)]] — local environment details.
+- [[Setup (WAMP or XAMPP)]] — local environment details.
 - [[Team Sync]] — daily pull / commit / rebase / push protocol.
 - [[Database Migrations]] — schema updates after syncing.
 - [[Database Schema]] — tables and relationships.

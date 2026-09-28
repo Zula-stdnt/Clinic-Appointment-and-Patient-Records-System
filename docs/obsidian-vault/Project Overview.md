@@ -28,4 +28,4 @@ A hospital back-office system for managing patient records, doctor profiles, med
 | Server | Apache via WAMP |
 
 ## Repository layout
-See [[Architecture#Folder map]] and the project `README.md` for setup instructions. [[Setup (WAMP)]] covers this workstation specifically.
+See [[Architecture#Folder map]] and the project `README.md` for setup instructions. [[Setup (WAMP or XAMPP)]] covers this workstation specifically.
