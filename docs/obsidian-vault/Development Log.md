@@ -32,7 +32,7 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
-### 2026-09-30 — Receptionist appointment booking & triage (pending commit)
+### 2026-09-30 — Receptionist appointment booking & triage (`a083555`)
 **Type:** feat
 **Database / migrations:** none — the existing `appointments` and `vital_signs` tables already support bookings.
 **Files changed:**
