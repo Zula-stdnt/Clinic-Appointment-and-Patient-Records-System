@@ -125,3 +125,18 @@ This document records the major features, user-interface improvements, bug fixes
 - **Lesson Notes in Code & Cache Refresh:**
   - Added brief, accurate comments at the top of `config/db_connect.php`, `includes/response.php`, `api/*_controller.php`, and `assets/js/**/*.js` noting which ITE 387 course lessons (`01 JavaScript Foundations`, `02 DOM and UI`, `03 APIs and Database Operations`, `04 Database Design`) each file demonstrates.
   - Updated browser cache-busting version numbers to `?v=22` in `admin_dashboard.html`, `doctor_dashboard.html`, `assets/js/main.js`, and `assets/js/doctor_main.js`.
+
+## 14. Receptionist Portal — Appointment Booking & Triage
+- **Front-Desk SPA Shell (`receptionist_dashboard.html`, `assets/js/receptionist_main.js`):** Replaced the old "Coming Soon" placeholder with a full responsive workspace (off-canvas sidebar, top bar, hash routing) guarded by `requireSession(['Receptionist'])` so only signed-in receptionists can open it.
+- **Book an Appointment ([[Receptionist Appointments]], `assets/js/modules/receptionist_appointments.js`):**
+  - **New Appointment form (`#appointment-form-modal`):** Choose an active patient (with a `PAT-XXXX` friendly ID) and an active doctor (with specialty badges) from dropdowns, set the date and time, type the chief complaint, and optionally fill in triage vital signs (blood pressure, temperature in °C, and oxygen saturation in %).
+  - **Live queue table:** Lists appointments newest-first with color-coded status badges and the recorded vitals; the search box and status dropdown filter rows instantly in the browser.
+  - **Field-level errors:** Server validation responses (`422`) appear underneath the matching input with a red `is-invalid` outline, following the same pattern as the Admin forms.
+- **Backend (`api/appointment_controller.php`):**
+  - Added `POST`, which validates the request, checks that the patient and doctor are active, and blocks duplicate active bookings for the same doctor, date, and time (`409 Conflict`).
+  - Follows the **Header-Detail Form** pattern (`03 APIs and Database Operations/header_detail_forms`): one `appointments` header row (`status = 'scheduled'`, `created_by` = signed-in user) is inserted together with an optional `vital_signs` detail row inside a single all-or-nothing transaction (`$pdo->beginTransaction()` / `$pdo->rollBack()`).
+  - Added `GET ?meta=patients` and `GET ?meta=doctors` dropdown lookups, and the appointment list now `LEFT JOIN`s `vital_signs` so triage values flow into [[Doctor Consultation]] and [[Doctor Patient Records]].
+
+## 15. Database Diagram Sync (Patient Records Requirements)
+- **ERD Accuracy (`erd/hospital_erd2.drawio`):** Added the missing `patients.middle_initial` column and `medications.deleted_at` column, and corrected two relationship cardinalities to match the real constraints: `appointments → consultation` and `consultation → billing` are now **zero-or-one** (a visit may not have a consultation yet, and each consultation has at most one invoice).
+- **Requirements coverage:** Verified the diagram covers the full **Patient Records System** flow — Appointment → Consultation → Diagnosis → (generated) Medical History — where medical history is assembled from the accumulated consultation/diagnosis records rather than stored in a separate table.

@@ -6,6 +6,18 @@ tags: [changelog]
 
 A plain-English summary of major updates, new modules, and bug fixes across the project.
 
+> [!info] Looking for the technical trail?
+> This note summarizes **features**. For a per-commit record (commit IDs, exact files, verification steps), see [[Development Log]].
+
+## Recent — Receptionist Appointment Booking & Triage
+- Replaced the placeholder `receptionist_dashboard.html` with a full **SPA shell** (`assets/js/receptionist_main.js`) guarded by `requireSession(['Receptionist'])`, with an off-canvas sidebar, top bar, and hash routing.
+- Added [[Receptionist Appointments]] (`assets/js/modules/receptionist_appointments.js`): book a patient appointment by choosing an active patient and doctor, a date/time, and a chief complaint, with optional triage **vital signs** (blood pressure, temperature, oxygen saturation).
+- Extended `api/appointment_controller.php` with:
+  - `POST` — creates the `appointments` header row (`status = 'scheduled'`, `created_by` = signed-in user) and, when triage values are supplied, a linked `vital_signs` detail row in one database transaction; duplicate active bookings for the same doctor/date/time return `409 Conflict`.
+  - `GET ?meta=patients` and `GET ?meta=doctors` — dropdown options for the booking form.
+  - Triage vitals now appear in the appointment list (`LEFT JOIN vital_signs`), so the doctor portal shows them in [[Doctor Consultation]] and [[Doctor Patient Records]].
+- Field-level `422` validation errors (patient, doctor, date, time, vitals ranges) are displayed under the matching form inputs.
+
 ## Recent — Doctor Dashboard Portal & Clinical Workflow Implementation
 ### Doctor SPA Shell & Router
 - Replaced the placeholder `doctor_dashboard.html` page with a full, mobile-friendly **Single-Page Application (SPA)** workspace and dedicated navigation router (`assets/js/doctor_main.js`) that supports parameterized links (`#doctor_consultation/{id}`) and checks doctor login permissions via `requireSession(['Doctor'])`.

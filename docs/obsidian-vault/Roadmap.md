@@ -8,9 +8,10 @@ This note tracks recently completed milestones and upcoming features planned for
 
 ## Completed recently
 - **Doctor portal** — Completed the full Single-Page Application workspace (`doctor_dashboard.html`, `assets/js/doctor_main.js`) including [[Doctor Dashboard]], [[Doctor Appointments]], [[Doctor Consultation]], [[Doctor Patient Records]], and [[Doctor Profile]].
+- **Receptionist booking** — Replaced the "Coming Soon" placeholder with a working receptionist portal (`receptionist_dashboard.html`, `assets/js/receptionist_main.js`) that books patient appointments and records optional triage vital signs ([[Receptionist Appointments]]).
 
 ## In progress / next
-- **Receptionist portal** — Front-desk screens for registering patients, booking appointments, recording triage vital signs, and managing the waiting queue.
+- **Receptionist portal (rest)** — Registering new patients at the front desk and managing the waiting queue.
 - **Billing module** — Screens for generating patient invoices, adding billable service items, applying discounts, and recording payments (the `billing` and `invoice_items` database tables are already in place).
 
 ## UI backlog

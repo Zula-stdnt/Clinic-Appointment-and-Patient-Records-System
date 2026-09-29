@@ -30,6 +30,9 @@ git commit -m "feat: short description"
 ```
 `git add -A` stages all changes in the repo (run it from the repo root). If a file should **not** be in the commit, stage only what you want: `git add path/to/file`. Review what is staged with `git diff --cached`.
 
+> [!important] Record the change
+> After pushing, add an entry to [[Development Log]] with the commit ID (`git log --oneline -1`), the files you touched, and how to verify the change. This is how the other developer learns what moved without reading every diff.
+
 ### 3. Before pushing — replay your work on top of theirs
 ```powershell
 git pull --rebase
@@ -99,6 +102,7 @@ Logs to `.git/auto-sync-zur-test.log`; warns when `migrations/` changed so you c
 - After any pull, if `migrations/` changed, apply the SQL to your local `hospital_db` (see [[Database Migrations]]).
 
 ## Related
+- [[Development Log]] — per-commit record of changes for the other developer.
 - [[Database Migrations]] — check/apply schema updates after each sync.
 - [[Setup (WAMP or XAMPP)]] — local environment setup.
 - [[Changelog]] — what changed and why.

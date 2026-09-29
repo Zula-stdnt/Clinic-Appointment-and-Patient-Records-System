@@ -72,6 +72,7 @@ git push                               # 4. push to upstream/zur-test
 - `git add -A` stages all changes; if a file must be excluded, stage by name (`git add path/to/file`).
 - Never `git push --force` and never `git reset --hard` on shared work.
 - Conflicts, rejected pushes, and the situation table: [[Team Sync]].
+- **After pushing, add an entry to [[Development Log]]** (commit ID, files changed, verification steps) so the other developer knows exactly what changed.
 
 ## 5. After every sync
 

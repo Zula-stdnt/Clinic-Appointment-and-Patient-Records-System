@@ -10,7 +10,7 @@ The **Hospital Billing & Patient Information System** is a web application for h
 The system separates screens and permissions by staff role (**Role-Based Access Control**):
 - **Administrator** — Has full access to all core hospital records (**Master Files**) and the **Central Archive** (`admin_dashboard.html` / `admin_dashboard.php`).
 - **Doctor** — Uses a dedicated clinical workspace (`doctor_dashboard.html`) featuring daily appointment counters (**KPIs** — Key Performance Indicators), an appointment queue, a consultation charting screen (**SOAP notes**, diagnoses, prescriptions, and lab requests), a directory of assigned patients with their medical histories, and a personal profile settings screen. See [[Doctor Dashboard]].
-- **Receptionist** — Signs in to a dedicated front-desk portal (`receptionist_dashboard.html`, currently a placeholder view for upcoming scheduling and intake features).
+- **Receptionist** — Uses a front-desk booking workspace (`receptionist_dashboard.html`) to schedule patient appointments, record optional triage vital signs, and monitor the visit queue. See [[Receptionist Appointments]].
 
 ## Feature summary
 - **Master file management (Create, Read, Update, Archive):** Full management of Users, Patients, Doctors, Services, Specialties, and Discounts.

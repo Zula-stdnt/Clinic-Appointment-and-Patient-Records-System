@@ -17,6 +17,7 @@ Welcome to the documentation hub for the **ITE 387 Hospital Billing & Patient In
 - [[Security]] — How passwords, login sessions, role permissions, and forms are protected.
 - [[Setup (WAMP or XAMPP)]] — Step-by-step instructions to run the project on a local WAMP or XAMPP computer.
 - [[Changelog]] — Chronological history of features, improvements, and bug fixes.
+- [[Development Log]] — Per-commit record of what changed, the commit IDs, and how to verify each change.
 - [[Roadmap]] — Completed milestones and upcoming features.
 
 ## Administrator modules
@@ -35,3 +36,6 @@ Welcome to the documentation hub for the **ITE 387 Hospital Billing & Patient In
 - [[Doctor Consultation]] — Clinical charting screen for notes, diagnoses, prescriptions, and lab orders.
 - [[Doctor Patient Records]] — Assigned patient directory and chronological medical history timeline.
 - [[Doctor Profile]] — Personal details, contact number, username, and password management.
+
+## Receptionist portal modules
+- [[Receptionist Appointments]] — Front-desk appointment booking with optional triage vital signs.

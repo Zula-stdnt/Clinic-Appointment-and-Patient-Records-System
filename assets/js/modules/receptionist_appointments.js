@@ -1,0 +1,445 @@
+// assets/js/modules/receptionist_appointments.js
+// Front-desk booking: create patient appointments with optional triage vital signs
+// ITE 387 Lessons applied: 03 APIs and Database Operations/header_detail_forms (appointment header + vital signs detail saved together) & 02 DOM and UI/dom_create_and_remove_elements (Create -> Configure -> Listen -> Append rows)
+
+import api from '../api.js?v=7';
+import { create, escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=22';
+
+export default {
+    state: {
+        appointments: [],
+        patients: [],
+        doctors: [],
+        search: '',
+        status: ''
+    },
+
+    async init(container) {
+        this.container = container;
+        this.renderStructure();
+        this.attachEventListeners();
+        await Promise.all([this.loadOptions(), this.loadData()]);
+    },
+
+    renderStructure() {
+        this.container.innerHTML = `
+            <div class="card">
+                <div class="card-header">
+                    <div>
+                        <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text);">Appointments</h2>
+                        <p class="text-muted" style="font-size: 0.85rem;">Book patient visits and record triage vital signs at the front desk.</p>
+                    </div>
+                    <button id="btn-new-appointment" class="btn btn-primary">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        New Appointment
+                    </button>
+                </div>
+
+                <div class="toolbar">
+                    <div class="toolbar-filters">
+                        <div class="search-input-wrapper">
+                            <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="appointments-search" class="form-control" placeholder="Search patient, doctor, complaint...">
+                        </div>
+
+                        <select id="appointments-status-filter" class="form-control" style="width: auto; min-width: 160px;">
+                            <option value="">All Statuses</option>
+                            <option value="scheduled">Scheduled</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="no_show">No Show</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-secondary" id="btn-refresh-appointments">Refresh</button>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Date &amp; Time</th>
+                                <th>Patient</th>
+                                <th>Doctor</th>
+                                <th>Chief Complaint</th>
+                                <th>Triage Vitals</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="appointments-tbody">
+                            <tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading appointments...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="modal-backdrop" id="appointment-form-modal">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-header">
+                        <h3 class="modal-title">New Patient Appointment</h3>
+                        <button type="button" class="btn-close" data-close-modal>&times;</button>
+                    </div>
+                    <form id="appointment-form" novalidate>
+                        <div class="modal-body">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label for="appt-patient">Patient <span class="required-star">*</span></label>
+                                    <select id="appt-patient" class="form-control">
+                                        <option value="" disabled selected>Select Patient</option>
+                                    </select>
+                                    <div class="invalid-feedback" id="appt-patient-error"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="appt-doctor">Doctor <span class="required-star">*</span></label>
+                                    <select id="appt-doctor" class="form-control">
+                                        <option value="" disabled selected>Select Doctor</option>
+                                    </select>
+                                    <div class="invalid-feedback" id="appt-doctor-error"></div>
+                                </div>
+                            </div>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label for="appt-date">Appointment Date <span class="required-star">*</span></label>
+                                    <input type="date" id="appt-date" class="form-control">
+                                    <div class="invalid-feedback" id="appt-date-error"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="appt-time">Appointment Time <span class="required-star">*</span></label>
+                                    <input type="time" id="appt-time" class="form-control">
+                                    <div class="invalid-feedback" id="appt-time-error"></div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="appt-complaint">Chief Complaint</label>
+                                <textarea id="appt-complaint" class="form-control" rows="2" placeholder="Reason for the visit (e.g. persistent cough and fever)"></textarea>
+                            </div>
+
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <label style="display: block; margin-bottom: 0.5rem;">Triage Vital Signs <span class="text-muted" style="font-weight: normal; font-size: 0.85em;">(Optional)</span></label>
+                                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label for="appt-bp" style="font-size: 0.85rem;">Blood Pressure</label>
+                                        <input type="text" id="appt-bp" class="form-control" maxlength="20" placeholder="e.g. 120/80">
+                                        <div class="invalid-feedback" id="appt-bp-error"></div>
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label for="appt-temp" style="font-size: 0.85rem;">Temperature (&deg;C)</label>
+                                        <input type="number" id="appt-temp" class="form-control" step="0.1" min="30" max="45" placeholder="e.g. 36.8">
+                                        <div class="invalid-feedback" id="appt-temp-error"></div>
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 0;">
+                                        <label for="appt-o2" style="font-size: 0.85rem;">Oxygen Saturation (%)</label>
+                                        <input type="number" id="appt-o2" class="form-control" step="1" min="0" max="100" placeholder="e.g. 98">
+                                        <div class="invalid-feedback" id="appt-o2-error"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
+                            <button type="submit" id="btn-save-appointment" class="btn btn-primary">Schedule Appointment</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        `;
+    },
+
+    attachEventListeners() {
+        const searchInput = this.container.querySelector('#appointments-search');
+        searchInput.addEventListener('input', (e) => {
+            this.state.search = e.target.value.trim().toLowerCase();
+            this.renderTable();
+        });
+
+        this.container.querySelector('#appointments-status-filter').addEventListener('change', (e) => {
+            this.state.status = e.target.value;
+            this.renderTable();
+        });
+
+        this.container.querySelector('#btn-new-appointment').addEventListener('click', () => {
+            this.openBookModal();
+        });
+
+        this.container.querySelector('#btn-refresh-appointments').addEventListener('click', () => {
+            this.loadData();
+        });
+
+        this.container.querySelector('#appointment-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            this.saveAppointment();
+        });
+    },
+
+    async loadOptions() {
+        try {
+            const [pRes, dRes] = await Promise.all([
+                api.get('api/appointment_controller.php', { meta: 'patients' }),
+                api.get('api/appointment_controller.php', { meta: 'doctors' })
+            ]);
+
+            if (pRes.success) {
+                this.state.patients = (pRes.data && pRes.data.items) ? pRes.data.items : [];
+            }
+            if (dRes.success) {
+                this.state.doctors = (dRes.data && dRes.data.items) ? dRes.data.items : [];
+            }
+
+            this.renderSelect(this.container.querySelector('#appt-patient'), this.state.patients, (p) => {
+                const name = `${p.last_name}, ${p.first_name}${p.middle_initial ? ' ' + p.middle_initial + '.' : ''}`;
+                return { value: p.patient_id, label: `${name} (PAT-${String(p.patient_id).padStart(4, '0')})` };
+            }, 'Select Patient');
+
+            this.renderSelect(this.container.querySelector('#appt-doctor'), this.state.doctors, (d) => {
+                const name = `${d.last_name}, ${d.first_name}${d.middle_initial ? ' ' + d.middle_initial + '.' : ''}`;
+                const specialty = d.specialty_names ? ` — ${d.specialty_names}` : '';
+                return { value: d.doctor_id, label: `Dr. ${name}${specialty}` };
+            }, 'Select Doctor');
+        } catch (err) {
+            showToast(err.response?.data?.message || 'Failed to load patients and doctors.', 'error');
+        }
+    },
+
+    renderSelect(select, items, toOption, placeholder) {
+        if (!select) return;
+        const previous = select.value;
+        select.innerHTML = `<option value="" disabled selected>${escapeHtml(placeholder)}</option>`;
+        items.forEach(item => {
+            const opt = toOption(item);
+            const option = create('option');
+            option.value = opt.value;
+            option.textContent = opt.label;
+            select.appendChild(option);
+        });
+        if (previous) {
+            select.value = previous;
+        }
+    },
+
+    async loadData() {
+        const tbody = this.container.querySelector('#appointments-tbody');
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading appointments...</td></tr>';
+
+        try {
+            const res = await api.get('api/appointment_controller.php');
+            if (res.success) {
+                this.state.appointments = (res.data && res.data.items) ? res.data.items : [];
+                this.renderTable();
+            } else {
+                throw new Error(res.message || 'Failed to load appointments.');
+            }
+        } catch (err) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger" style="padding: 2rem;">${escapeHtml(err.response?.data?.message || err.message || 'Failed to load appointments.')}</td></tr>`;
+        }
+    },
+
+    getFilteredAppointments() {
+        return this.state.appointments.filter(appt => {
+            const statusOk = !this.state.status || appt.status === this.state.status;
+            if (!statusOk) return false;
+
+            if (!this.state.search) return true;
+
+            const haystack = [
+                appt.patient_first,
+                appt.patient_last,
+                appt.doctor_first,
+                appt.doctor_last,
+                appt.chief_complaint,
+                appt.status
+            ].filter(Boolean).join(' ').toLowerCase();
+
+            return haystack.includes(this.state.search);
+        });
+    },
+
+    renderTable() {
+        const tbody = this.container.querySelector('#appointments-tbody');
+        const items = this.getFilteredAppointments();
+        tbody.innerHTML = '';
+
+        if (items.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6">
+                        <div class="empty-state">
+                            <strong>No appointments found</strong>
+                            <p>Book a new appointment or adjust your search and filters.</p>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        const frag = document.createDocumentFragment();
+
+        items.forEach(appt => {
+            const tr = create('tr');
+
+            const d = new Date(appt.appointment_date + 'T' + appt.appointment_time);
+            const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+
+            const statusColor = this.getStatusColor(appt.status);
+            const vitals = this.formatVitals(appt);
+
+            tr.innerHTML = `
+                <td>
+                    <div style="font-weight: 500;">${escapeHtml(dateStr)}</div>
+                    <div class="text-muted" style="font-size: 0.85rem;">${escapeHtml(timeStr)}</div>
+                </td>
+                <td>
+                    <div style="font-weight: 500;">${escapeHtml(appt.patient_last + ', ' + appt.patient_first)}</div>
+                    <div class="text-muted" style="font-size: 0.85rem;">ID: PAT-${String(appt.patient_id).padStart(4, '0')}</div>
+                </td>
+                <td>
+                    <div style="font-weight: 500;">Dr. ${escapeHtml(appt.doctor_last + ', ' + appt.doctor_first)}</div>
+                </td>
+                <td>
+                    <span style="display: block; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(appt.chief_complaint || 'None')}">
+                        ${escapeHtml(appt.chief_complaint || 'None')}
+                    </span>
+                </td>
+                <td style="font-size: 0.85rem;">${vitals}</td>
+                <td>
+                    <span class="badge" style="background-color: ${statusColor.bg}; color: ${statusColor.text};">
+                        ${escapeHtml((appt.status || '').toUpperCase())}
+                    </span>
+                </td>
+            `;
+
+            frag.appendChild(tr);
+        });
+
+        tbody.appendChild(frag);
+    },
+
+    formatVitals(appt) {
+        const parts = [];
+        if (appt.blood_pressure) {
+            parts.push(`BP ${escapeHtml(appt.blood_pressure)}`);
+        }
+        if (appt.temperature !== null && appt.temperature !== undefined && appt.temperature !== '') {
+            parts.push(`${Number(appt.temperature).toFixed(1)} &deg;C`);
+        }
+        if (appt.oxygen_saturation !== null && appt.oxygen_saturation !== undefined && appt.oxygen_saturation !== '') {
+            parts.push(`SpO2 ${Number(appt.oxygen_saturation).toFixed(0)}%`);
+        }
+        return parts.length ? parts.join(' &middot; ') : '<span class="text-muted">Not recorded</span>';
+    },
+
+    getStatusColor(status) {
+        switch (status) {
+            case 'scheduled': return { bg: '#eef2ff', text: '#4f46e5' };
+            case 'confirmed': return { bg: '#dcfce7', text: '#16a34a' };
+            case 'completed': return { bg: '#f1f5f9', text: '#475569' };
+            case 'cancelled': return { bg: '#fee2e2', text: '#ef4444' };
+            case 'no_show':   return { bg: '#ffedd5', text: '#ea580c' };
+            default:          return { bg: '#f3f4f6', text: '#374151' };
+        }
+    },
+
+    openBookModal() {
+        this.clearFormErrors();
+        const form = this.container.querySelector('#appointment-form');
+        form.reset();
+
+        const dateInput = this.container.querySelector('#appt-date');
+        const now = new Date();
+        const localToday = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
+        dateInput.min = localToday.toISOString().slice(0, 10);
+
+        if (this.state.patients.length === 0 || this.state.doctors.length === 0) {
+            this.loadOptions();
+        }
+
+        openModal('appointment-form-modal');
+    },
+
+    clearFormErrors() {
+        this.container.querySelectorAll('#appointment-form .invalid-feedback').forEach(el => {
+            el.textContent = '';
+        });
+        this.container.querySelectorAll('#appointment-form .form-control').forEach(el => {
+            el.classList.remove('is-invalid');
+        });
+    },
+
+    showFormErrors(errors) {
+        const fieldMap = {
+            patient_id: ['#appt-patient', '#appt-patient-error'],
+            doctor_id: ['#appt-doctor', '#appt-doctor-error'],
+            appointment_date: ['#appt-date', '#appt-date-error'],
+            appointment_time: ['#appt-time', '#appt-time-error'],
+            blood_pressure: ['#appt-bp', '#appt-bp-error'],
+            temperature: ['#appt-temp', '#appt-temp-error'],
+            oxygen_saturation: ['#appt-o2', '#appt-o2-error']
+        };
+
+        Object.entries(errors || {}).forEach(([key, message]) => {
+            const entry = fieldMap[key];
+            if (!entry) return;
+            const input = this.container.querySelector(entry[0]);
+            const feedback = this.container.querySelector(entry[1]);
+            if (input) input.classList.add('is-invalid');
+            if (feedback) feedback.textContent = message;
+        });
+    },
+
+    validateForm(payload) {
+        const errors = {};
+        if (!payload.patient_id) errors.patient_id = 'Please choose a patient.';
+        if (!payload.doctor_id) errors.doctor_id = 'Please choose a doctor.';
+        if (!payload.appointment_date) errors.appointment_date = 'Please pick a date.';
+        if (!payload.appointment_time) errors.appointment_time = 'Please pick a time.';
+
+        this.clearFormErrors();
+        if (Object.keys(errors).length > 0) {
+            this.showFormErrors(errors);
+            return false;
+        }
+        return true;
+    },
+
+    async saveAppointment() {
+        const payload = {
+            patient_id: parseInt(this.container.querySelector('#appt-patient').value || '0', 10),
+            doctor_id: parseInt(this.container.querySelector('#appt-doctor').value || '0', 10),
+            appointment_date: this.container.querySelector('#appt-date').value,
+            appointment_time: this.container.querySelector('#appt-time').value,
+            chief_complaint: this.container.querySelector('#appt-complaint').value.trim(),
+            blood_pressure: this.container.querySelector('#appt-bp').value.trim(),
+            temperature: this.container.querySelector('#appt-temp').value.trim(),
+            oxygen_saturation: this.container.querySelector('#appt-o2').value.trim()
+        };
+
+        if (!this.validateForm(payload)) return;
+
+        const saveBtn = this.container.querySelector('#btn-save-appointment');
+        saveBtn.disabled = true;
+
+        try {
+            const res = await api.post('api/appointment_controller.php', payload);
+            if (res.success) {
+                showToast('Appointment scheduled successfully.', 'success');
+                this.container.querySelector('#appointment-form').reset();
+                this.clearFormErrors();
+                closeModal('appointment-form-modal');
+                await this.loadData();
+            } else {
+                this.showFormErrors(res.errors || {});
+                showToast(res.message || 'Failed to schedule appointment.', 'error');
+            }
+        } catch (err) {
+            const data = err.response?.data || {};
+            this.showFormErrors(data.errors || {});
+            showToast(data.message || 'Failed to schedule appointment.', 'error');
+        } finally {
+            saveBtn.disabled = false;
+        }
+    }
+};

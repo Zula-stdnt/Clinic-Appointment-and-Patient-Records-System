@@ -24,7 +24,7 @@ It is built with **PHP** (for server-side logic), **MySQL** via **PDO** (a secur
 - **Role-Based Access Control (RBAC — permissions based on a staff member's job role):**
   - **Administrator:** Full control over the hospital's core records (**Master Files**: Users, Patients, Doctors, Services, Specialties, and Discounts) and the **Central Archive**.
   - **Doctor:** A dedicated clinical workspace with daily appointment counts, an appointment queue, a consultation charting screen (clinical notes, diagnoses, prescriptions, and lab requests), patient medical histories, and personal profile settings.
-  - **Receptionist:** A dedicated front-desk portal protected by login session checks.
+  - **Receptionist:** A dedicated front-desk portal for booking patient appointments, recording optional triage vital signs (blood pressure, temperature, oxygen level), and monitoring the visit queue.
 - **Master Files Management (Administrator):**
   - **Users:** Create, view, edit, and archive staff login accounts. Creating a Doctor user automatically creates a matching clinical profile.
   - **Patients:** Store patient personal details, birth dates, phone numbers, and home addresses.
@@ -183,6 +183,7 @@ Here is how the files and folders are organized inside the project:
 │       ├── api.js           # Central helper that sends requests to api/ and attaches security tokens
 │       ├── main.js          # Administrator dashboard navigation router
 │       ├── doctor_main.js   # Doctor portal navigation router
+│       ├── receptionist_main.js # Receptionist portal navigation router
 │       ├── session-guard.js # Checks that a user is logged in with the right role before showing a page
 │       ├── ui.js            # Shared screen helpers (pop-up modals, toast alerts, confirm boxes, formatting)
 │       └── modules/         # Individual screen modules for the Admin and Doctor portals

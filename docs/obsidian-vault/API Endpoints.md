@@ -35,6 +35,8 @@ These endpoints power the Doctor clinical workspace and enforce strict privacy s
 | Controller | Allowed Roles | Method & Query | Purpose |
 | --- | --- | --- | --- |
 | `appointment_controller.php` | `Administrator`, `Receptionist`, `Doctor` | `GET` / `GET ?id` | Lists appointments (`data.items`) or fetches one appointment (`data.item`). When called by a `Doctor`, it automatically filters rows to that doctor's `doctor_id`. |
+| `appointment_controller.php` | `Administrator`, `Receptionist`, `Doctor` | `POST` | Books a patient appointment (`status = 'scheduled'`, `created_by` = logged-in user) and, when triage values are included, saves a linked `vital_signs` row in the same all-or-nothing transaction. Rejects a duplicate active booking for the same doctor, date, and time with `409`. |
+| `appointment_controller.php` | `Administrator`, `Receptionist`, `Doctor` | `GET ?meta=patients` / `GET ?meta=doctors` | Dropdown options for the booking form: active patients and active doctors (with their specialty names). |
 | `consultation_controller.php` | `Doctor`, `Administrator` | `GET ?appointment_id` | Loads patient info, triage vitals (`vital_signs`), and any saved consultation (`consultation`, `diagnosis`, `prescriptions`, `lab_requests`). Blocks access (`403`) if the appointment belongs to another doctor. |
 | `consultation_controller.php` | `Doctor`, `Administrator` | `POST` | Saves or updates a consultation inside one all-or-nothing database transaction (`consultation`, `diagnosis`, `prescriptions`, `lab_requests`) and marks `appointments.status = 'completed'`. |
 | `medication_controller.php` | `Administrator`, `Doctor` | `GET` / `GET ?id` | Returns active medicines (`deleted_at IS NULL`) for the prescription dropdown (`data.items`). |
@@ -50,6 +52,8 @@ These helper requests return dropdown options for forms:
 | `user_controller.php?meta=roles` | Available staff roles (Doctor and Receptionist) for user account forms |
 | `user_controller.php?meta=specialties` | Active clinical specialties for user account forms |
 | `doctor_controller.php?meta=specialties` | Active clinical specialties for doctor forms |
+| `appointment_controller.php?meta=patients` | Active patients (with `PAT-XXXX` friendly IDs) for the booking form |
+| `appointment_controller.php?meta=doctors` | Active doctors (with their specialty names) for the booking form |
 
 ## Input validation rules
 To keep database records clean and consistent, create and update endpoints enforce these rules:
@@ -76,6 +80,7 @@ For backward compatibility, a single `specialty_id` value is still accepted. Eve
 
 ## Access rules
 - **Administrator Endpoints:** Every master-file endpoint checks `require_login()` and `require_role('Administrator')`.
+- **Receptionist Endpoints:** Front-desk endpoints (`appointment_controller.php`) check `require_login()` and `require_role(['Administrator', 'Receptionist', 'Doctor'])`. A `Doctor` only sees their own appointments; a `Receptionist` sees the whole booking queue.
 - **Doctor Portal Endpoints:** Check `require_login()` and `require_role(['Doctor'])` (or `['Doctor', 'Administrator']`), and also verify that the record belongs to the logged-in doctor's `doctor_id`.
 - **CSRF Protection on Changes:** Every request that creates, edits, or deletes data (`POST`, `PUT`, `DELETE`, `PATCH`) must include a valid `X-CSRF-Token` security header.
 - **Foreign Key Protection:** If a record is linked to existing hospital activity (such as a doctor who has scheduled appointments), permanent deletion is blocked and the server responds with `409 Conflict`.
