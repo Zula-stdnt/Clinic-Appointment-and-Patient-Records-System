@@ -15,4 +15,4 @@ Allows Administrators to set up and manage hospital discount programs (such as S
 - **View & Archive modals:** Read-only discount details pop-up and a confirmation box for moving a discount program to the Archive.
 
 ## Business use
-Active discount rows in the `discounts` table connect to patient invoices (`billing.discount_id`) to calculate percentage deductions when the billing screen is used — see [[Roadmap]].
+Active discount rows in the `discounts` table can connect to patient records (`billing.discount_id`) to calculate percentage deductions (although billing workflows are not actively provided in the current UI).

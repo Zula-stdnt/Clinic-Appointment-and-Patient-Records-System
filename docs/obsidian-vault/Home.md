@@ -2,9 +2,9 @@
 tags: [moc]
 ---
 
-# Hospital Billing & Patient Information System
+# Hospital Patient Information System
 
-Welcome to the documentation hub for the **ITE 387 Hospital Billing & Patient Information System**. The application is built with **PHP 8** (server-side logic), **MySQL / MariaDB** connected through **PDO** (secure database queries), and a **vanilla JavaScript Single-Page Application (SPA)** front end (which switches screens smoothly in the browser without full page reloads).
+Welcome to the documentation hub for the **ITE 387 Hospital Patient Information System**. The application is built with **PHP 8** (server-side logic), **MySQL / MariaDB** connected through **PDO** (secure database queries), and a **vanilla JavaScript Single-Page Application (SPA)** front end (which switches screens smoothly in the browser without full page reloads).
 
 ## Core notes
 - [[New Developer Manual]] — Onboarding checklist for new team members setting up the project.

@@ -1,6 +1,6 @@
 # Development Walkthrough
 
-This document records the major features, user-interface improvements, bug fixes, and code quality updates completed across the **Hospital Billing & Patient Information System**, written in plain English so both technical and non-technical readers can follow how the system evolved.
+This document records the major features, user-interface improvements, bug fixes, and code quality updates completed across the **Hospital Patient Information System**, written in plain English so both technical and non-technical readers can follow how the system evolved.
 
 ---
 
@@ -140,3 +140,11 @@ This document records the major features, user-interface improvements, bug fixes
 ## 15. Database Diagram Sync (Patient Records Requirements)
 - **ERD Accuracy (`erd/hospital_erd2.drawio`):** Added the missing `patients.middle_initial` column and `medications.deleted_at` column, and corrected two relationship cardinalities to match the real constraints: `appointments → consultation` and `consultation → billing` are now **zero-or-one** (a visit may not have a consultation yet, and each consultation has at most one invoice).
 - **Requirements coverage:** Verified the diagram covers the full **Patient Records System** flow — Appointment → Consultation → Diagnosis → (generated) Medical History — where medical history is assembled from the accumulated consultation/diagnosis records rather than stored in a separate table.
+
+## 16. Product & Hospital Branding Update
+- **Updated System & Hospital Names:**
+  - Updated the system name to **Hospital Patient Information System** across page titles (`index.html`, `login.html`, `admin_dashboard.html`, `doctor_dashboard.html`, `receptionist_dashboard.html`), the `README.md`, and documentation to reflect the application's focus on clinical patient management and appointments rather than billing or cashiering.
+  - Updated the hospital brand name to **Healing for Everyone Hospital**, updating sidebar brand headers to **Healing for Everyone** across the Admin, Doctor, and Receptionist portals.
+- **Scope & Documentation Alignment:**
+  - Removed outdated references to billing modules and invoice printing from the project roadmap (`docs/obsidian-vault/Roadmap.md`).
+  - Clarified in `docs/obsidian-vault/Modules/Manage Discounts.md` and `docs/obsidian-vault/Modules/Manage Services.md` that while the underlying database schema retains historical `billing` and `invoice_items` tables for relational integrity, billing screens and money-handling workflows are not part of the active user interface.

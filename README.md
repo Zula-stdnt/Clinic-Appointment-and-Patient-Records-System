@@ -1,6 +1,6 @@
-# Hospital Billing & Patient Information System
+# Hospital Patient Information System
 
-A web application built for hospitals and clinics to manage patient records, doctor profiles, medical consultations, hospital services, clinical specialties, billing discounts, staff accounts, and archived records in one place.
+A web application built for hospitals and clinics to manage patient records, doctor profiles, medical consultations, hospital services, clinical specialties, discounts, staff accounts, and archived records in one place.
 
 It is built with **PHP** (for server-side logic), **MySQL** via **PDO** (a secure database connector), **vanilla JavaScript** organized as a **Single-Page Application (SPA)** (a web app that switches screens smoothly without reloading the whole browser page), and custom **CSS**.
 

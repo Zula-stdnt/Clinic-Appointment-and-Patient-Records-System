@@ -9,6 +9,12 @@ A plain-English summary of major updates, new modules, and bug fixes across the 
 > [!info] Looking for the technical trail?
 > This note summarizes **features**. For a per-commit record (commit IDs, exact files, verification steps), see [[Development Log]].
 
+## Recent — Product & Hospital Branding Update
+### Branding & Scope Alignment
+- Renamed the product to **Hospital Patient Information System** across page titles (`index.html`, `login.html`, `admin_dashboard.html`, `doctor_dashboard.html`, `receptionist_dashboard.html`), the `README.md`, and project documentation to reflect its focus on clinical records and appointments rather than billing or cashiering.
+- Updated the hospital brand name to **Healing for Everyone Hospital**, displaying **Healing for Everyone** in the sidebar brand header of the Admin, Doctor, and Receptionist portals.
+- Removed outdated future billing and invoice printing milestones from the project [[Roadmap]], and clarified in [[Manage Discounts]] and [[Manage Services]] that money-handling workflows are no longer part of the active user interface.
+
 ## Recent — Receptionist Appointment Booking & Triage
 - Replaced the placeholder `receptionist_dashboard.html` with a full **SPA shell** (`assets/js/receptionist_main.js`) guarded by `requireSession(['Receptionist'])`, with an off-canvas sidebar, top bar, and hash routing.
 - Added [[Receptionist Appointments]] (`assets/js/modules/receptionist_appointments.js`): book a patient appointment by choosing an active patient and doctor, a date/time, and a chief complaint, with optional triage **vital signs** (blood pressure, temperature, oxygen saturation).
@@ -18,7 +24,7 @@ A plain-English summary of major updates, new modules, and bug fixes across the 
   - Triage vitals now appear in the appointment list (`LEFT JOIN vital_signs`), so the doctor portal shows them in [[Doctor Consultation]] and [[Doctor Patient Records]].
 - Field-level `422` validation errors (patient, doctor, date, time, vitals ranges) are displayed under the matching form inputs.
 
-## Recent — Doctor Dashboard Portal & Clinical Workflow Implementation
+## Doctor Dashboard Portal & Clinical Workflow Implementation
 ### Doctor SPA Shell & Router
 - Replaced the placeholder `doctor_dashboard.html` page with a full, mobile-friendly **Single-Page Application (SPA)** workspace and dedicated navigation router (`assets/js/doctor_main.js`) that supports parameterized links (`#doctor_consultation/{id}`) and checks doctor login permissions via `requireSession(['Doctor'])`.
 - Built [[Doctor Dashboard]] (`assets/js/modules/doctor_overview.js`) showing live daily summary counters (**Total Appointments Today** and **Pending Consultations**).
@@ -80,4 +86,4 @@ A plain-English summary of major updates, new modules, and bug fixes across the 
 - Raised browser cache-busting version numbers to `?v=7`.
 
 ## `775979f` — test
-## `0904117` — Initial commit: Hospital Billing and Patient Information System with Master Files, RBAC, and Centralized Archive
+## `0904117` — Initial commit: Hospital Patient Information System with Master Files, RBAC, and Centralized Archive

@@ -1,6 +1,6 @@
 <?php
 // tests/verify_acceptance.php
-// Automated Verification Test Suite for Hospital Billing & Patient Information System
+// Automated Verification Test Suite for Hospital Patient Information System
 // Directly verifies every requirement in Section 11 of AGENT.md
 
 $baseUrl = 'http://localhost/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System';

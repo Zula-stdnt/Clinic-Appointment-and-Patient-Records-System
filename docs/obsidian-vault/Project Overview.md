@@ -4,7 +4,7 @@ tags: [overview]
 
 # Project Overview
 
-The **Hospital Billing & Patient Information System** is a web application for hospital administration and clinical care. It helps hospital staff manage patient records, doctor profiles, medical consultations, hospital services, clinical specialties, billing discounts, user accounts, and archived records in one central system.
+The **Hospital Patient Information System** is a web application for hospital administration and clinical care. It helps hospital staff manage patient records, doctor profiles, medical consultations, hospital services, clinical specialties, discounts, user accounts, and archived records in one central system.
 
 ## Roles
 The system separates screens and permissions by staff role (**Role-Based Access Control**):

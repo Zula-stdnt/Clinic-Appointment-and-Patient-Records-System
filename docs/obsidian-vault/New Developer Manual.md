@@ -4,7 +4,7 @@ tags: [setup, onboarding]
 
 # New Developer Manual
 
-One-page onboarding for joining the Hospital Billing project. Details live in [[Setup (WAMP or XAMPP)]], [[Team Sync]], and [[Database Migrations]].
+One-page onboarding for joining the Hospital Patient Information System project. Details live in [[Setup (WAMP or XAMPP)]], [[Team Sync]], and [[Database Migrations]].
 
 ## 0. Before you start
 - Ask the owner (`Zula-stdnt`) to add your GitHub account as a **collaborator** on:

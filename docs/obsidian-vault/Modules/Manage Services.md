@@ -15,4 +15,4 @@ Allows Administrators to maintain the hospital's catalog of billable medical ser
 - **View & Archive modals:** Read-only service details pop-up and a confirmation box for moving a service to the Archive.
 
 ## Business use
-Active rows in the `services` table provide the official price list for patient billing and itemized invoice charges (`billing` and `invoice_items`). Keeping prices accurate here ensures future invoices calculate properly. See [[Database Schema]].
+Active rows in the `services` table provide the official catalog of medical services. (The underlying database supports price lists and itemized charges through the `billing` and `invoice_items` tables, though these features are no longer active in the user interface). See [[Database Schema]].
