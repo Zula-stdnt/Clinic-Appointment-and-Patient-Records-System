@@ -51,9 +51,12 @@ Web root and MySQL client differ per stack — adjust commands to yours:
 
 1. Start **Apache** and **MySQL**.
 2. Open `http://localhost/phpmyadmin` → create database `hospital_db`, collation `utf8mb4_unicode_ci`.
-3. Select it → **Import** → choose `migrations/hospital_db.sql` → **Go**.
-4. Apply any newer migrations listed in [[Database Migrations]].
-5. Open the app (`http://localhost/<folder>/login.html`) and sign in with a seeded account (see `README.md`).
+3. Select it → **Import** → choose `setup/schema.sql` → **Go**.
+4. Repeat for `setup/seeds.sql`.
+5. From a terminal, run `php setup/bootstrap_admin.php` and follow the interactive prompts.
+
+Note: Fresh installs must **not** replay historical migrations (like 001-006) from the `migrations/` folder. The `setup/schema.sql` file already contains all active structures.
+6. Open the app (`http://localhost/<folder>/login.html`) and sign in with your new admin account.
 
 Credentials are in `config/db_connect.php` (defaults on both: `root`, empty password, port 3306).
 
@@ -76,7 +79,7 @@ git push                               # 4. push to upstream/zur-test
 
 ## 5. After every sync
 
-Check `migrations/` for new/changed SQL and apply it to your local `hospital_db` before running the app — full checklist in [[Database Migrations]].
+Inspect `migrations/` for new SQL. **Do not run destructive scripts automatically.** Verify baseline requirements, take a backup, and get approval before applying major changes like migration 006 to an existing database — full checklist in [[Database Migrations]].
 
 ## Onboarding checklist
 
@@ -85,8 +88,8 @@ Check `migrations/` for new/changed SQL and apply it to your local `hospital_db`
 - [ ] On branch `zur-test`, tracking `upstream/zur-test`
 - [ ] `pull.rebase` + `rebase.autoStash` configured
 - [ ] `install-hooks.ps1` run (pre-push hook active)
-- [ ] `hospital_db` created, dump imported, latest migrations applied
-- [ ] Login works with a seeded account
+- [ ] `hospital_db` created, schema and seeds imported (legacy migrations skipped)
+- [ ] Login works with the bootstrapped admin account
 - [ ] Test push passed the pre-push hook
 
 ## Troubleshooting

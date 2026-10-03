@@ -141,20 +141,20 @@ run_test("1.3: Soft-deleted user cannot log in", function() use ($baseUrl) {
 });
 
 run_test("1.4: User with unauthorized role cannot log in", function() use ($baseUrl, $cookieUnauthorized) {
-    // Insert temporary unauthorized user with non-permitted role (Cashier)
+    // Insert temporary unauthorized user with non-permitted role (Guest)
     $pdo = new PDO("mysql:host=127.0.0.1;dbname=hospital_db;charset=utf8mb4", "root", "");
-    $pdo->exec("INSERT INTO roles (role_id, role_name) VALUES (999, 'Cashier') ON DUPLICATE KEY UPDATE role_name = 'Cashier'");
-    $hash = password_hash('CashierPass123!', PASSWORD_DEFAULT);
-    $pdo->exec("INSERT INTO users (user_id, role_id, first_name, last_name, gender, username, password_hash) VALUES (999, 999, 'Test', 'Cashier', 'Other', 'cashier.test', '$hash') ON DUPLICATE KEY UPDATE password_hash = '$hash'");
+    $pdo->exec("INSERT INTO roles (role_id, role_name) VALUES (998, 'Guest') ON DUPLICATE KEY UPDATE role_name = 'Guest'");
+    $hash = password_hash('GuestPass123!', PASSWORD_DEFAULT);
+    $pdo->exec("INSERT INTO users (user_id, role_id, first_name, last_name, gender, username, password_hash) VALUES (998, 998, 'Test', 'Guest', 'Other', 'guest.test', '$hash') ON DUPLICATE KEY UPDATE password_hash = '$hash'");
 
     $res = http_request('POST', "$baseUrl/api/auth_controller.php?action=login", [
-        'username' => 'cashier.test',
-        'password' => 'CashierPass123!'
+        'username' => 'guest.test',
+        'password' => 'GuestPass123!'
     ], $cookieUnauthorized);
 
     // Clean up
-    $pdo->exec("DELETE FROM users WHERE user_id = 999");
-    $pdo->exec("DELETE FROM roles WHERE role_id = 999");
+    $pdo->exec("DELETE FROM users WHERE user_id = 998");
+    $pdo->exec("DELETE FROM roles WHERE role_id = 998");
 
     if ($res['status'] !== 403) {
         return "Expected status 403, got {$res['status']}";
@@ -208,8 +208,7 @@ run_test("1.7: API endpoint returns 403 when logged in as non-Administrator", fu
 run_test("1.8: State-changing request without valid CSRF token is rejected with 403", function() use ($baseUrl, $cookieAdmin) {
     // POST request with valid admin session but missing CSRF token
     $res = http_request('POST', "$baseUrl/api/service_controller.php", [
-        'service_name' => 'Unauthorized Service',
-        'price' => 100
+        'service_name' => 'Unauthorized Service'
     ], $cookieAdmin, []); // No X-CSRF-Token header
 
     if ($res['status'] !== 403) {
@@ -318,44 +317,82 @@ run_test("2.4: Stored passwords are hashes and new user can log in", function() 
 echo "\n--- Group 3: CRUD and Deletion Semantics ---\n";
 
 run_test("3.1: Soft-deleted record disappears from default list and can be restored", function() use ($baseUrl, $cookieAdmin, $adminCsrf) {
-    // 1. Create temporary service
-    $name = 'Temp Test Service ' . time();
-    $create = http_request('POST', "$baseUrl/api/service_controller.php", [
-        'service_name' => $name,
-        'price' => 250.00
+    // 1. Create temporary specialty
+    $name = 'Temp Test Specialty ' . time();
+    $create = http_request('POST', "$baseUrl/api/specialty_controller.php", [
+        'specialty_name' => $name
     ], $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
 
-    if ($create['status'] !== 201) return "Failed to create service: " . json_encode($create['json']);
-    $newId = $create['json']['data']['service_id'];
+    if ($create['status'] !== 201) return "Failed to create specialty: " . json_encode($create['json']);
+    $newId = $create['json']['data']['specialty_id'];
 
     // 2. Soft delete
-    $softDel = http_request('PUT', "$baseUrl/api/service_controller.php?action=soft_delete&id=$newId", null, $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
+    $softDel = http_request('PUT', "$baseUrl/api/specialty_controller.php?action=soft_delete&id=$newId", null, $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
     if ($softDel['status'] !== 200) return "Soft delete failed: " . json_encode($softDel['json']);
 
     // 3. Verify it disappeared from default active list
-    $activeList = http_request('GET', "$baseUrl/api/service_controller.php?status=active&search=" . urlencode($name), null, $cookieAdmin);
+    $activeList = http_request('GET', "$baseUrl/api/specialty_controller.php?status=active&search=" . urlencode($name), null, $cookieAdmin);
     if (!empty($activeList['json']['data']['items'])) {
         return "Soft-deleted record still appeared in active list";
     }
 
     // 4. Verify it appears in deleted list
-    $deletedList = http_request('GET', "$baseUrl/api/service_controller.php?status=deleted&search=" . urlencode($name), null, $cookieAdmin);
+    $deletedList = http_request('GET', "$baseUrl/api/specialty_controller.php?status=deleted&search=" . urlencode($name), null, $cookieAdmin);
     if (empty($deletedList['json']['data']['items'])) {
         return "Soft-deleted record did not appear in deleted list";
     }
 
     // 5. Restore
-    $restore = http_request('PUT', "$baseUrl/api/service_controller.php?action=restore&id=$newId", null, $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
+    $restore = http_request('PUT', "$baseUrl/api/specialty_controller.php?action=restore&id=$newId", null, $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
     if ($restore['status'] !== 200) return "Restore failed: " . json_encode($restore['json']);
 
     // 6. Verify back in active list
-    $activeAgain = http_request('GET', "$baseUrl/api/service_controller.php?status=active&search=" . urlencode($name), null, $cookieAdmin);
+    $activeAgain = http_request('GET', "$baseUrl/api/specialty_controller.php?status=active&search=" . urlencode($name), null, $cookieAdmin);
     if (empty($activeAgain['json']['data']['items'])) {
         return "Restored record did not return to active list";
     }
 
     // Clean up with hard delete
-    http_request('DELETE', "$baseUrl/api/service_controller.php?id=$newId", null, $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
+    http_request('DELETE', "$baseUrl/api/specialty_controller.php?id=$newId", null, $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
+
+    return true;
+});
+
+run_test("3.1.5: Soft-deleted service disappears from default list and can be restored", function() use ($baseUrl, $cookieAdmin, $adminCsrf) {
+    $name = 'Temp Test Service ' . time();
+    $create = http_request('POST', "$baseUrl/api/service_controller.php", [
+        'service_name' => $name
+    ], $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
+
+    if ($create['status'] !== 201) return "Failed to create service: " . json_encode($create['json']);
+    $newId = $create['json']['data']['service_id'];
+
+    $softDel = http_request('PUT', "$baseUrl/api/service_controller.php?action=soft_delete&id=$newId", null, $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
+    if ($softDel['status'] !== 200) return "Soft delete failed: " . json_encode($softDel['json']);
+
+    $activeList = http_request('GET', "$baseUrl/api/service_controller.php?status=active&search=" . urlencode($name), null, $cookieAdmin);
+    if (!empty($activeList['json']['data']['items'])) {
+        return "Soft-deleted record still appeared in active list";
+    }
+
+    $deletedList = http_request('GET', "$baseUrl/api/service_controller.php?status=deleted&search=" . urlencode($name), null, $cookieAdmin);
+    if (empty($deletedList['json']['data']['items'])) {
+        return "Soft-deleted record did not appear in deleted list";
+    }
+
+    $restore = http_request('PUT', "$baseUrl/api/service_controller.php?action=restore&id=$newId", null, $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
+    if ($restore['status'] !== 200) return "Restore failed: " . json_encode($restore['json']);
+
+    $activeAgain = http_request('GET', "$baseUrl/api/service_controller.php?status=active&search=" . urlencode($name), null, $cookieAdmin);
+    if (empty($activeAgain['json']['data']['items'])) {
+        return "Restored record did not return to active list";
+    }
+
+    $hardDel = http_request('DELETE', "$baseUrl/api/service_controller.php?id=$newId", null, $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
+    if ($hardDel['status'] !== 200) return "Hard delete failed: " . json_encode($hardDel['json']);
+
+    $checkDel = http_request('GET', "$baseUrl/api/service_controller.php?id=$newId", null, $cookieAdmin);
+    if ($checkDel['status'] !== 404) return "Record still exists after hard delete";
 
     return true;
 });
@@ -407,23 +444,6 @@ run_test("3.3: Hard-deleting an unreferenced record permanently removes it", fun
     return true;
 });
 
-run_test("3.4: Discount percentage of -1 or 101 is rejected by API with 422", function() use ($baseUrl, $cookieAdmin, $adminCsrf) {
-    $resNeg = http_request('POST', "$baseUrl/api/discount_controller.php", [
-        'discount_name' => 'Negative Discount ' . time(),
-        'percentage' => -1
-    ], $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
-
-    $resHigh = http_request('POST', "$baseUrl/api/discount_controller.php", [
-        'discount_name' => 'Excessive Discount ' . time(),
-        'percentage' => 101
-    ], $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
-
-    if ($resNeg['status'] !== 422 || $resHigh['status'] !== 422) {
-        return "Expected 422 for -1 and 101, got {$resNeg['status']} and {$resHigh['status']}";
-    }
-    return true;
-});
-
 // SECTION D: Security and quality
 echo "\n--- Group 4: Security and Quality ---\n";
 
@@ -466,21 +486,19 @@ run_test("4.2: SQL injection payload has no effect on queries", function() use (
 });
 
 run_test("4.3: No raw SQL errors ever leak to response", function() use ($baseUrl, $cookieAdmin, $adminCsrf) {
-    // Force a constraint failure by creating duplicate discount name
-    $created = http_request('POST', "$baseUrl/api/discount_controller.php", [
-        'discount_name' => 'Fixed Discount Name',
-        'percentage' => 10
+    // Force a constraint failure by creating duplicate specialty name
+    $created = http_request('POST', "$baseUrl/api/specialty_controller.php", [
+        'specialty_name' => 'Fixed Specialty Name'
     ], $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
 
-    $dup = http_request('POST', "$baseUrl/api/discount_controller.php", [
-        'discount_name' => 'Fixed Discount Name',
-        'percentage' => 10
+    $dup = http_request('POST', "$baseUrl/api/specialty_controller.php", [
+        'specialty_name' => 'Fixed Specialty Name'
     ], $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
 
-    // Clean up temporary discount
-    if (!empty($created['json']['data']['discount_id'])) {
-        $delId = (int)$created['json']['data']['discount_id'];
-        http_request('DELETE', "$baseUrl/api/discount_controller.php?id=$delId", null, $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
+    // Clean up temporary specialty
+    if (!empty($created['json']['data']['specialty_id'])) {
+        $delId = (int)$created['json']['data']['specialty_id'];
+        http_request('DELETE', "$baseUrl/api/specialty_controller.php?id=$delId", null, $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
     }
 
     $body = $dup['body'];

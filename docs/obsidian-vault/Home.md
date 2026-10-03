@@ -25,9 +25,8 @@ Welcome to the documentation hub for the **ITE 387 Hospital Patient Information 
 - [[Manage Users]] — Staff login accounts and role assignments.
 - [[Manage Patients]] — Patient personal profiles and contact records.
 - [[Manage Doctors]] — Doctor profiles and assigned medical specialties.
-- [[Manage Services]] — Billable hospital procedures, tests, and prices.
+- [[Manage Services]] — Administrative catalog of hospital services.
 - [[Manage Specialties]] — Medical departments and clinical specialties.
-- [[Manage Discounts]] — Discount programs and percentage rates.
 - [[Manage Archive]] — Central recycle bin to restore or permanently delete archived records.
 
 ## Doctor portal modules

@@ -1,6 +1,6 @@
 # Hospital Patient Information System
 
-A web application built for hospitals and clinics to manage patient records, doctor profiles, medical consultations, hospital services, clinical specialties, discounts, staff accounts, and archived records in one place.
+A web application built for hospitals and clinics to manage patient records, doctor profiles, medical consultations, hospital services, clinical specialties, staff accounts, and archived records in one place.
 
 It is built with **PHP** (for server-side logic), **MySQL** via **PDO** (a secure database connector), **vanilla JavaScript** organized as a **Single-Page Application (SPA)** (a web app that switches screens smoothly without reloading the whole browser page), and custom **CSS**.
 
@@ -22,16 +22,15 @@ It is built with **PHP** (for server-side logic), **MySQL** via **PDO** (a secur
 ## Features
 
 - **Role-Based Access Control (RBAC — permissions based on a staff member's job role):**
-  - **Administrator:** Full control over the hospital's core records (**Master Files**: Users, Patients, Doctors, Services, Specialties, and Discounts) and the **Central Archive**.
+  - **Administrator:** Full control over the hospital's core records (**Master Files**: Users, Patients, Doctors, Services, and Specialties) and the **Central Archive**.
   - **Doctor:** A dedicated clinical workspace with daily appointment counts, an appointment queue, a consultation charting screen (clinical notes, diagnoses, prescriptions, and lab requests), patient medical histories, and personal profile settings.
   - **Receptionist:** A dedicated front-desk portal for booking patient appointments, recording optional triage vital signs (blood pressure, temperature, oxygen level), and monitoring the visit queue.
 - **Master Files Management (Administrator):**
   - **Users:** Create, view, edit, and archive staff login accounts. Creating a Doctor user automatically creates a matching clinical profile.
   - **Patients:** Store patient personal details, birth dates, phone numbers, and home addresses.
   - **Doctors:** Manage doctor profiles, contact numbers, and one or more assigned medical specialties.
-  - **Services:** Maintain a price list of hospital procedures, consultations, lab tests, and imaging services.
+  - **Services:** Maintain a catalog of hospital procedures, consultations, lab tests, and imaging services.
   - **Specialties:** Organize medical departments and clinical specialties (such as Cardiology or Pediatrics).
-  - **Discounts:** Set up percentage discounts (such as Senior Citizen, PWD, or PhilHealth).
 - **Doctor Clinical Portal:**
   - **Dashboard / Today:** Shows live counters for today's total appointments and pending consultations.
   - **Appointments & Consultation:** Doctors can view their scheduled patients, check triage vital signs (blood pressure, temperature, and oxygen level), and record **SOAP notes** (structured clinical notes covering a patient's symptoms, exam findings, assessment, and care plan), **ICD-10 diagnoses** (standard international medical codes), medication prescriptions, and lab test orders in a single all-or-nothing save operation (**database transaction**).
@@ -87,30 +86,23 @@ git clone https://github.com/Zula-stdnt/Hospital-Billing-and-Patient-Information
 
 ## Database Setup
 
-### Option A: Using phpMyAdmin (Recommended for Beginners)
-1. Open the **XAMPP Control Panel** and click **Start** next to both **Apache** and **MySQL**.
-2. Open your web browser and go to: [http://localhost/phpmyadmin](http://localhost/phpmyadmin)
-3. In the left sidebar, click **New** and create a database named:
-   ```text
-   hospital_db
-   ```
-   *(Choose `utf8mb4_unicode_ci` or `utf8mb4_general_ci` from the character formatting dropdown, then click **Create**)*.
-4. Click `hospital_db` in the left sidebar to select it.
-5. Click the **Import** tab along the top menu.
-6. Click **Choose File** and select the SQL setup file inside the project folder:
-   ```text
-   migrations/hospital_db.sql
-   ```
-7. Scroll to the bottom and click **Import** (or **Go**). This automatically creates all tables and loads sample test accounts.
+### Step 1: Database Import
 
-### Option B: Using the MySQL Command Line
-If you prefer using a terminal or command prompt, run:
+You can use the XAMPP MySQL terminal to securely import the schema and required defaults.
 
 ```bash
-# Windows XAMPP path
-C:\xampp\mysql\bin\mysql.exe -u root -p -e "CREATE DATABASE IF NOT EXISTS hospital_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
-C:\xampp\mysql\bin\mysql.exe -u root -p hospital_db < "migrations/hospital_db.sql"
+# 1. Access the XAMPP Shell or your Windows terminal
+# 2. Create a completely new, empty database (do NOT import into an existing database)
+C:\xampp\mysql\bin\mysql.exe -u root -p -e "CREATE DATABASE hospital_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# 3. Import the exact structural baseline
+C:\xampp\mysql\bin\mysql.exe -u root -p hospital_db < setup\schema.sql
+
+# 4. Import the sanitized structural requirements (roles and specialties)
+C:\xampp\mysql\bin\mysql.exe -u root -p hospital_db < setup\seeds.sql
 ```
+
+> **Note:** This fresh-install procedure applies only to newly created databases. Do not import `schema.sql` into an existing working database. Legacy setups used `migrations/hospital_db.sql`, which is now structurally stale and must not be used.
 
 ---
 
@@ -146,15 +138,13 @@ $db_charset = 'utf8mb4';
 
 ## Default User Accounts
 
-The database comes pre-loaded with sample login accounts so you can test each staff role right away:
+The system no longer ships with hardcoded default credentials for security reasons. Instead, you must bootstrap your own Administrator account using the secure command-line tool.
 
-| Role | Username | Default Password |
-| :--- | :--- | :--- |
-| **Administrator** | `admin` | `AdminPass123!` |
-| **Doctor** | `dr.smith` | `DoctorPass123!` |
-| **Receptionist** | `recep.jane` | `RecepPass123!` |
-
-*(Passwords are case-sensitive.)*
+From your terminal or XAMPP Shell, run the script. It will securely prompt for your chosen username and a hidden password:
+```bash
+php setup/bootstrap_admin.php
+```
+*(You can use this account to log in and create other Doctor or Receptionist accounts from the Admin Dashboard).*
 
 ---
 
@@ -170,7 +160,6 @@ Here is how the files and folders are organized inside the project:
 │   ├── patient_controller.php
 │   ├── service_controller.php
 │   ├── specialty_controller.php
-│   ├── discount_controller.php
 │   ├── appointment_controller.php
 │   ├── consultation_controller.php
 │   ├── medication_controller.php

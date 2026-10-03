@@ -25,7 +25,6 @@ Each of the following controllers manages one of the hospital's core record tabl
 | `doctor_controller.php` | `GET ?page&page_size&search&status&specialty_id` | `GET ?id` | `POST` | `PUT ?id` | same | same | same |
 | `service_controller.php` | `GET ?page&page_size&search&status` | `GET ?id` | `POST` | `PUT ?id` | same | same | same |
 | `specialty_controller.php` | `GET ?page&page_size&search&status` | `GET ?id` | `POST` | `PUT ?id` | same | same | same |
-| `discount_controller.php` | `GET ?page&page_size&search&status` | `GET ?id` | `POST` | `PUT ?id` | same | same | same |
 
 The `status` query option accepts `active` (default — only active records), `deleted` (only archived records, used by [[Manage Archive]]), or `all`.
 

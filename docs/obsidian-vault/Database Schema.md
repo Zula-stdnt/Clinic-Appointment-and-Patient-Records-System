@@ -8,7 +8,7 @@ The system uses a MySQL / MariaDB database named `hospital_db` (configured with 
 
 ## Conventions
 - **Timestamps & Soft Deletes:** Every core record table (**Master File**) includes `created_at` (when the record was made), `updated_at` (when it was last changed), and `deleted_at` (when it was archived). When `deleted_at IS NULL` (empty), the record is **active**. When `deleted_at` has a date and time, the record is **archived (soft-deleted)** and hidden from active lists.
-- **Role Lookup Table:** `roles` stores the staff job titles: `Administrator`, `Receptionist`, `Doctor`, and `Cashier`.
+- **Role Lookup Table:** `roles` stores the staff job titles: `Administrator`, `Receptionist`, and `Doctor`.
 - **Many-to-Many Specialties (`doctor_specialty`):** Because one doctor can practice multiple specialties and one specialty can belong to multiple doctors, the `doctor_specialty` **junction table** (linking table) pairs `doctor_id` with `specialty_id`.
 - **Synchronized Doctor Identity:** Personal identity fields (`first_name`, `last_name`, `middle_initial`, `gender`) live on `users` and are kept in sync with `doctors` whenever an Administrator edits a doctor in [[Manage Doctors]] or a doctor updates their own info in [[Doctor Profile]].
 
@@ -29,11 +29,6 @@ erDiagram
     CONSULTATION ||--o{ PRESCRIPTIONS : issues
     CONSULTATION ||--o{ LAB_REQUESTS : requests
     MEDICATIONS ||--o{ PRESCRIPTIONS : prescribed
-    CONSULTATION ||--o| BILLING : billed
-    PATIENTS ||--o{ BILLING : pays
-    DISCOUNTS ||--o{ BILLING : applies
-    BILLING ||--o{ INVOICE_ITEMS : contains
-    SERVICES ||--o{ INVOICE_ITEMS : charges
     APPOINTMENTS ||--o{ VITAL_SIGNS : records
 ```
 
@@ -41,7 +36,7 @@ erDiagram
 ### Access control
 | Table | Key columns | Notes (Plain English) |
 | --- | --- | --- |
-| `roles` | `role_id`, `role_name` (unique) | Pre-loaded staff roles: Administrator, Receptionist, Doctor, Cashier |
+| `roles` | `role_id`, `role_name` (unique) | Pre-loaded staff roles: Administrator, Receptionist, Doctor |
 | `users` | `user_id`, `role_id` → roles, `username` (unique), `password_hash`, `first_name`, `last_name`, `middle_initial`, `gender` (VARCHAR 50), `deleted_at` | Stores staff login accounts, scrambled (`bcrypt`) passwords, and custom gender text |
 
 ### Master files
@@ -50,10 +45,9 @@ erDiagram
 | `patients` | `patient_id`, `first_name`, `middle_initial`, `last_name`, `gender` (VARCHAR 50), `date_of_birth`, `contact_no`, `address`, `deleted_at` | Patient profiles; `gender` defaults to `'unknown'` for emergency intake and supports custom values |
 | `doctors` | `doctor_id`, `user_id` → users (unique), `first_name`, `last_name`, `middle_initial`, `gender`, `contact_no`, `deleted_at` | Linked one-to-one with `users` (`user_id`); kept in sync when a doctor's profile changes |
 | `specialties` | `specialty_id`, `specialty_name` (unique), `deleted_at` | List of hospital medical specialties / departments |
+| `services` | `service_id`, `service_name` (unique), `deleted_at` | Administrative catalog of hospital services |
 | `doctor_specialty` | `doctor_id` + `specialty_id` (composite PK) | Linking table that connects doctors to one or more specialties |
-| `services` | `service_id`, `service_name` (unique), `price`, `deleted_at` | Price list of hospital procedures, exams, and lab services |
-| `discounts` | `discount_id`, `discount_name` (unique), `percentage`, `deleted_at` | Discount programs (such as Senior Citizen or PWD) and their percentage rates |
-| `medications` | `medication_id`, `name`, `generic_name`, `manufacturer`, `unit_price`, `deleted_at` | Active medicine catalog shown in the [[Doctor Consultation]] prescription dropdown |
+| `medications` | `medication_id`, `name`, `generic_name`, `manufacturer`, `deleted_at` | Active medicine catalog shown in the [[Doctor Consultation]] prescription dropdown |
 
 ### Clinical & transactional tables
 | Table | Key columns | Notes (Plain English) |
@@ -64,7 +58,6 @@ erDiagram
 | `diagnosis` | `diagnosis_id`, `consultation_id`, `icd10_code`, `diagnosis_name`, `notes` | Diagnosis items attached to a consultation; refreshed inside a transaction whenever the consultation is saved |
 | `prescriptions` | `prescription_id`, `consultation_id`, `medication_id`, `dosage`, `frequency`, `start_date`, `end_date` | Prescribed medicines, dosage instructions, and dates attached to a consultation |
 | `lab_requests` | `lab_request_id`, `consultation_id`, `test_name`, `status`, `request_date` | Lab tests ordered during a consultation (`'requested'`, `'in_progress'`, `'completed'`, `'cancelled'`) |
-| `billing` & `invoice_items` | `invoice_id`, `consultation_id`, `patient_id`, `discount_id`, `total_amount`, `status` | Database tables ready for patient invoices and itemized charges; screen UI planned (see [[Roadmap]]) |
 
 ## Soft-delete / restore / hard-delete
 Every master-file controller supports three lifecycle steps for removing or recovering records:

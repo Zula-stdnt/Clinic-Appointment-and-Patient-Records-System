@@ -33,7 +33,7 @@ try {
 
 function listMedications(PDO $pdo) {
     // Only return active medications
-    $sql = "SELECT medication_id, name, generic_name, manufacturer, unit_price 
+    $sql = "SELECT medication_id, name, generic_name, manufacturer 
             FROM medications 
             WHERE deleted_at IS NULL 
             ORDER BY name ASC";
@@ -46,7 +46,7 @@ function listMedications(PDO $pdo) {
 }
 
 function getMedicationById(PDO $pdo, int $id) {
-    $sql = "SELECT medication_id, name, generic_name, manufacturer, unit_price 
+    $sql = "SELECT medication_id, name, generic_name, manufacturer 
             FROM medications 
             WHERE medication_id = ? AND deleted_at IS NULL";
             

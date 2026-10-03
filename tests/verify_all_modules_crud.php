@@ -58,15 +58,9 @@ $modules = [
     ],
     'services' => [
         'url' => "$baseUrl/api/service_controller.php",
-        'create' => ['service_name' => 'Blood Culture ' . time(), 'price' => 1200.50],
+        'create' => ['service_name' => 'IT Support Test ' . time()],
         'id_key' => 'service_id',
-        'update' => ['service_name' => 'Blood Culture Fast ' . time(), 'price' => 1350.00]
-    ],
-    'discounts' => [
-        'url' => "$baseUrl/api/discount_controller.php",
-        'create' => ['discount_name' => 'Veterans Discount ' . time(), 'percentage' => 25.00],
-        'id_key' => 'discount_id',
-        'update' => ['discount_name' => 'Veterans Honored Discount ' . time(), 'percentage' => 30.00]
+        'update' => ['service_name' => 'IT Support Renamed ' . time()]
     ],
     'patients' => [
         'url' => "$baseUrl/api/patient_controller.php",

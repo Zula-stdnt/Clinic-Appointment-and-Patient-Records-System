@@ -68,8 +68,11 @@ Start **Apache** and **MySQL**:
 ## 4. Create and import the database
 1. Open `http://localhost/phpmyadmin`.
 2. Create a database named `hospital_db` with collation `utf8mb4_unicode_ci`.
-3. Select it → **Import** → choose `migrations/hospital_db.sql` → **Go**.
-4. Apply any newer migrations listed in [[Database Migrations]].
+3. Select it → **Import** → choose `setup/schema.sql` → **Go**.
+4. Repeat for `setup/seeds.sql`.
+5. From a terminal, run `php setup/bootstrap_admin.php` and follow the interactive secure prompts.
+
+> **Note:** Fresh installs must **not** replay historical migrations from the `migrations/` folder. The `setup/schema.sql` file already incorporates all active structural updates.
 
 ## 5. Configure the connection
 Credentials live in `config/db_connect.php`. Defaults on both WAMP and XAMPP:
@@ -82,13 +85,13 @@ $db_pass = '';
 ```
 
 ## 6. Sign in
-Open `login.html` and use a seeded account (see the project `README.md`). Insert additional accounts with `password_hash()` — never plain text.
+Open `login.html` and use the admin account you just bootstrapped. Create additional accounts through the Admin Dashboard interface instead of inserting them directly.
 
 ## 7. After changing front-end assets
 The shell loads `style.css?v=N` and `main.js?v=N`, and module imports use the same `?v=N`. When you edit CSS/JS, bump `N` in `admin_dashboard.html` (and the imports) so browsers fetch fresh files, or hard-refresh with **Ctrl+F5**.
 
 ## 8. Keep the database in sync with migrations
-After every repo sync, check `migrations/` for new or changed SQL and apply it to `hospital_db` before running the app. Full routine and checklist: [[Database Migrations]].
+After every repo sync, inspect `migrations/` for new SQL. **Do not apply migrations automatically.** Destructive scripts (like `006`) must only be applied to an existing database after verifying the exact baseline schema, creating a full backup, and obtaining manual approval. Full routine and checklist: [[Database Migrations]].
 
 ## Troubleshooting
 - **500 on API calls** — check the Apache/PHP error log (WAMP: `C:\wamp64\logs\`; XAMPP: `C:\xampp\apache\logs\` and `C:\xampp\php\logs\`) and the MySQL connection values.

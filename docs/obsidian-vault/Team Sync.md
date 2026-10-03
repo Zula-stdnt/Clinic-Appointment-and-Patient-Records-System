@@ -94,12 +94,12 @@ It only ever fast-forwards — it never rewrites commits and never runs in the b
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File ".\scripts\sync-zur-test.ps1"
 ```
-Logs to `.git/auto-sync-zur-test.log`; warns when `migrations/` changed so you can update `hospital_db` (see [[Database Migrations]]).
+Logs to `.git/auto-sync-zur-test.log`; warns when `migrations/` changed so you can inspect the changes before applying to `hospital_db` (see [[Database Migrations]]).
 
 ## Golden rules
 - `git pull --rebase` → `git push`. Never `git push --force`, never `git reset --hard` on shared work.
 - Commit small and push often — the smaller the gap, the smaller the chance of conflicts.
-- After any pull, if `migrations/` changed, apply the SQL to your local `hospital_db` (see [[Database Migrations]]).
+- After any pull, if `migrations/` changed, inspect the SQL. Do not apply destructive scripts automatically without checking baseline requirements and taking a backup (see [[Database Migrations]]).
 
 ## Related
 - [[Development Log]] — per-commit record of changes for the other developer.

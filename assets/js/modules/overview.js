@@ -9,16 +9,15 @@ const STATS = [
     { key: 'patients',    label: 'Registered Patients', endpoint: 'api/patient_controller.php',   tone: 'primary',   href: '#patients' },
     { key: 'doctors',     label: 'Active Doctors',      endpoint: 'api/doctor_controller.php',     tone: 'info',      href: '#doctors' },
     { key: 'staff',       label: 'Staff Accounts',      endpoint: 'api/user_controller.php',       tone: 'secondary', href: '#users' },
-    { key: 'services',    label: 'Hospital Services',   endpoint: 'api/service_controller.php',    tone: 'success',   href: '#services' },
     { key: 'specialties', label: 'Medical Specialties', endpoint: 'api/specialty_controller.php',  tone: 'warning',   href: '#specialties' },
-    { key: 'discounts',   label: 'Discount Programs',   endpoint: 'api/discount_controller.php',   tone: 'danger',    href: '#discounts' }
+    { key: 'services',    label: 'Service Catalog',     endpoint: 'api/service_controller.php',    tone: 'success',   href: '#services' }
 ];
 
 const QUICK_ACTIONS = [
     { label: 'Register or manage patients', href: '#patients',    icon: 'patients' },
     { label: 'Create staff accounts',       href: '#users',       icon: 'staff' },
     { label: 'Maintain doctor profiles',    href: '#doctors',     icon: 'doctors' },
-    { label: 'Update service pricing',      href: '#services',    icon: 'services' },
+    { label: 'Manage service catalog',      href: '#services',    icon: 'services' },
     { label: 'Review archived records',     href: '#archive',     icon: 'archive' }
 ];
 
@@ -26,9 +25,8 @@ const ICONS = {
     patients: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>',
     doctors: '<path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>',
     staff: '<rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>',
-    services: '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>',
     specialties: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>',
-    discounts: '<line x1="19" y1="5" x2="5" y2="19"></line><circle cx="6.5" cy="6.5" r="2.5"></circle><circle cx="17.5" cy="17.5" r="2.5"></circle>',
+    services: '<line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line>',
     archive: '<polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line>'
 };
 

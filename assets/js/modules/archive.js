@@ -40,17 +40,6 @@ const CONFIG = {
             <td style="color: var(--danger);">${escapeHtml(item.deleted_at)}</td>
         `
     },
-    'services': {
-        endpoint: 'api/service_controller.php',
-        idField: 'service_id',
-        nameField: 'service_name',
-        columns: ['Service Name', 'Price', 'Archived At'],
-        renderRow: (item) => `
-            <td><strong>${escapeHtml(item.service_name)}</strong></td>
-            <td>PHP ${escapeHtml(parseFloat(item.price).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }))}</td>
-            <td style="color: var(--danger);">${escapeHtml(item.deleted_at)}</td>
-        `
-    },
     'specialties': {
         endpoint: 'api/specialty_controller.php',
         idField: 'specialty_id',
@@ -61,14 +50,13 @@ const CONFIG = {
             <td style="color: var(--danger);">${escapeHtml(item.deleted_at)}</td>
         `
     },
-    'discounts': {
-        endpoint: 'api/discount_controller.php',
-        idField: 'discount_id',
-        nameField: 'discount_name',
-        columns: ['Discount Name', 'Percentage', 'Archived At'],
+    'services': {
+        endpoint: 'api/service_controller.php',
+        idField: 'service_id',
+        nameField: 'service_name',
+        columns: ['Service Name', 'Archived At'],
         renderRow: (item) => `
-            <td><strong>${escapeHtml(item.discount_name)}</strong></td>
-            <td><span class="badge badge-role">${escapeHtml(parseFloat(item.percentage).toFixed(2))}%</span></td>
+            <td><strong>${escapeHtml(item.service_name)}</strong></td>
             <td style="color: var(--danger);">${escapeHtml(item.deleted_at)}</td>
         `
     }
@@ -106,9 +94,8 @@ export default {
                             <option value="users">Users</option>
                             <option value="patients">Patients</option>
                             <option value="doctors">Doctors</option>
-                            <option value="services">Services</option>
                             <option value="specialties">Specialties</option>
-                            <option value="discounts">Discounts</option>
+                            <option value="services">Services</option>
                         </select>
 
                         <div class="search-input-wrapper">

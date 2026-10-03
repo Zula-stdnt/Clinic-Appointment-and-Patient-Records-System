@@ -4,7 +4,7 @@ tags: [overview]
 
 # Project Overview
 
-The **Hospital Patient Information System** is a web application for hospital administration and clinical care. It helps hospital staff manage patient records, doctor profiles, medical consultations, hospital services, clinical specialties, discounts, user accounts, and archived records in one central system.
+The **Hospital Patient Information System** is a web application for hospital administration and clinical care. It helps hospital staff manage patient records, doctor profiles, medical consultations, hospital services, clinical specialties, user accounts, and archived records in one central system.
 
 ## Roles
 The system separates screens and permissions by staff role (**Role-Based Access Control**):
@@ -13,7 +13,7 @@ The system separates screens and permissions by staff role (**Role-Based Access 
 - **Receptionist** — Uses a front-desk booking workspace (`receptionist_dashboard.html`) to schedule patient appointments, record optional triage vital signs, and monitor the visit queue. See [[Receptionist Appointments]].
 
 ## Feature summary
-- **Master file management (Create, Read, Update, Archive):** Full management of Users, Patients, Doctors, Services, Specialties, and Discounts.
+- **Master file management (Create, Read, Update, Archive):** Full management of Users, Patients, Doctors, Services, and Specialties.
 - **Clinical Encounter Workflow:** Doctors check their scheduled patients in [[Doctor Appointments]], record clinical notes, **ICD-10 diagnoses** (standard international medical codes), medication prescriptions, and lab orders in [[Doctor Consultation]], and review past visit timelines in [[Doctor Patient Records]].
 - **Self-Service Doctor Profile:** Doctors can update their own name, gender, mobile number, username, and password in [[Doctor Profile]], which automatically updates both the `users` and `doctors` database tables at the same time.
 - **Multiple Clinical Specialties:** A single doctor account can be assigned to **one or more clinical specialties** (for example, Internal Medicine and Cardiology).

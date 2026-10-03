@@ -1,7 +1,7 @@
 <?php
 // api/service_controller.php
-// Master-file CRUD for Hospital Services
-// ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_records, mysql_insert_records & mysql_update_records (Prepared PDO CRUD for service master records)
+// Master-file CRUD for services
+// ITE 387 Lessons applied: 04 Database Design/database_normalization & 03 APIs and Database Operations/mysql_retrieve_records (Normalized service lookup entity with prepared PDO CRUD)
 
 require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';
@@ -45,9 +45,9 @@ try {
         send_error('Method not allowed.', [], 405);
     }
 } catch (PDOException $e) {
-    error_log('Service controller DB error: ' . $e->getMessage());
+    error_log('service controller DB error: ' . $e->getMessage());
     if ($e->getCode() == 23000 || (isset($e->errorInfo[1]) && $e->errorInfo[1] == 1451)) {
-        send_error('Cannot delete service: related invoice items or billing records exist. Use Soft Delete instead.', [], 409);
+        send_error('Cannot delete service: related records exist. Use Soft Delete instead.', [], 409);
     }
     send_error('A database error occurred. Please try again.', [], 500);
 }
@@ -76,7 +76,7 @@ function listServices(PDO $pdo): void {
 
     $whereSql = implode(' AND ', $where);
 
-    $allowedSort = ['service_id', 'service_name', 'price', 'created_at', 'deleted_at'];
+    $allowedSort = ['service_id', 'service_name', 'created_at', 'deleted_at'];
     $sortBy = in_array($_GET['sort_by'] ?? '', $allowedSort, true) ? $_GET['sort_by'] : 'service_id';
     $sortOrder = strtoupper($_GET['sort_order'] ?? 'ASC') === 'DESC' ? 'DESC' : 'ASC';
 
@@ -88,7 +88,7 @@ function listServices(PDO $pdo): void {
     $countStmt->execute();
     $total = (int)$countStmt->fetchColumn();
 
-    $dataSql = "SELECT service_id, service_name, price, created_at, updated_at, deleted_at
+    $dataSql = "SELECT service_id, service_name, created_at, updated_at, deleted_at
                 FROM services
                 WHERE {$whereSql}
                 ORDER BY {$sortBy} {$sortOrder}
@@ -103,7 +103,7 @@ function listServices(PDO $pdo): void {
     $stmt->execute();
     $items = $stmt->fetchAll();
 
-    send_success('Services retrieved successfully.', [
+    send_success('services retrieved successfully.', [
         'items'     => $items,
         'total'     => $total,
         'page'      => $page,
@@ -113,26 +113,25 @@ function listServices(PDO $pdo): void {
 }
 
 function getServiceById(PDO $pdo, int $id): void {
-    $stmt = $pdo->prepare("SELECT * FROM services WHERE service_id = ? LIMIT 1");
+    $stmt = $pdo->prepare("SELECT service_id, service_name, created_at, updated_at, deleted_at FROM services WHERE service_id = ? LIMIT 1");
     $stmt->execute([$id]);
     $service = $stmt->fetch();
 
     if (!$service) {
-        send_error('Service not found.', [], 404);
+        send_error('service not found.', [], 404);
     }
 
-    send_success('Service retrieved successfully.', ['service' => $service]);
+    send_success('service retrieved successfully.', ['service' => $service]);
 }
 
-function validateServiceInput(PDO $pdo, array $input, ?int $ignoreId = null): array {
+function validateserviceInput(PDO $pdo, array $input, ?int $ignoreId = null): array {
     $errors = [];
-    $name  = trim($input['service_name'] ?? '');
-    $price = $input['price'] ?? null;
+    $name = trim($input['service_name'] ?? '');
 
     if ($name === '') {
-        $errors['service_name'] = 'Service name is required.';
-    } elseif (strlen($name) > 150) {
-        $errors['service_name'] = 'Service name cannot exceed 150 characters.';
+        $errors['service_name'] = 'service name is required.';
+    } elseif (strlen($name) > 100) {
+        $errors['service_name'] = 'service name cannot exceed 100 characters.';
     } else {
         $sql = "SELECT 1 FROM services WHERE service_name = ?";
         $params = [$name];
@@ -147,15 +146,6 @@ function validateServiceInput(PDO $pdo, array $input, ?int $ignoreId = null): ar
         }
     }
 
-    if ($price === null || $price === '' || !is_numeric($price)) {
-        $errors['price'] = 'Price must be a valid number.';
-    } else {
-        $numPrice = (float)$price;
-        if ($numPrice < 0) {
-            $errors['price'] = 'Price cannot be negative.';
-        }
-    }
-
     return $errors;
 }
 
@@ -165,19 +155,16 @@ function createService(PDO $pdo): void {
         $input = $_POST;
     }
 
-    $errors = validateServiceInput($pdo, $input);
+    $errors = validateserviceInput($pdo, $input);
     if (!empty($errors)) {
         send_error('Validation failed.', $errors, 422);
     }
 
-    $stmt = $pdo->prepare("INSERT INTO services (service_name, price) VALUES (?, ?)");
-    $stmt->execute([
-        trim($input['service_name']),
-        (float)$input['price']
-    ]);
+    $stmt = $pdo->prepare("INSERT INTO services (service_name) VALUES (?)");
+    $stmt->execute([trim($input['service_name'])]);
 
     $newId = (int)$pdo->lastInsertId();
-    send_success('Service created successfully.', ['service_id' => $newId], 201);
+    send_success('service created successfully.', ['service_id' => $newId], 201);
 }
 
 function updateService(PDO $pdo): void {
@@ -190,22 +177,21 @@ function updateService(PDO $pdo): void {
     $chk = $pdo->prepare("SELECT service_id FROM services WHERE service_id = ?");
     $chk->execute([$id]);
     if (!$chk->fetch()) {
-        send_error('Service not found.', [], 404);
+        send_error('service not found.', [], 404);
     }
 
-    $errors = validateServiceInput($pdo, $input, $id);
+    $errors = validateserviceInput($pdo, $input, $id);
     if (!empty($errors)) {
         send_error('Validation failed.', $errors, 422);
     }
 
-    $stmt = $pdo->prepare("UPDATE services SET service_name = ?, price = ? WHERE service_id = ?");
+    $stmt = $pdo->prepare("UPDATE services SET service_name = ? WHERE service_id = ?");
     $stmt->execute([
         trim($input['service_name']),
-        (float)$input['price'],
         $id
     ]);
 
-    send_success('Service updated successfully.');
+    send_success('service updated successfully.');
 }
 
 function softDeleteService(PDO $pdo): void {
@@ -216,10 +202,10 @@ function softDeleteService(PDO $pdo): void {
     $stmt->execute([$id]);
 
     if ($stmt->rowCount() === 0) {
-        send_error('Service not found or already deactivated.', [], 404);
+        send_error('service not found or already deactivated.', [], 404);
     }
 
-    send_success('Service deactivated (soft-deleted) successfully.');
+    send_success('service deactivated (soft-deleted) successfully.');
 }
 
 function restoreService(PDO $pdo): void {
@@ -230,10 +216,10 @@ function restoreService(PDO $pdo): void {
     $stmt->execute([$id]);
 
     if ($stmt->rowCount() === 0) {
-        send_error('Service not found or already active.', [], 404);
+        send_error('service not found or already active.', [], 404);
     }
 
-    send_success('Service restored successfully.');
+    send_success('service restored successfully.');
 }
 
 function hardDeleteService(PDO $pdo): void {
@@ -244,9 +230,9 @@ function hardDeleteService(PDO $pdo): void {
     $stmt->execute([$id]);
 
     if ($stmt->rowCount() === 0) {
-        send_error('Service not found.', [], 404);
+        send_error('service not found.', [], 404);
     }
 
-    send_success('Service permanently deleted.');
+    send_success('service permanently deleted.');
 }
 

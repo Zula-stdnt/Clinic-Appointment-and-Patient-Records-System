@@ -2,15 +2,14 @@
 // Single-Page Application Router and Module Orchestrator
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_modules (ES module orchestration) & javascript_fundamentals (DOMContentLoaded initialization)
 
-import { requireSession } from './session-guard.js?v=22';
-import overviewModule from './modules/overview.js?v=22';
-import usersModule from './modules/users.js?v=22';
-import patientsModule from './modules/patients.js?v=22';
-import doctorsModule from './modules/doctors.js?v=22';
-import servicesModule from './modules/services.js?v=22';
-import specialtiesModule from './modules/specialties.js?v=22';
-import discountsModule from './modules/discounts.js?v=22';
-import archiveModule from './modules/archive.js?v=22';
+import { requireSession } from './session-guard.js?v=23';
+import overviewModule from './modules/overview.js?v=23';
+import usersModule from './modules/users.js?v=23';
+import patientsModule from './modules/patients.js?v=23';
+import doctorsModule from './modules/doctors.js?v=23';
+import specialtiesModule from './modules/specialties.js?v=23';
+import servicesModule from './modules/services.js?v=23';
+import archiveModule from './modules/archive.js?v=23';
 
 const modules = {
     'overview': {
@@ -29,17 +28,13 @@ const modules = {
         title: 'Manage Doctors',
         instance: doctorsModule
     },
-    'services': {
-        title: 'Manage Services',
-        instance: servicesModule
-    },
     'specialties': {
         title: 'Manage Specialties',
         instance: specialtiesModule
     },
-    'discounts': {
-        title: 'Manage Discounts',
-        instance: discountsModule
+    'services': {
+        title: 'Manage Services',
+        instance: servicesModule
     },
     'archive': {
         title: 'Manage Archive',

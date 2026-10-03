@@ -10,7 +10,7 @@ tags: [module]
 Acts as the central recycle bin for every core hospital table (**Master Files**). Whenever an Administrator archives (soft-deletes) a record from a main screen, it lands here so it can either be restored to active use or permanently erased from the database.
 
 ## UI
-- **Category (Entity) selector:** A dropdown menu that switches between archived Users, Patients, Doctors, Services, Specialties, and Discounts.
+- **Category (Entity) selector:** A dropdown menu that switches between archived Users, Patients, Doctors, Services, Specialties.
 - **Table toolbar & controls:** Live search bar (**debounced** so it waits briefly while you finish typing), rows-per-page selector, and page navigation buttons.
 - **Archived rows:** Styled with a muted background (`row-soft-deleted`) and two action buttons: **Restore** (returns the record to its main screen) and **Delete** (permanently erases it).
 
@@ -28,3 +28,4 @@ Instead of using a separate archive controller, Manage Archive calls the standar
 - **Doctor controller integration:**
   - When no `sort_by` column is specified, `doctor_controller.php` defaults to `'doctor_id'` before adding the `'d.'` table prefix, preventing SQL `d.d.doctor_id` column errors.
   - The doctor total-count query includes `LEFT JOIN users u ON d.user_id = u.user_id` so searching archived doctors by first or last name works smoothly without SQL errors.
+

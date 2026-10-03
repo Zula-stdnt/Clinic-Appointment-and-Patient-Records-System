@@ -47,7 +47,7 @@ try {
 } catch (PDOException $e) {
     error_log('Patient controller DB error: ' . $e->getMessage());
     if ($e->getCode() == 23000 || (isset($e->errorInfo[1]) && $e->errorInfo[1] == 1451)) {
-        send_error('Cannot delete patient: related appointments, consultations, or billing records exist. Use Soft Delete instead.', [], 409);
+        send_error('Cannot delete patient: related appointments or consultations exist. Use Soft Delete instead.', [], 409);
     }
     send_error('A database error occurred. Please try again.', [], 500);
 }
