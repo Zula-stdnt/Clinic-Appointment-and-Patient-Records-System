@@ -12,6 +12,13 @@ The system separates screens and permissions by staff role (**Role-Based Access 
 - **Doctor** — Uses a dedicated clinical workspace (`doctor_dashboard.html`) featuring daily appointment counters (**KPIs** — Key Performance Indicators), an appointment queue, a consultation charting screen (**SOAP notes**, diagnoses, prescriptions, and lab requests), a directory of assigned patients with their medical histories, and a personal profile settings screen. See [[Doctor Dashboard]].
 - **Receptionist** — Uses a front-desk booking workspace (`receptionist_dashboard.html`) to schedule patient appointments, record optional triage vital signs, and monitor the visit queue. See [[Receptionist Appointments]].
 
+## Patient Records System (Core Clinical Workflow)
+The system powers the complete clinical care sequence from patient arrival to long-term health tracking:
+1. **Appointment Creation:** Receptionists schedule patient appointments with available doctors, register walk-in patients on the spot, record triage vital signs, and monitor daily clinic capacity (maximum 10 appointments daily). See [[Receptionist Appointments]].
+2. **Consultation Recording:** When appointments are confirmed, doctors open the consultation workspace to document examination observations, vital signs, and SOAP clinical notes. See [[Doctor Consultation]].
+3. **Diagnosis Recording:** Doctors record medical diagnoses with international ICD-10 disease codes directly within the consultation encounter, alongside prescriptions and lab requests.
+4. **Medical History Generation:** Doctors review an accumulated, chronological timeline of every previous consultation, diagnosis, vital sign reading, and medical treatment for any patient under their care. See [[Doctor Patient Records]].
+
 ## Feature summary
 - **Master file management (Create, Read, Update, Archive):** Full management of Users, Patients, Doctors, Services, and Specialties.
 - **Clinical Encounter Workflow:** Doctors check their scheduled patients in [[Doctor Appointments]], record clinical notes, **ICD-10 diagnoses** (standard international medical codes), medication prescriptions, and lab orders in [[Doctor Consultation]], and review past visit timelines in [[Doctor Patient Records]].

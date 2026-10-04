@@ -4,28 +4,52 @@ tags: [module]
 
 # Doctor Appointments
 
-**Route:** `#doctor_appointments` · **File:** `assets/js/modules/doctor_appointments.js` · **Controller:** `api/appointment_controller.php` · **Role:** Doctor
+**Portal:** Doctor Portal (`doctor_dashboard.html`)  
+**Role:** Doctor
 
 ## Purpose
-Displays a read-only schedule of patient appointments assigned to the signed-in doctor and serves as the starting point for opening a new or completed clinical consultation.
+The primary appointment queue for doctors. Each doctor can see their own schedule of patients, check arrival and confirmation statuses, and start patient consultations.
 
-## Data source & access control
-- Requests the doctor's schedule from `GET api/appointment_controller.php`.
-- When the signed-in user has the `Doctor` role, `appointment_controller.php` looks up their `doctor_id` (`SELECT doctor_id FROM doctors WHERE user_id = ?`) and filters the `appointments` table strictly by `a.doctor_id = ?`, sorted newest first (`appointment_date DESC, appointment_time DESC`).
-- Returns `{ items: [...] }` inside `res.data`.
+---
 
-## UI
-- **Header:** Shows the screen title ("My Appointments") and a **Refresh** button (`#btn-refresh-appointments`) to reload the schedule at any time.
-- **Appointments Table (`.data-table`):**
-  - **Date & Time** — Formatted in a friendly local date (`MMM D, YYYY`) and 12-hour time (`H:MM AM/PM`).
-  - **Patient Name** — Displays the patient's full name along with a formatted ID badge (`PAT-0001`).
-  - **Chief Complaint** — Shows a single-line preview (`max-width: 250px`) of why the patient is visiting, with the full text visible when hovering over the cell (`title`).
-  - **Status** — Color-coded status pill (`scheduled`, `confirmed`, `completed`, `cancelled`, `no_show`).
-  - **Actions** — A smart consultation button (`.btn-start-consult`):
-    - Displays **Start Consult** (with an edit icon) for upcoming or active visits.
-    - Displays **View Encounter** (with an eye icon) once `status === 'completed'`.
-    - Clicking the button opens `#doctor_consultation/{appointment_id}` via `window.navigateTo()` (see [[Doctor Consultation]]).
+## User Workflow: What the Doctor Sees and Does
 
-## Implementation notes (ITE 387 patterns)
-- **DOM Row Construction (`02 DOM and UI/dom_create_and_remove_elements`):** Each table row is built using the *Create → Configure → Listen → Append* pattern: create the row with `create('tr')` (`assets/js/ui.js`), fill its HTML cells using template strings, attach the click listener directly to that row's `.btn-start-consult` button (`tr.querySelector('.btn-start-consult').addEventListener('click', ...)`), and append all rows into a `DocumentFragment` before updating the table.
-- **API Error Handling (`03 APIs and Database Operations/javascript_working_with_apis`):** Reads server error messages from `res.message` and `err.response?.data?.message` so any failure shows a clear pop-up toast alert.
+### 1. Reviewing the Patient Schedule
+* **When to use:** Throughout the clinic day to see upcoming patients.
+* **What the doctor sees:** The **My Appointments** screen displaying today's patient queue, sorted so upcoming visits appear first.
+* **What the doctor does:**
+  - Views patient names, appointment times, reasons for visit (Chief Complaint), and current visit statuses.
+  - Clicks the **Refresh** button if they want to update the queue.
+
+---
+
+### 2. Starting a Patient Consultation
+* **When to use:** When a patient is confirmed by the front desk and is ready for examination.
+* **What the doctor sees:**
+  - If the appointment is marked **Scheduled**, the action column displays `Awaiting Confirmation` (protecting the doctor from beginning an encounter before the patient arrives and checks in).
+  - Once the receptionist confirms the patient, the appointment displays a green **Start Consult** button.
+* **What the doctor does:**
+  1. Locates the confirmed patient.
+  2. Clicks **Start Consult**.
+* **What happens:**
+  - The screen navigates directly to the [[Doctor Consultation]] screen with the patient's information, triage vitals, and examination form loaded.
+
+---
+
+### 3. Reviewing Completed Visits
+* **When to use:** When a doctor needs to reference notes or diagnoses from an earlier visit.
+* **What the doctor sees:** A blue **View Encounter** button in the action column for any appointment marked **Completed**.
+* **What the doctor does:**
+  - Clicks **View Encounter** to review the saved clinical notes, diagnoses, and orders in view-only mode.
+
+---
+
+## Table Columns & Information
+* **Date & Time:** The appointment date and time.
+* **Patient Name:** The patient's full name.
+* **Chief Complaint:** The primary health issue reported by the patient.
+* **Status:** Color-coded status badge (`Scheduled`, `Confirmed`, `Completed`, `Cancelled`, `No Show`).
+* **Action:**
+  - `Awaiting Confirmation`: Patient has not yet checked in.
+  - `Start Consult`: Patient is confirmed and ready for examination.
+  - `View Encounter`: Examination is completed; opens view-only chart.

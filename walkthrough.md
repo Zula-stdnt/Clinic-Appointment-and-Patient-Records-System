@@ -148,3 +148,64 @@ This document records the major features, user-interface improvements, bug fixes
 - **Scope & Documentation Alignment:**
   - Removed outdated references to billing modules and invoice printing from the project roadmap (`docs/obsidian-vault/Roadmap.md`).
   - Clarified in `docs/obsidian-vault/Modules/Manage Discounts.md` and `docs/obsidian-vault/Modules/Manage Services.md` that while the underlying database schema retains historical `billing` and `invoice_items` tables for relational integrity, billing screens and money-handling workflows are not part of the active user interface.
+
+## 17. Patient Records System — Clinical Workflow & Medical History
+This update delivers the core clinical flow required for the Patient Records System, written in clear everyday terms:
+
+### A. Appointment Booking & Walk-in Patient Registration
+- **Who uses it:** Receptionist (`receptionist_dashboard.html`).
+- **When they use it:** When a patient books an appointment in advance or arrives at the front desk without an appointment.
+- **What they see:** The Appointments screen with live search, a table of booked visits, a **New Appointment** button, and a **Register Walk-in** button.
+- **What they do:**
+  1. For existing patients, the receptionist clicks **New Appointment**, selects the patient from the list, picks an active doctor, and selects a valid date and time slot.
+  2. For new arrivals, the receptionist clicks **Register Walk-in**, enters the patient's name, middle initial, gender, date of birth, contact number, and address, and clicks **Register & Select**. The system immediately registers the patient and selects them in the appointment form.
+  3. Enters the patient's primary complaint and any initial vital signs taken at triage (blood pressure, temperature in °C, oxygen percentage).
+  4. Clicks **Schedule Appointment**.
+- **What happens:**
+  - **Operating Schedule Check:** The system verifies that the appointment is scheduled between 08:00 AM and 05:00 PM, outside the 12:00 PM to 12:59 PM lunch closure, and not on a Sunday.
+  - **Clinic Capacity Check:** The system checks that the clinic has not exceeded its daily limit of 10 appointments across all doctors. If the day already has 8 or 9 appointments, the system issues a warning that the clinic is near capacity. If the day has 10 appointments, further bookings are blocked with a message asking the receptionist to pick another date.
+  - **Confirmation Flow:** The appointment is saved with status `Scheduled`. The receptionist confirms the appointment (changing status to `Confirmed`), which notifies the doctor and unlocks the consultation workspace.
+
+### B. Medical Consultation Recording & Doctor Gating
+- **Who uses it:** Doctor (`doctor_dashboard.html`).
+- **When they use it:** When examining a patient during their scheduled appointment.
+- **What they see:** The doctor's **My Appointments** screen showing today's patient queue, and the **Consultation** charting screen.
+- **What they do:**
+  1. The doctor locates the patient in their schedule. Scheduled visits display `Awaiting Confirmation`, while confirmed visits display a green **Start Consult** button.
+  2. The doctor clicks **Start Consult** to open the clinical workspace.
+  3. The screen displays the patient's demographics, triage vitals, and chief complaint.
+  4. The doctor examines the patient and enters clinical examination notes (SOAP notes covering symptoms, physical findings, clinical assessment, and care plan) in the Clinical Notes text area.
+  5. The doctor adds diagnoses, prescriptions, and any needed laboratory orders.
+  6. The doctor clicks **Save & Complete Encounter**.
+- **What happens:**
+  - The visit is permanently completed.
+  - The visit status changes to `Completed` on the doctor's appointment schedule and the action button changes to a view-only **View Encounter** button.
+
+### C. Diagnosis Recording
+- **Who uses it:** Doctor (`doctor_consultation.js`).
+- **When they use it:** While evaluating the patient's condition during the consultation.
+- **What they see:** The Diagnosis section with a **+ Add Diagnosis** button and rows with inputs for Diagnosis Name, ICD-10 Code, and Notes.
+- **What they do:**
+  1. Clicks **+ Add Diagnosis** to create a diagnosis entry (multiple diagnoses can be recorded for patients with multiple conditions).
+  2. Types the diagnosed condition (such as *Acute Bronchitis* or *Essential Hypertension*).
+  3. Optionally enters the international ICD-10 medical code (such as *J20.9* or *I10*).
+  4. Optionally types notes or special care directions for that diagnosis.
+  5. If entered by mistake, clicks the trash icon to remove the row.
+- **What happens:**
+  - Every diagnosis is securely linked to that medical encounter.
+  - When the encounter is saved, all recorded diagnoses are permanently stored and automatically flow into the patient's medical history.
+
+### D. Generating Patient Medical History
+- **Who uses it:** Doctor (`doctor_patients.js`).
+- **When they use it:** When reviewing a patient's health background before or during an encounter.
+- **What they see:** The **Patient Records** directory with a search box and patient list, and the **Medical Record** chart showing an **Encounter History** timeline.
+- **What they do:**
+  1. Clicks **Patient Records** in the sidebar.
+  2. Searches for the patient by name, contact number, or ID.
+  3. Clicks **View Record** next to the patient's name.
+  4. Reviews the chronological timeline of all visits.
+  5. Clicks **Back to List** to return to the directory.
+- **What happens:**
+  - The system dynamically generates an accumulated medical history timeline showing **every past consultation and diagnosis** for that patient, sorted with the newest visits at the top.
+  - For each visit, the doctor sees the date, chief complaint, triage vital signs, clinical examination notes, and all recorded diagnoses with their ICD-10 codes.
+

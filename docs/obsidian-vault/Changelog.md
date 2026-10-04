@@ -9,6 +9,15 @@ A plain-English summary of major updates, new modules, and bug fixes across the 
 > [!info] Looking for the technical trail?
 > This note summarizes **features**. For a per-commit record (commit IDs, exact files, verification steps), see [[Development Log]].
 
+## Recent — Patient Records System & Clinic Operations
+### Patient Records Core Flow (`Appointment → Consultation → Diagnosis → Medical History`)
+- **Walk-in Patient Intake:** Receptionists can now register brand-new walk-in patients on the spot directly from the appointment booking modal with single-letter middle initial support, immediately selecting them for scheduling without navigating away.
+- **Operating Hours & Sunday Closure:** Enforced clinic operating hours between 08:00 AM and 05:00 PM, blocked scheduling during the 12:00 PM to 12:59 PM lunch closure, and closed scheduling on Sundays.
+- **Clinic-Wide Daily Capacity Model:** Transitioned clinic booking rules to a daily maximum of 10 appointments clinic-wide across all doctors, issuing a capacity warning at 8 to 10 daily visits and blocking further bookings once full.
+- **Doctor Consultation Gating:** Protects clinical encounters so doctors can only open the consultation screen once the front desk confirms the appointment, displaying `Awaiting Confirmation` for scheduled visits.
+- **Accumulated Medical History:** Doctor Patient Records now dynamically compiles and displays an accumulated, reverse-chronological timeline of all past encounters, clinical notes, vital signs, and ICD-10 diagnoses for each patient.
+- **UI Polish:** Removed patient ID numbers from the appointment table rows to keep the view clean and centered on patient names, and sorted receptionist appointments nearest-first.
+
 ## Recent — Product & Hospital Branding Update
 ### Branding & Scope Alignment
 - Renamed the product to **Hospital Patient Information System** across page titles (`index.html`, `login.html`, `admin_dashboard.html`, `doctor_dashboard.html`, `receptionist_dashboard.html`), the `README.md`, and project documentation to reflect its focus on clinical records and appointments rather than billing or cashiering.

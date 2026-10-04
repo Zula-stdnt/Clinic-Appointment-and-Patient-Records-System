@@ -7,7 +7,8 @@ It is built with **PHP** (for server-side logic), **MySQL** via **PDO** (a secur
 ---
 
 ## Table of Contents
-- [Features](#features)
+- [Patient Records System (Core Clinical Workflow)](#patient-records-system-core-clinical-workflow)
+- [System Features by Role](#system-features-by-role)
 - [Technologies Used](#technologies-used)
 - [Requirements](#requirements)
 - [Installation & Setup](#installation--setup)
@@ -19,7 +20,78 @@ It is built with **PHP** (for server-side logic), **MySQL** via **PDO** (a secur
 
 ---
 
-## Features
+## Patient Records System (Core Clinical Workflow)
+
+The core purpose of this system is to manage a patient's complete journey through the clinic:
+$$\text{Patient Appointment} \longrightarrow \text{Medical Consultation} \longrightarrow \text{Diagnosis} \longrightarrow \text{Medical History}$$
+
+Below is an overview of how hospital staff use these features in plain, everyday language.
+
+### 1. Creating Patient Appointments
+* **Who uses it:** Receptionist
+* **When they use it:** When a patient calls in advance or walks into the clinic to schedule an appointment with a doctor.
+* **What they see:** The **Appointments** page with a live schedule list, an **Add Appointment** button, a **Register Walk-in** button, and quick search and status filters.
+* **What they do:**
+  1. Opens the Appointments page.
+  2. Clicks the **New Appointment** button (or **Register Walk-in** to register a first-time patient on the spot).
+  3. Selects the patient from the list.
+  4. Selects an available doctor from the searchable doctor menu.
+  5. Selects an appointment date and time between **08:00 AM and 05:00 PM** (the clinic is closed on Sundays and pauses for lunch between 12:00 PM and 12:59 PM).
+  6. Types the patient's main health concern in the **Chief Complaint** box.
+  7. Optionally records initial triage vital signs: blood pressure, temperature in °C, and blood oxygen level (SpO2).
+  8. Clicks **Schedule Appointment**.
+* **What happens:**
+  - The system checks doctor availability to ensure double-booking never occurs.
+  - The system checks clinic capacity (a maximum of **10 appointments per day** clinic-wide). If the clinic has reached 8 or 9 appointments, a helpful warning notes that the clinic is near capacity. If the day is fully booked (10 appointments), the system asks the receptionist to select another date.
+  - The appointment is saved with status **Scheduled**. Once the receptionist sets the appointment to **Confirmed**, it is immediately unlocked for the doctor to start the medical consultation.
+
+### 2. Recording Medical Consultations
+* **Who uses it:** Doctor
+* **When they use it:** During a patient's medical visit.
+* **What they see:** The doctor's **My Appointments** screen showing today's queue, and the **Consultation** screen showing the patient's name, age, gender, triage vital signs, and chief complaint.
+* **What they do:**
+  1. Opens the Appointments screen and locates the confirmed patient.
+  2. Clicks the **Start Consult** button to open the consultation form.
+  3. Reviews the patient's triage vital signs and primary complaint.
+  4. Types their clinical examination findings into the **Clinical Notes** area (SOAP notes covering symptoms, physical findings, clinical assessment, and care plan).
+  5. Records the patient's diagnoses, medications, and any required lab tests.
+  6. Clicks **Save & Complete Encounter**.
+* **What happens:**
+  - The system saves all clinical notes, diagnoses, and medical orders together safely.
+  - The appointment status updates to **Completed** and cannot be accidentally overwritten.
+  - The completed visit becomes a permanent part of the patient's cumulative medical history.
+
+### 3. Recording Diagnoses
+* **Who uses it:** Doctor
+* **When they use it:** While evaluating the patient's illness or health condition during the consultation.
+* **What they see:** The **Diagnosis** section on the consultation screen with a **+ Add Diagnosis** button and input boxes for the diagnosis name, international disease code (ICD-10), and extra clinical notes.
+* **What they do:**
+  1. Clicks **+ Add Diagnosis** (a doctor can add multiple diagnoses if the patient has more than one condition).
+  2. Types the name of the condition (for example, *Acute Bronchitis* or *Hypertension*).
+  3. Optionally enters the standard medical classification code (for example, *J20.9* or *I10*).
+  4. Optionally types specific instructions or notes for this diagnosis.
+  5. If an item was added by mistake, clicks the red remove button to delete the row.
+* **What happens:**
+  - Every diagnosis is linked directly to this medical encounter.
+  - The diagnoses are permanently saved and automatically appear in the patient's medical history for future reference.
+
+### 4. Viewing Patient Medical History
+* **Who uses it:** Doctor
+* **When they use it:** Before or during an examination to review a patient's past health conditions, previous diagnoses, and treatment plans.
+* **What they see:** The **Patient Records** directory showing all treated patients, and the **Medical Record** screen displaying the patient's personal profile card and an **Encounter History** timeline.
+* **What they do:**
+  1. Clicks **Patient Records** in the sidebar navigation.
+  2. Finds the patient in the list or uses the search box to filter by name, phone number, or patient ID.
+  3. Clicks the **View Record** button next to the patient's name.
+  4. Reads the complete timeline of past consultations and treatments.
+  5. Clicks **Back to List** when finished.
+* **What happens:**
+  - The system presents a chronological timeline (most recent visits first) that accumulates **all previous consultations and diagnoses** for that patient.
+  - For each past visit, the doctor can clearly see the visit date, chief complaint, recorded vital signs, doctor's notes, all diagnoses with ICD-10 codes, prescribed medicines, and lab orders.
+
+---
+
+## System Features by Role
 
 - **Role-Based Access Control (RBAC — permissions based on a staff member's job role):**
   - **Administrator:** Full control over the hospital's core records (**Master Files**: Users, Patients, Doctors, Services, and Specialties) and the **Central Archive**.

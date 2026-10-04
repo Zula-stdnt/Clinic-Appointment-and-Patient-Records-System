@@ -4,27 +4,69 @@ tags: [module]
 
 # Receptionist Appointments
 
-**Route:** `#receptionist_appointments` · **File:** `assets/js/modules/receptionist_appointments.js` · **Controller:** `api/appointment_controller.php` · **Role:** Receptionist
+**Portal:** Receptionist Portal (`receptionist_dashboard.html`)  
+**Role:** Receptionist
 
 ## Purpose
-The front-desk booking screen. A receptionist picks an active patient and doctor, sets the visit date and time, writes the chief complaint, and can optionally record triage vital signs (blood pressure, temperature, oxygen saturation) while creating the appointment.
+The front-desk appointment management screen. Receptionists use this screen to schedule patient visits with available doctors, register walk-in patients on the spot, record initial triage vital signs, and manage the clinic's daily appointment queue.
 
-## Data loading
-On open, the module requests three endpoints in parallel:
-- `GET api/appointment_controller.php?meta=patients` — active patients for the patient dropdown.
-- `GET api/appointment_controller.php?meta=doctors` — active doctors (with their specialty names) for the doctor dropdown.
-- `GET api/appointment_controller.php` — the full appointment queue, newest first, including any saved triage vitals.
+---
 
-The search box and the status dropdown filter the loaded rows instantly in the browser (no extra server calls).
+## User Workflow: What the Receptionist Sees and Does
 
-## Booking flow (header + detail)
-1. Clicking **New Appointment** opens the booking form (`#appointment-form-modal`) with the date box limited to today or later.
-2. Submitting sends `{ patient_id, doctor_id, appointment_date, appointment_time, chief_complaint, blood_pressure, temperature, oxygen_saturation }` to `POST api/appointment_controller.php`.
-3. The server validates the fields, checks that the patient and doctor are active, and rejects a duplicate active booking for the same doctor, date, and time (`409 Conflict`).
-4. Inside one all-or-nothing database transaction, it inserts the `appointments` row (`status = 'scheduled'`, `created_by` = signed-in user) and — when any triage value was typed — a linked `vital_signs` row, following the header-detail pattern (`03 APIs and Database Operations/header_detail_forms` and `04 Database Design/database_master_detail_design_part_2`).
-5. On success the modal closes, the queue refreshes, and the new visit appears with its triage vitals; the doctor later sees those vitals in [[Doctor Consultation]] and [[Doctor Patient Records]].
+### 1. Booking a Scheduled Appointment
+* **When to use:** When a patient calls or visits the clinic to schedule an appointment.
+* **What the receptionist sees:** The Appointments page with a list of upcoming appointments, search box, status filter, and the **+ New Appointment** button.
+* **What the receptionist does:**
+  1. Clicks the **New Appointment** button to open the appointment booking form.
+  2. Selects the patient from the patient dropdown list.
+  3. Selects a doctor from the searchable doctor list.
+  4. Chooses an appointment date and selects an available time slot.
+  5. Types the patient's primary concern in the **Chief Complaint** box.
+  6. Optionally enters initial triage vital signs taken at the front desk: blood pressure (e.g., `120/80`), temperature in °C (e.g., `36.8`), and oxygen level percentage (e.g., `98%`).
+  7. Clicks **Schedule Appointment**.
+* **What happens:**
+  - The system checks that the appointment is during clinic operating hours (**08:00 AM to 05:00 PM**, excluding the **12:00 PM to 12:59 PM** lunch hour, and not on a Sunday).
+  - The system checks that the doctor is not already booked at that exact date and time.
+  - The system checks daily clinic capacity (a maximum of **10 appointments per day** across all doctors). If the clinic has 8 or 9 appointments, a warning notes that the clinic is near capacity. If the day already has 10 appointments, the system prevents further bookings and asks the receptionist to select another date.
+  - The appointment is added to the queue as **Scheduled**.
 
-## UI notes
-- Table columns: Date & Time, Patient (`PAT-XXXX`), Doctor, Chief Complaint, Triage Vitals, and a color-coded status badge (`scheduled`, `confirmed`, `completed`, `cancelled`, `no_show`).
-- Field errors returned by the server (`422`) are shown under the matching input with a red `is-invalid` outline; other failures raise a toast notification.
-- Rows are built with the *Create → Configure → Listen → Append* pattern (`01 JavaScript Foundations/javascript_modules` and `02 DOM and UI/dom_create_and_remove_elements`), and all user text is escaped with `escapeHtml`.
+---
+
+### 2. Registering a Walk-in Patient
+* **When to use:** When a first-time patient arrives at the front desk without an existing patient profile.
+* **What the receptionist sees:** The **+ Register Walk-in** button in the appointment toolbar and a clean registration pop-up form.
+* **What the receptionist does:**
+  1. Clicks **Register Walk-in**.
+  2. Fills out the patient's basic details: First Name, Middle Initial (optional, exactly one letter), Last Name, Gender, Date of Birth, Phone Number, and Home Address.
+  3. Clicks **Register & Select**.
+* **What happens:**
+  - The patient profile is immediately created and automatically selected in the appointment booking form.
+  - The receptionist can immediately finish booking the appointment without leaving the screen.
+
+---
+
+### 3. Confirming Appointments for Doctors
+* **When to use:** When the patient checks in at the front desk and is ready to be examined by the doctor.
+* **What the receptionist does:**
+  1. Finds the patient's appointment in the queue.
+  2. Clicks the status button to update it from **Scheduled** to **Confirmed**.
+* **What happens:**
+  - The status badge changes to **Confirmed**.
+  - In the Doctor Portal, the appointment unlocks with a green **Start Consult** button so the doctor can open the patient's consultation chart.
+
+---
+
+## Screen Elements & Information
+
+* **Appointments Queue Table:**
+  * **Date & Time:** The scheduled date and 12-hour time of the visit.
+  * **Patient Name:** Patient's full name.
+  * **Doctor:** The attending physician and their medical specialty.
+  * **Chief Complaint:** The main reason for the visit.
+  * **Triage Vitals:** Displays initial blood pressure, temperature, and blood oxygen readings.
+  * **Status:** Color-coded status badge showing `Scheduled`, `Confirmed`, `Completed`, `Cancelled`, or `No Show`.
+* **Search & Filters:**
+  * **Search box:** Filter the schedule instantly by patient name, doctor name, or complaint.
+  * **Status dropdown:** Filter by visit status (e.g., view only confirmed or completed appointments).
+  * **Rows per page:** Easily navigate through pages of appointments.

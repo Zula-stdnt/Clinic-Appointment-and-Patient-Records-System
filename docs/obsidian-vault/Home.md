@@ -36,5 +36,13 @@ Welcome to the documentation hub for the **ITE 387 Hospital Patient Information 
 - [[Doctor Patient Records]] — Assigned patient directory and chronological medical history timeline.
 - [[Doctor Profile]] — Personal details, contact number, username, and password management.
 
+## Core Clinical Flow (Patient Records System)
+The system guides hospital staff through the complete clinical workflow:
+`Appointment → Consultation → Diagnosis → Medical History`
+- [[Receptionist Appointments]] — Front-desk appointment scheduling, walk-in patient registration, triage vital signs, and daily clinic capacity management.
+- [[Doctor Appointments]] — Doctor schedule queue, confirmation gating, and consultation launching.
+- [[Doctor Consultation]] — Clinical charting for SOAP examination notes, ICD-10 diagnoses, prescriptions, and lab orders.
+- [[Doctor Patient Records]] — Patient directory and dynamic, accumulated medical history timeline.
+
 ## Receptionist portal modules
-- [[Receptionist Appointments]] — Front-desk appointment booking with optional triage vital signs.
+- [[Receptionist Appointments]] — Front-desk appointment booking, walk-in registration, and triage vital signs.
