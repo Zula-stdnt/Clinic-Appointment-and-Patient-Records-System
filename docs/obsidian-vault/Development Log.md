@@ -32,6 +32,14 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
+### 2026-10-05 — Manage Patients uses the full patient record as its only view (`fbdd911`)
+**Type:** fix
+**Database / migrations:** none
+**Files changed:**
+- `assets/js/modules/patients.js` — removed the small Patient Profile modal and its **View** button. **Record** now opens the shared patient record screen (with **Edit Patient Info** inside), identical to the doctor and receptionist portals. The **Manage Patients** sidebar name plus its Edit and Archive capabilities are unchanged.
+**How to verify:**
+- Administrator → Manage Patients: row actions are **Record / Edit / Archive**; Record shows the full visit timeline and prints.
+
 ### 2026-10-05 — Patient record layout + admin edit from record (`5f95389`)
 **Type:** fix
 **Database / migrations:** none
