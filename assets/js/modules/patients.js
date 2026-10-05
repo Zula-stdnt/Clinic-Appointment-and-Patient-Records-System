@@ -165,22 +165,6 @@ export default {
                     </div>
                 </div>
             </div>
-
-            <!-- View Patient Modal -->
-            <div class="modal" id="patient-view-modal" tabindex="-1" aria-labelledby="patient-view-title" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3 class="modal-title" id="patient-view-title">Patient Profile</h3>
-                            <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body" id="patient-view-body"></div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
         `;
     },
 
@@ -342,7 +326,6 @@ export default {
                     <td>
                         <div class="actions-cell">
                             <button class="btn btn-primary btn-sm btn-record" data-id="${p.patient_id}" title="View Patient Record">Record</button>
-                            <button class="btn btn-secondary btn-sm btn-view" data-id="${p.patient_id}" title="View Profile">View</button>
                             <button class="btn btn-secondary btn-sm btn-edit" data-id="${p.patient_id}" title="Edit Record">Edit</button>
                             <button class="btn btn-warning btn-sm btn-archive" data-id="${p.patient_id}" data-name="${escapeHtml(fullName)}" title="Archive">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
@@ -354,9 +337,6 @@ export default {
             `;
         }).join('');
 
-        tbody.querySelectorAll('.btn-view').forEach(btn => {
-            btn.addEventListener('click', () => this.viewPatient(btn.getAttribute('data-id')));
-        });
         tbody.querySelectorAll('.btn-record').forEach(btn => {
             btn.addEventListener('click', () => this.viewPatientRecord(btn.getAttribute('data-id')));
         });
@@ -563,32 +543,6 @@ export default {
         const feedback = this.container.querySelector(`#${fieldId}-error`);
         if (input) input.classList.add('is-invalid');
         if (feedback) feedback.textContent = message;
-    },
-
-    async viewPatient(patientId) {
-        try {
-            const res = await api.get('api/patient_controller.php', { id: patientId });
-            if (!res.success) throw new Error(res.message);
-
-            const p = res.data.patient;
-            const fullName = `${p.last_name}, ${p.first_name}${p.middle_initial ? ' ' + p.middle_initial + '.' : ''}`;
-            const body = this.container.querySelector('#patient-view-body');
-            body.innerHTML = `
-                <table class="data-table">
-                    <tr><th style="width: 35%;">Full Name</th><td><strong>${escapeHtml(fullName)}</strong></td></tr>
-                    <tr><th>Gender</th><td>${escapeHtml(p.gender)}</td></tr>
-                    <tr><th>Date of Birth</th><td>${escapeHtml(p.date_of_birth)}</td></tr>
-                    <tr><th>Contact No</th><td>${escapeHtml(p.contact_no || 'N/A')}</td></tr>
-                    <tr><th>Address</th><td>${escapeHtml(p.address || 'N/A')}</td></tr>
-                    <tr><th>Status</th><td>${p.deleted_at ? '<span class="badge badge-deleted">archived</span>' : '<span class="badge badge-active">Active</span>'}</td></tr>
-                    <tr><th>Registered Date</th><td>${escapeHtml(p.created_at || 'N/A')}</td></tr>
-                    ${p.deleted_at ? `<tr><th>archived At</th><td style="color: var(--danger);">${escapeHtml(p.deleted_at)}</td></tr>` : ''}
-                </table>
-            `;
-            openModal('patient-view-modal');
-        } catch (err) {
-            showToast(err.response?.data?.message || err.message, 'danger');
-        }
     },
 
     async viewPatientRecord(patientId) {
