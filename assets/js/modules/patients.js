@@ -4,7 +4,7 @@
 
 import api from '../api.js?v=7';
 import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=24';
-import { renderPatientRecord } from '../components/patient-record-view.js?v=1';
+import { renderPatientRecord } from '../components/patient-record-view.js?v=2';
 
 export default {
     state: {
@@ -15,7 +15,8 @@ export default {
         gender: '',
         sortBy: 'patient_id',
         sortOrder: 'ASC',
-        total: 0
+        total: 0,
+        recordPatientId: null
     },
 
     async init(container) {
@@ -536,7 +537,11 @@ export default {
             if (res.success) {
                 showToast(res.message, 'success');
                 closeModal('patient-form-modal');
-                this.loadData();
+                if (this.state.recordPatientId) {
+                    this.viewPatientRecord(this.state.recordPatientId);
+                } else {
+                    this.loadData();
+                }
             } else {
                 throw new Error(res.message);
             }
@@ -593,6 +598,7 @@ export default {
 
         manageCard.style.display = 'none';
         recContainer.style.display = 'block';
+        this.state.recordPatientId = patientId;
         recContainer.innerHTML = '<div class="card" style="padding: 2rem; text-align: center; color: var(--text-muted);">Loading patient record...</div>';
 
         try {
@@ -602,7 +608,9 @@ export default {
             }
             renderPatientRecord(recContainer, res.data, {
                 viewerRole: 'Administrator',
+                onEdit: () => this.openEditModal(patientId),
                 onBack: () => {
+                    this.state.recordPatientId = null;
                     recContainer.style.display = 'none';
                     recContainer.innerHTML = '';
                     manageCard.style.display = 'block';

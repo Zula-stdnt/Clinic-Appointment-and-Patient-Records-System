@@ -72,7 +72,10 @@ export function renderPatientRecord(container, data, options = {}) {
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 0.5rem;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
                         Back to List
                     </button>` : '<span></span>'}
-                <span class="text-muted" style="font-size: 0.85rem;">Read-only clinical record</span>
+                <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;">
+                    <span class="text-muted" style="font-size: 0.85rem;">${options.onEdit ? 'Patient record' : 'Read-only clinical record'}</span>
+                    ${options.onEdit ? '<button type="button" class="btn btn-primary btn-sm" id="pr-edit">Edit Patient Info</button>' : ''}
+                </div>
             </div>
 
             <div class="card patient-record-header">
@@ -109,6 +112,7 @@ export function renderPatientRecord(container, data, options = {}) {
         `;
 
         container.querySelector('#pr-back')?.addEventListener('click', () => options.onBack && options.onBack());
+        container.querySelector('#pr-edit')?.addEventListener('click', () => options.onEdit && options.onEdit());
         container.querySelectorAll('.record-filter').forEach(btn => {
             btn.addEventListener('click', () => {
                 state.filter = btn.getAttribute('data-filter');

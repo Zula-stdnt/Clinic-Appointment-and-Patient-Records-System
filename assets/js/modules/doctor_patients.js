@@ -4,7 +4,7 @@
 
 import api from '../api.js?v=7';
 import { escapeHtml, showToast } from '../ui.js?v=24';
-import { renderPatientRecord } from '../components/patient-record-view.js?v=1';
+import { renderPatientRecord } from '../components/patient-record-view.js?v=2';
 
 export default {
     state: {
