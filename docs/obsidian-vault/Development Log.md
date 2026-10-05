@@ -32,6 +32,22 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
+### 2026-10-05 — Shared Patient Record across portals (`1ffe8ae`)
+**Type:** feat
+**Database / migrations:** none
+**Files changed:**
+- `api/patient_record_controller.php` — **new** read-only history endpoint: Administrator/Receptionist may open any patient; Doctors are scoped to patients with an appointment under them (`403` otherwise); consultation notes are omitted for Receptionists.
+- `api/consultation_controller.php` — per-method roles: `GET` now also allows Receptionist (needed to print prescriptions/lab requests), `POST` stays Doctor/Administrator.
+- `assets/js/components/patient-record-view.js` — **new** shared record screen: summary stats, status filter chips, color-coded encounter timeline, vitals, diagnoses, prescriptions, lab requests, and per-visit print actions.
+- `assets/js/modules/patients.js`, `doctor_patients.js`, `receptionist_patients.js` — wired to the shared view (admin gets a Record button; receptionist View opens the full record and the module is renamed Patient Records; doctor keeps the own-patient scope).
+- `assets/css/style.css` — patient record layout and status badge colors.
+- `docs/obsidian-vault/Modules/Patient Records.md` — **new** module documentation.
+**How to verify:**
+- Administrator → Manage Patients → **Record**: full timeline for any patient, all statuses color coded.
+- Receptionist → Patient Records → **View**: same record with notes hidden; completed visits show Print Prescription / Print Lab Request / Print Form.
+- Doctor → Patient Records → View Record: own patients only; another doctor's patient returns `403`.
+- `php tests/verify_acceptance.php` (20/20), `php tests/verify_all_modules_crud.php`, patient-record role smoke (13/13).
+
 ### 2026-10-05 — Clinical charting + print suite on the patient-records baseline (`409f6d5`)
 **Type:** feat
 **Database / migrations:** on databases that ran the removed experimental financial migrations, apply `migrations/005a_drop_legacy_financial_remnants.sql` first, then `006_remove_financial_schema.sql`, then `migrations/007_seed_medications.sql` (57 medicines, no pricing), `migrations/008_icd10_catalog.sql` (ICD-10 catalog), and `migrations/009_prescriptions_time_to_take.sql` (Rx time-of-day). 007 and 009 are absent-safe and can be re-run.
