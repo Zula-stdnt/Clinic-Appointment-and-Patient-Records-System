@@ -4,9 +4,10 @@
 // & mysql_insert_records (registration through the shared patient form component)
 
 import api from '../api.js?v=7';
-import { escapeHtml, showToast, openModal } from '../ui.js?v=24';
+import { escapeHtml } from '../ui.js?v=24';
 import { PatientRegisterForm } from '../components/patient-register.js?v=1';
 import { printBlankForm } from '../components/print-appointment-form.js?v=2';
+import { renderPatientRecord } from '../components/patient-record-view.js?v=1';
 
 export default {
     state: {
@@ -37,11 +38,11 @@ export default {
 
     renderStructure() {
         this.container.innerHTML = `
-            <div class="card">
+            <div class="card" id="patient-register-card">
                 <div class="card-header">
                     <div>
-                        <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text);">Patient Register</h2>
-                        <p class="text-muted" style="font-size: 0.85rem;">Look up existing patients and register new ones at the front desk.</p>
+                        <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text);">Patient Records</h2>
+                        <p class="text-muted" style="font-size: 0.85rem;">Look up existing patients, view their visit records, and register new ones at the front desk.</p>
                     </div>
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                         <button id="btn-print-blank-form" class="btn btn-secondary" title="Print a blank form for the patient to fill out by hand">
@@ -103,20 +104,7 @@ export default {
                 <div class="pagination-wrapper" id="register-pagination"></div>
             </div>
 
-            <div class="modal" id="patient-record-modal" tabindex="-1" aria-labelledby="patient-record-title" aria-hidden="true">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h3 class="modal-title" id="patient-record-title">Patient Profile</h3>
-                            <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div class="modal-body" id="patient-record-body"></div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <div id="patient-record-container" style="display: none;"></div>
         `;
     },
 
@@ -179,7 +167,7 @@ export default {
         this.container.querySelector('#register-table-body').addEventListener('click', (e) => {
             const btn = e.target.closest('.btn-view-patient');
             if (btn) {
-                this.viewPatient(btn.getAttribute('data-id'));
+                this.viewPatientRecord(btn.getAttribute('data-id'));
             }
         });
     },
@@ -291,29 +279,30 @@ export default {
         });
     },
 
-    async viewPatient(patientId) {
+    async viewPatientRecord(patientId) {
+        const registerCard = this.container.querySelector('#patient-register-card');
+        const recContainer = this.container.querySelector('#patient-record-container');
+        if (!registerCard || !recContainer) return;
+
+        registerCard.style.display = 'none';
+        recContainer.style.display = 'block';
+        recContainer.innerHTML = '<div class="card" style="padding: 2rem; text-align: center; color: var(--text-muted);">Loading patient record...</div>';
+
         try {
-            const res = await api.get('api/patient_controller.php', { id: patientId });
-            if (!res.success) throw new Error(res.message);
-
-            const p = res.data.patient;
-            const fullName = `${p.last_name}, ${p.first_name}${p.middle_initial ? ' ' + p.middle_initial + '.' : ''}`;
-            const gender = p.gender ? p.gender.charAt(0).toUpperCase() + p.gender.slice(1) : 'Unknown';
-
-            this.container.querySelector('#patient-record-body').innerHTML = `
-                <table class="data-table">
-                    <tr><th style="width: 35%;">Patient ID</th><td>PAT-${String(p.patient_id).padStart(4, '0')}</td></tr>
-                    <tr><th>Full Name</th><td><strong>${escapeHtml(fullName)}</strong></td></tr>
-                    <tr><th>Gender</th><td>${escapeHtml(gender)}</td></tr>
-                    <tr><th>Date of Birth</th><td>${escapeHtml(p.date_of_birth || '-')}</td></tr>
-                    <tr><th>Contact No</th><td>${escapeHtml(p.contact_no || 'N/A')}</td></tr>
-                    <tr><th>Address</th><td>${escapeHtml(p.address || 'N/A')}</td></tr>
-                    <tr><th>Registered</th><td>${escapeHtml(this.formatDate(p.created_at))}</td></tr>
-                </table>
-            `;
-            openModal('patient-record-modal');
+            const res = await api.get(`api/patient_record_controller.php?action=history&patient_id=${patientId}`);
+            if (!res.success || !res.data) {
+                throw new Error(res.message || 'Failed to load patient record.');
+            }
+            renderPatientRecord(recContainer, res.data, {
+                viewerRole: 'Receptionist',
+                onBack: () => {
+                    recContainer.style.display = 'none';
+                    recContainer.innerHTML = '';
+                    registerCard.style.display = 'block';
+                }
+            });
         } catch (err) {
-            showToast(err.response?.data?.message || err.message || 'Failed to load patient record.', 'error');
+            recContainer.innerHTML = `<div class="card" style="padding: 2rem; text-align: center; color: var(--danger);">${escapeHtml(err.response?.data?.message || err.message || 'Failed to load patient record.')}</div>`;
         }
     }
 };

@@ -4,6 +4,7 @@
 
 import api from '../api.js?v=7';
 import { escapeHtml, showToast } from '../ui.js?v=24';
+import { renderPatientRecord } from '../components/patient-record-view.js?v=1';
 
 export default {
     state: {
@@ -144,7 +145,7 @@ export default {
         }
 
         try {
-            const res = await api.get(`api/doctor_patients_controller.php?action=history&patient_id=${patientId}`);
+            const res = await api.get(`api/patient_record_controller.php?action=history&patient_id=${patientId}`);
             if (res.success && res.data) {
                 this.state.activeRecord = res.data;
                 this.renderMedicalRecord();
@@ -163,109 +164,10 @@ export default {
         const recDiv = this.container.querySelector('#patient-record-view');
         if (!recDiv) return;
 
-        const p = this.state.activeRecord.patient;
-        const encounters = this.state.activeRecord.encounters || [];
-        const pid = `PAT-${p.patient_id.toString().padStart(4, '0')}`;
-        const isArchived = p.deleted_at ? '<span class="badge badge-warning" style="margin-left: 1rem;">Archived Patient Record</span>' : '';
-
-        let encountersHtml = '<div style="text-align: center; padding: 2rem; color: var(--text-muted);">No past consultations recorded for this patient.</div>';
-        
-        if (encounters.length > 0) {
-            encountersHtml = encounters.map(e => {
-                const isCompleted = e.status === 'completed';
-                const statusBadge = isCompleted ? '<span class="badge badge-success">Completed</span>' : '<span class="badge badge-info">Scheduled</span>';
-                
-                let vitalsHtml = '';
-                if (isCompleted && (e.blood_pressure || e.temperature || e.oxygen_saturation)) {
-                    vitalsHtml = `
-                        <div style="display: flex; gap: 1.5rem; flex-wrap: wrap; margin-bottom: 1rem; font-size: 0.9rem;">
-                            ${e.blood_pressure ? `<div><strong>BP:</strong> ${escapeHtml(e.blood_pressure)}</div>` : ''}
-                            ${e.temperature ? `<div><strong>Temp:</strong> ${escapeHtml(e.temperature)} &deg;C</div>` : ''}
-                            ${e.oxygen_saturation ? `<div><strong>SpO2:</strong> ${escapeHtml(e.oxygen_saturation)}%</div>` : ''}
-                        </div>
-                    `;
-                }
-
-                let dxHtml = '';
-                if (e.diagnoses && e.diagnoses.length > 0) {
-                    dxHtml = `<div style="margin-bottom: 0.75rem;"><strong>Diagnosis:</strong> ` + 
-                             e.diagnoses.map(d => `<span class="badge badge-secondary" style="margin-right: 0.25rem;">${escapeHtml(d.diagnosis_name)} ${d.icd10_code ? `(${escapeHtml(d.icd10_code)})` : ''}</span>`).join('') +
-                             `</div>`;
-                }
-
-                let rxHtml = '';
-                if (e.prescriptions && e.prescriptions.length > 0) {
-                    rxHtml = `<div style="margin-bottom: 0.75rem;"><strong>Prescriptions:</strong><ul style="margin: 0.25rem 0 0 1.5rem; padding: 0;">` +
-                             e.prescriptions.map(r => `<li>${escapeHtml(r.medication_name)} - ${escapeHtml(r.dosage)} (${escapeHtml(r.frequency)})${r.time_to_take ? ` &middot; ${escapeHtml(r.time_to_take)}` : ''}</li>`).join('') +
-                             `</ul></div>`;
-                }
-
-                let labHtml = '';
-                if (e.lab_requests && e.lab_requests.length > 0) {
-                    labHtml = `<div style="margin-bottom: 0.75rem;"><strong>Lab Requests:</strong><ul style="margin: 0.25rem 0 0 1.5rem; padding: 0;">` +
-                              e.lab_requests.map(l => `<li>${escapeHtml(l.test_name)}</li>`).join('') +
-                              `</ul></div>`;
-                }
-
-                return `
-                    <div class="card" style="margin-bottom: 1.5rem; padding: 1.5rem; border-left: 4px solid var(--primary);">
-                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid var(--border);">
-                            <div>
-                                <h4 style="margin: 0 0 0.25rem 0; font-size: 1.1rem; color: var(--primary);">Consultation - ${new Date(e.appointment_date).toLocaleDateString()}</h4>
-                                <div style="color: var(--text-muted); font-size: 0.9rem;">Chief Complaint: <span style="color: var(--text); font-weight: 500;">${escapeHtml(e.chief_complaint || 'None specified')}</span></div>
-                            </div>
-                            <div>${statusBadge}</div>
-                        </div>
-                        
-                        ${isCompleted ? `
-                            ${vitalsHtml}
-                            <div style="margin-bottom: 1rem;">
-                                <strong>Clinical Notes:</strong>
-                                <div style="background: var(--bg-alt); padding: 0.75rem; border-radius: 4px; margin-top: 0.25rem; white-space: pre-wrap; font-size: 0.95rem;">${escapeHtml(e.notes || 'No narrative notes recorded.')}</div>
-                            </div>
-                            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1rem;">
-                                <div>${dxHtml}${labHtml}</div>
-                                <div>${rxHtml}</div>
-                            </div>
-                        ` : `<div class="text-muted">Consultation pending. Notes and orders will appear here once the encounter is completed.</div>`}
-                    </div>
-                `;
-            }).join('');
-        }
-
-        recDiv.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <button type="button" class="btn btn-secondary" id="btn-back-to-list">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 0.5rem; vertical-align: middle;"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
-                    Back to List
-                </button>
-            </div>
-            
-            <div class="card" style="margin-bottom: 2rem; padding: 1.5rem; background: var(--surface);">
-                <div style="display: flex; gap: 2rem; align-items: center;">
-                    <div style="width: 70px; height: 70px; border-radius: 50%; background: var(--secondary); color: white; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: bold;">
-                        ${p.first_name.charAt(0).toUpperCase()}
-                    </div>
-                    <div>
-                        <h2 style="margin: 0 0 0.5rem 0; font-size: 1.5rem; display: flex; align-items: center;">
-                            ${escapeHtml(p.first_name)} ${escapeHtml(p.last_name)}
-                            ${isArchived}
-                        </h2>
-                        <div style="color: var(--text-muted); font-size: 0.95rem; display: flex; gap: 1.5rem; flex-wrap: wrap;">
-                            <span><strong>ID:</strong> ${pid}</span>
-                            <span><strong>Age:</strong> ${escapeHtml(p.age)}</span>
-                            <span><strong>Gender:</strong> ${escapeHtml(p.gender || 'Unknown')}</span>
-                            <span><strong>Contact:</strong> ${escapeHtml(p.contact_no || '--')}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <h3 style="margin-bottom: 1rem; font-size: 1.25rem; color: var(--text);">Encounter History</h3>
-            <div id="timeline-container">
-                ${encountersHtml}
-            </div>
-        `;
+        renderPatientRecord(recDiv, this.state.activeRecord, {
+            viewerRole: 'Doctor',
+            onBack: () => this.backToList()
+        });
     },
 
     backToList() {

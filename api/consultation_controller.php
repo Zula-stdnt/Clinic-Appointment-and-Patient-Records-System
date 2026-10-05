@@ -8,18 +8,19 @@ require_once __DIR__ . '/../includes/response.php';
 require_once __DIR__ . '/../includes/auth.php';
 
 require_login();
-require_role(['Doctor', 'Administrator']);
 verify_csrf_on_state_change();
 
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 
 try {
     if ($method === 'GET') {
+        require_role(['Doctor', 'Administrator', 'Receptionist']);
         if (!isset($_GET['appointment_id'])) {
             send_error('appointment_id is required.', [], 400);
         }
         getConsultationDetails($pdo, (int)$_GET['appointment_id']);
     } elseif ($method === 'POST') {
+        require_role(['Doctor', 'Administrator']);
         saveConsultation($pdo);
     } else {
         send_error('Method not allowed.', [], 405);

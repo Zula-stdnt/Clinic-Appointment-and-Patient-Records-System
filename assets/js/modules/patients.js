@@ -4,6 +4,7 @@
 
 import api from '../api.js?v=7';
 import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=24';
+import { renderPatientRecord } from '../components/patient-record-view.js?v=1';
 
 export default {
     state: {
@@ -26,7 +27,7 @@ export default {
 
     renderStructure() {
         this.container.innerHTML = `
-            <div class="card">
+            <div class="card" id="patients-manage-card">
                 <div class="card-header">
                     <div>
                         <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text);">Manage Patients</h2>
@@ -86,6 +87,8 @@ export default {
 
                 <div class="pagination-wrapper" id="patients-pagination"></div>
             </div>
+
+            <div id="patient-record-container" style="display: none;"></div>
 
             <!-- Add/Edit Patient Modal -->
             <div class="modal" id="patient-form-modal" tabindex="-1" aria-labelledby="patient-form-title" aria-hidden="true">
@@ -337,7 +340,8 @@ export default {
                     <td><span class="badge badge-active">Active</span></td>
                     <td>
                         <div class="actions-cell">
-                            <button class="btn btn-secondary btn-sm btn-view" data-id="${p.patient_id}" title="View Record">View</button>
+                            <button class="btn btn-primary btn-sm btn-record" data-id="${p.patient_id}" title="View Patient Record">Record</button>
+                            <button class="btn btn-secondary btn-sm btn-view" data-id="${p.patient_id}" title="View Profile">View</button>
                             <button class="btn btn-secondary btn-sm btn-edit" data-id="${p.patient_id}" title="Edit Record">Edit</button>
                             <button class="btn btn-warning btn-sm btn-archive" data-id="${p.patient_id}" data-name="${escapeHtml(fullName)}" title="Archive">
                                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
@@ -351,6 +355,9 @@ export default {
 
         tbody.querySelectorAll('.btn-view').forEach(btn => {
             btn.addEventListener('click', () => this.viewPatient(btn.getAttribute('data-id')));
+        });
+        tbody.querySelectorAll('.btn-record').forEach(btn => {
+            btn.addEventListener('click', () => this.viewPatientRecord(btn.getAttribute('data-id')));
         });
         tbody.querySelectorAll('.btn-edit').forEach(btn => {
             btn.addEventListener('click', () => this.openEditModal(btn.getAttribute('data-id')));
@@ -576,6 +583,33 @@ export default {
             openModal('patient-view-modal');
         } catch (err) {
             showToast(err.response?.data?.message || err.message, 'danger');
+        }
+    },
+
+    async viewPatientRecord(patientId) {
+        const manageCard = this.container.querySelector('#patients-manage-card');
+        const recContainer = this.container.querySelector('#patient-record-container');
+        if (!manageCard || !recContainer) return;
+
+        manageCard.style.display = 'none';
+        recContainer.style.display = 'block';
+        recContainer.innerHTML = '<div class="card" style="padding: 2rem; text-align: center; color: var(--text-muted);">Loading patient record...</div>';
+
+        try {
+            const res = await api.get(`api/patient_record_controller.php?action=history&patient_id=${patientId}`);
+            if (!res.success || !res.data) {
+                throw new Error(res.message || 'Failed to load patient record.');
+            }
+            renderPatientRecord(recContainer, res.data, {
+                viewerRole: 'Administrator',
+                onBack: () => {
+                    recContainer.style.display = 'none';
+                    recContainer.innerHTML = '';
+                    manageCard.style.display = 'block';
+                }
+            });
+        } catch (err) {
+            recContainer.innerHTML = `<div class="card" style="padding: 2rem; text-align: center; color: var(--danger);">${escapeHtml(err.response?.data?.message || err.message || 'Failed to load patient record.')}</div>`;
         }
     },
 
