@@ -142,9 +142,8 @@ export default {
                         }
                     </button>
                     ${(appt.status === 'scheduled' || appt.status === 'confirmed') ? `
-                    <button class="btn btn-danger btn-sm btn-cancel-appointment" data-id="${appt.appointment_id}" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                    <button class="btn btn-danger btn-sm btn-icon btn-cancel-appointment" data-id="${appt.appointment_id}" title="Cancel Appointment" aria-label="Cancel appointment">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                        Cancel
                     </button>` : ''}
                 </td>
             `;

@@ -237,6 +237,19 @@ svg {
     border-radius: var(--radius-sm);
 }
 
+.btn-icon {
+    padding: 0.35rem;
+    width: 30px;
+    height: 30px;
+    flex: 0 0 auto;
+}
+
+.btn-icon.btn-sm {
+    padding: 0.3rem;
+    width: 28px;
+    height: 28px;
+}
+
 .btn-block {
     width: 100%;
 }
@@ -880,6 +893,7 @@ select.form-control:not([multiple]) {
     align-items: center;
     gap: 0.35rem;
     justify-content: flex-end;
+    flex-wrap: nowrap;
 }
 
 .pagination-wrapper {
