@@ -34,7 +34,7 @@ A running, per-commit record of every change and implementation in this project,
 
 ### 2026-10-05 — Clinical charting + print suite on the patient-records baseline (`409f6d5`)
 **Type:** feat
-**Database / migrations:** `migrations/007_seed_medications.sql` (57 medicines, no pricing), `migrations/008_icd10_catalog.sql` (ICD-10 catalog), `migrations/009_prescriptions_time_to_take.sql` (Rx time-of-day). Applied after `006_remove_financial_schema.sql`.
+**Database / migrations:** on databases that ran the removed experimental financial migrations, apply `migrations/005a_drop_legacy_financial_remnants.sql` first, then `006_remove_financial_schema.sql`, then `migrations/007_seed_medications.sql` (57 medicines, no pricing), `migrations/008_icd10_catalog.sql` (ICD-10 catalog), and `migrations/009_prescriptions_time_to_take.sql` (Rx time-of-day). 007 and 009 are absent-safe and can be re-run.
 **Files changed:**
 - `api/medication_controller.php` — paged/searchable medication CRUD (Administrator writes, Doctor reads) with archive, restore, and guarded permanent delete.
 - `api/icd10_controller.php` — ICD-10 lookup for the diagnosis picker.

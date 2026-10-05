@@ -4,8 +4,12 @@
 -- Manage Medications master file.
 -- Re-runnable: INSERT IGNORE skips rows that already exist.
 
-ALTER TABLE `medications`
-  ADD UNIQUE KEY `uq_medications_name` (`name`);
+USE hospital_db;
+
+SET @has_uq := (SELECT COUNT(*) FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'medications' AND INDEX_NAME = 'uq_medications_name');
+SET @sql := IF(@has_uq = 0, 'ALTER TABLE `medications` ADD UNIQUE KEY `uq_medications_name` (`name`)', 'SELECT 1');
+PREPARE stmt FROM @sql; EXECUTE stmt; DEALLOCATE PREPARE stmt;
 
 INSERT IGNORE INTO `medications` (`name`, `generic_name`, `manufacturer`) VALUES
 ('Advil',                 'Ibuprofen',                              'Pfizer'),

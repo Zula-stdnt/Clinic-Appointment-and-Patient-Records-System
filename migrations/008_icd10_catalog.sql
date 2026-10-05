@@ -3,6 +3,8 @@
 -- diagnosis picker (SearchSelect) and seeds a curated set of common codes.
 -- Re-runnable: CREATE TABLE IF NOT EXISTS + INSERT IGNORE.
 
+USE hospital_db;
+
 CREATE TABLE IF NOT EXISTS `icd10_codes` (
   `code` varchar(10) NOT NULL,
   `description` varchar(255) NOT NULL,
