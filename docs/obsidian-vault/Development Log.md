@@ -32,6 +32,16 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
+### 2026-10-05 — Compact appointment row actions (`ad7657d`)
+**Type:** fix
+**Database / migrations:** none
+**Files changed:**
+- `assets/js/modules/receptionist_appointments.js` — **Print Form** and **Cancel** are now icon-only buttons (with `title` and `aria-label`), so the Actions column no longer squeezes the Patient/Doctor columns into wrapping and making every row taller.
+- `assets/js/modules/doctor_appointments.js` — **Cancel** is icon-only; Start Consult / View Encounter keeps its text label.
+- `assets/css/style.css` — added `.btn-icon` sizing and kept `.actions-cell` on a single line.
+**How to verify:**
+- Receptionist → Appointments and Doctor → My Appointments: rows are back to a single compact line; hover an icon to see its tooltip.
+
 ### 2026-10-05 — Compact patient record visit cards (`0f11ab0`)
 **Type:** fix
 **Database / migrations:** none
