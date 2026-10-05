@@ -76,39 +76,43 @@ export default {
             </div>
 
             <!-- Add/Edit Service Modal -->
-            <div class="modal-backdrop" id="service-form-modal">
+            <div class="modal" id="service-form-modal" tabindex="-1" aria-labelledby="service-form-title" aria-hidden="true">
                 <div class="modal-dialog">
-                    <div class="modal-header">
-                        <h3 class="modal-title" id="service-form-title">Add New Service</h3>
-                        <button type="button" class="btn-close" data-close-modal>&times;</button>
-                    </div>
-                    <form id="service-form" novalidate>
-                        <div class="modal-body">
-                            <input type="hidden" id="service-id">
-                            <div class="form-group">
-                                <label for="service-name">Service Name <span class="required-star">*</span></label>
-                                <input type="text" id="service-name" class="form-control" required placeholder="e.g. Cardiology">
-                                <div class="invalid-feedback" id="service-name-error"></div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title" id="service-form-title">Add New Service</h3>
+                            <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form id="service-form" novalidate>
+                            <div class="modal-body">
+                                <input type="hidden" id="service-id">
+                                <div class="form-group">
+                                    <label for="service-name">Service Name <span class="required-star">*</span></label>
+                                    <input type="text" id="service-name" class="form-control" required placeholder="e.g. Cardiology">
+                                    <div class="invalid-feedback" id="service-name-error"></div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
-                            <button type="submit" id="btn-save-service" class="btn btn-primary">Save Service</button>
-                        </div>
-                    </form>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                <button type="submit" id="btn-save-service" class="btn btn-primary">Save Service</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 
             <!-- View Service Modal -->
-            <div class="modal-backdrop" id="service-view-modal">
+            <div class="modal" id="service-view-modal" tabindex="-1" aria-labelledby="service-view-title" aria-hidden="true">
                 <div class="modal-dialog">
-                    <div class="modal-header">
-                        <h3 class="modal-title">Service Details</h3>
-                        <button type="button" class="btn-close" data-close-modal>&times;</button>
-                    </div>
-                    <div class="modal-body" id="service-view-body"></div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-close-modal>Close</button>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title" id="service-view-title">Service Details</h3>
+                            <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="service-view-body"></div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        </div>
                     </div>
                 </div>
             </div>
