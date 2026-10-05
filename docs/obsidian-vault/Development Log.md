@@ -32,6 +32,22 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
+### 2026-10-05 — Clinical charting + print suite on the patient-records baseline (`409f6d5`)
+**Type:** feat
+**Database / migrations:** `migrations/007_seed_medications.sql` (57 medicines, no pricing), `migrations/008_icd10_catalog.sql` (ICD-10 catalog), `migrations/009_prescriptions_time_to_take.sql` (Rx time-of-day). Applied after `006_remove_financial_schema.sql`.
+**Files changed:**
+- `api/medication_controller.php` — paged/searchable medication CRUD (Administrator writes, Doctor reads) with archive, restore, and guarded permanent delete.
+- `api/icd10_controller.php` — ICD-10 lookup for the diagnosis picker.
+- `api/consultation_controller.php` — diagnoses, prescriptions with `time_to_take`, and free-text lab requests in one transaction.
+- `assets/js/components/` — printable appointment/registration form (saved + blank for patients), prescription slip, laboratory request; shared `print-utils.js`.
+- `assets/js/modules/medications.js`, `account_settings.js`, `my_profile.js`, `receptionist_patients.js` — new modules wired into `main.js` / `receptionist_main.js`.
+- `login.html`, dashboards, `assets/css/style.css` — refreshed UI on top of the leader's branding.
+**How to verify:**
+- Admin → Manage Medications: add/edit/archive/restore, search, pagination.
+- Doctor → Consultation: ICD-10 diagnosis, prescription with time picker, free-text lab request; save then print Rx and Lab Request.
+- Receptionist → Patient Records: register a patient and print the blank or saved registration/appointment form.
+- `php tests/verify_acceptance.php` and `php tests/verify_all_modules_crud.php` (adjust `$baseUrl` to your install path).
+
 ### 2026-09-30 — Receptionist appointment booking & triage (`a083555`)
 **Type:** feat
 **Database / migrations:** none — the existing `appointments` and `vital_signs` tables already support bookings.

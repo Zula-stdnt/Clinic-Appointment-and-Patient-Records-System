@@ -6,7 +6,7 @@ tags: [lessons, alignment]
 
 How this project applies the **ITE 387** lesson topics. **Short answer:** folders 01–04 are required to build and understand this project; folder 05 (Next.js) is a different stack and is **not used** by this codebase.
 
-The lesson files live in the repo at `ITE 387 LESSONS/` — outside this vault — so they are referenced as paths here. The full lesson index is at `ITE 387 LESSONS/ITE 387 Study Guide.md`.
+The lesson files are studied separately (they are not part of this repository), so the topics are referenced by name here.
 
 ## 1. JavaScript Foundations
 Lessons: `javascript_fundamentals.md`, `javascript_arrays.md`, `javascript_objects_and_arrays.md`, `javascript_modules.md`
@@ -46,9 +46,9 @@ Where it shows in the project:
 - **Design process & ERD:** the Mermaid ERD in [[Database Schema]] was derived through the 6-step design process.
 - **Conceptual → logical:** `migrations/hospital_db.sql` turns the design into real tables with primary keys, foreign keys, and unique constraints.
 - **Normalization (3NF):** login accounts in `users` are separated from clinical details in `doctors`, `roles` is a lookup table, and `doctor_specialty` is a **junction table** for the many-to-many link.
-- **Master-Detail (Part 2):** `consultation` (header) with `diagnosis` / `prescriptions` / `lab_requests` (details), and `billing` (header) with `invoice_items` (details) — see [[Billing Workflow]].
+- **Master-Detail (Part 2):** `consultation` (header) with `diagnosis` / `prescriptions` / `lab_requests` (details).
 
-Docs: [[Database Schema]] · [[Database Migrations]] · [[Billing Workflow]]
+Docs: [[Database Schema]] · [[Database Migrations]]
 
 ## 5. Next.js
 Lessons: `nextjs_introduction_and_setup.md`, `nextjs_components_and_jsx.md`, `nextjs_app_router_basics.md`
@@ -70,10 +70,10 @@ Lessons: `nextjs_introduction_and_setup.md`, `nextjs_components_and_jsx.md`, `ne
 | `mysql_retrieve_specific_record`        | Applied                       | `GET` by id, e.g. `#doctor_consultation/1`              |
 | `mysql_insert_records`                  | Applied                       | `POST` handlers using `lastInsertId()`                  |
 | `mysql_update_records`                  | Applied                       | `PUT` handlers and `SELECT ... FOR UPDATE`              |
-| `header_detail_forms`                   | Applied                       | Consultation save + billing invoice design              |
+| `header_detail_forms`                   | Applied                       | Consultation save (header + detail rows)                |
 | `database_design_process`               | Applied                       | Schema planning behind `hospital_db.sql`                |
 | `entity_relationship_diagrams`          | Applied                       | Mermaid ERD in [[Database Schema]]                      |
 | `database_conceptual_to_logical_design` | Applied                       | Physical tables, PKs, and FKs in migrations             |
 | `database_normalization`                | Applied                       | 3NF layout, lookup and junction tables                  |
-| `database_master_detail_design_part_2`  | Applied                       | Consultation and billing header-detail tables           |
+| `database_master_detail_design_part_2`  | Applied                       | Consultation header-detail tables                       |
 | `nextjs_*` (all 3)                      | Not used                      | Different stack; studied separately                     |
