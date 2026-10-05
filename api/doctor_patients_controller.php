@@ -168,7 +168,7 @@ function getMedicalHistory(PDO $pdo, int $patientId): void {
             $enc['diagnoses'] = $dStmt->fetchAll(PDO::FETCH_ASSOC);
             
             // Prescriptions
-            $rStmt = $pdo->prepare("SELECT p.dosage, p.frequency, m.name as medication_name 
+            $rStmt = $pdo->prepare("SELECT p.dosage, p.frequency, p.time_to_take, m.name as medication_name 
                                     FROM prescriptions p 
                                     INNER JOIN medications m ON p.medication_id = m.medication_id 
                                     WHERE p.consultation_id = ?");

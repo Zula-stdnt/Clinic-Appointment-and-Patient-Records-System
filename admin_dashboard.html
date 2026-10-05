@@ -5,98 +5,136 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="">
     <title>Admin Dashboard - Hospital Patient Information System</title>
-    <link rel="stylesheet" href="assets/css/style.css?v=13">
+    <link rel="stylesheet" href="assets/vendor/inter/inter.css">
+    <link rel="stylesheet" href="assets/css/style.css?v=22">
     <script src="assets/js/axios.min.js"></script>
 </head>
 <body>
     <div class="dashboard-layout">
-        <!-- Sidebar Navigation -->
-        <aside class="sidebar" id="sidebar">
-            <div class="sidebar-brand">
-                <img src="logo.png" alt="Hospital Logo" class="sidebar-logo">
-                <div class="sidebar-title-group">
-                    <h2>Healing for Everyone</h2>
-                    <p>Admin Master Panel</p>
-                </div>
-            </div>
-
-            <nav class="sidebar-nav">
-                <div class="nav-section-title">Overview</div>
-
-                <button class="nav-link active" data-module="overview">
-                    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
-                    <span>Dashboard</span>
-                </button>
-
-                <div class="nav-section-title mt-4">Master Files</div>
-
-                <button class="nav-link" data-module="users">
-                    <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                    <span>Manage Users</span>
-                </button>
-
-                <button class="nav-link" data-module="patients">
-                    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                    <span>Manage Patients</span>
-                </button>
-
-                <button class="nav-link" data-module="doctors">
-                    <svg viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
-                    <span>Manage Doctors</span>
-                </button>
-
-                <button class="nav-link" data-module="specialties">
-                    <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
-                    <span>Manage Specialties</span>
-                </button>
-
-                <button class="nav-link" data-module="services">
-                    <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                    <span>Manage Services</span>
-                </button>
-
-                <div class="nav-section-title mt-4">System</div>
-                
-                <button class="nav-link" data-module="archive">
-                    <svg viewBox="0 0 24 24"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
-                    <span>Manage Archive</span>
-                </button>
-            </nav>
-
-            <div class="sidebar-footer">
-                <div class="user-profile">
-                    <div class="user-avatar" id="user-avatar-initial"></div>
-                    <div class="user-details">
-                        <div class="user-name" id="user-name"></div>
-                        <div class="user-role" id="user-role"></div>
+        <!-- Sidebar Navigation (fixed on desktop, off-canvas drawer on mobile) -->
+        <aside class="app-sidebar" id="sidebar" aria-label="Primary navigation">
+            <div class="sidebar">
+                <div class="sidebar-brand">
+                    <img src="logo.png" alt="Hospital Logo" class="sidebar-logo">
+                    <div class="sidebar-title-group">
+                        <h2>Healing for Everyone</h2>
+                        <p>Admin Master Panel</p>
                     </div>
                 </div>
-                <a href="logout.php" class="btn btn-secondary btn-sm btn-block">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
-                    Sign Out
-                </a>
+
+                <nav class="sidebar-nav">
+                    <div class="nav-section-title">Overview</div>
+
+                    <button type="button" class="nav-link active" data-module="overview">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+                        <span>Dashboard</span>
+                    </button>
+
+                    <div class="nav-section-title">Master Files</div>
+
+                    <button type="button" class="nav-link" data-module="users">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        <span>Manage Users</span>
+                    </button>
+
+                    <button type="button" class="nav-link" data-module="patients">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        <span>Manage Patients</span>
+                    </button>
+
+                    <button type="button" class="nav-link" data-module="doctors">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                        <span>Manage Doctors</span>
+                    </button>
+
+                    <button type="button" class="nav-link" data-module="services">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                        <span>Manage Services</span>
+                    </button>
+
+                    <button type="button" class="nav-link" data-module="medications">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 20.5 3.5 13.5a5 5 0 0 1 7-7l7 7a5 5 0 0 1-7 7z"></path><line x1="8.5" y1="8.5" x2="15.5" y2="15.5"></line></svg>
+                        <span>Manage Medications</span>
+                    </button>
+
+                    <button type="button" class="nav-link" data-module="specialties">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                        <span>Manage Specialties</span>
+                    </button>
+
+                    <div class="nav-section-title">System</div>
+
+                    <button type="button" class="nav-link" data-module="archive">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                        <span>Manage Archive</span>
+                    </button>
+                </nav>
+
+                <div class="sidebar-footer">
+                    <div class="sidebar-status">
+                        <span class="status-dot"></span>
+                        <span>System Online &middot; Secure Session</span>
+                    </div>
+                </div>
             </div>
         </aside>
 
-        <!-- Backdrop for the off-canvas sidebar on small screens -->
         <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
         <!-- Main Workspace Area -->
         <main class="main-content">
             <header class="topbar">
                 <div class="topbar-left">
-                    <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation menu" aria-controls="sidebar" aria-expanded="false">
-                        <svg viewBox="0 0 24 24" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    <button type="button" class="sidebar-toggle" data-sidebar-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Toggle navigation menu">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                     </button>
                     <h1 class="topbar-title" id="current-module-title">Dashboard</h1>
                 </div>
+
                 <div class="topbar-meta">
-                    <span class="topbar-date text-muted">
-                        Today is <span id="current-date"></span>
-                    </span>
-                    <span class="badge badge-active">
-                        System Online
-                    </span>
+                    <span class="topbar-date">Today is <span id="current-date"></span></span>
+                    <span class="badge-online">System Online</span>
+
+                    <!-- Top-right account dropdown -->
+                    <div class="dropdown">
+                        <button type="button" class="user-menu-btn" data-dropdown-toggle aria-expanded="false" aria-haspopup="true" aria-label="Account menu">
+                            <span class="user-avatar" id="user-avatar-initial"></span>
+                            <span class="user-menu-meta">
+                                <span class="user-name" id="user-name"></span>
+                                <span class="user-role" id="user-role"></span>
+                            </span>
+                            <svg class="user-menu-caret" viewBox="0 0 24 24" aria-hidden="true"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </button>
+                        <ul class="user-menu">
+                            <li class="user-menu-header">
+                                <span class="user-avatar" id="user-menu-avatar">A</span>
+                                <span class="user-menu-meta">
+                                    <span class="user-name" id="user-menu-name">Administrator</span>
+                                    <span class="user-role" id="user-menu-role">Administrator</span>
+                                </span>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="#profile" id="menu-profile">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><circle cx="12" cy="10" r="3"></circle><path d="M6.5 19a6 6 0 0 1 11 0"></path></svg>
+                                    My Profile
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#settings" id="menu-settings">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                    Settings
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item text-danger" href="logout.php">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                                    Sign Out
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
                 </div>
             </header>
 
@@ -108,18 +146,20 @@
     </div>
 
     <!-- Global Reusable Confirmation Modal for Soft and Hard Deletion -->
-    <div class="modal-backdrop" id="global-confirm-modal">
+    <div class="modal" id="global-confirm-modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="global-confirm-title" aria-hidden="true">
         <div class="modal-dialog">
-            <div class="modal-header">
-                <h3 class="modal-title">Confirm Action</h3>
-                <button type="button" class="btn-close" data-close-modal>&times;</button>
-            </div>
-            <div class="modal-body">
-                <!-- Injected dynamically by ui.js -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
-                <button type="button" id="global-confirm-btn" class="btn btn-danger">Confirm</button>
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title" id="global-confirm-title">Confirm Action</h3>
+                    <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Injected dynamically by ui.js -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                    <button type="button" id="global-confirm-btn" class="btn btn-danger">Confirm</button>
+                </div>
             </div>
         </div>
     </div>
@@ -127,7 +167,7 @@
     <!-- Global Toast Notification Container -->
     <div id="toast-container" class="toast-container"></div>
 
-    <!-- Application Script Loader -->
-    <script type="module" src="assets/js/main.js?v=23"></script>
+    <!-- Application Scripts -->
+    <script type="module" src="assets/js/main.js?v=26"></script>
 </body>
 </html>

@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 02 DOM and UI/dom_create_and_remove_elements (Create -> Configure -> Listen -> Append row pattern) & 03 APIs and Database Operations/javascript_working_with_apis (Async/await response validation)
 
 import api from '../api.js?v=7';
-import { create, escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=22';
+import { create, escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=24';
 
 export default {
     state: {

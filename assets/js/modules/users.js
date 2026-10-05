@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays (Dynamic <select> option population from lookup arrays) & 03 APIs and Database Operations/mysql_insert_records / mysql_update_records
 
 import api from '../api.js?v=7';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=22';
+import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=24';
 
 export default {
     state: {
@@ -109,13 +109,14 @@ export default {
             </div>
 
             <!-- Add/Edit User Modal -->
-            <div class="modal-backdrop" id="user-form-modal">
-                <div class="modal-dialog">
-                    <div class="modal-header">
-                        <h3 class="modal-title" id="user-form-title">Add New User</h3>
-                        <button type="button" class="btn-close" data-close-modal>&times;</button>
-                    </div>
-                    <form id="user-form" novalidate>
+            <div class="modal" id="user-form-modal" tabindex="-1" aria-labelledby="user-form-title" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <form id="user-form" novalidate>
+                            <div class="modal-header">
+                                <h3 class="modal-title" id="user-form-title">Add New User</h3>
+                                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                            </div>
                         <div class="modal-body">
                             <input type="hidden" id="user-id">
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -200,24 +201,27 @@ export default {
                                 <small class="text-muted" id="user-password-hint" style="display: none; margin-top: 0.25rem;">Leave blank to keep password unchanged.</small>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
-                            <button type="submit" id="btn-save-user" class="btn btn-primary">Save User</button>
-                        </div>
-                    </form>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                <button type="submit" id="btn-save-user" class="btn btn-primary">Save User</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 
             <!-- View User Modal -->
-            <div class="modal-backdrop" id="user-view-modal">
+            <div class="modal" id="user-view-modal" tabindex="-1" aria-labelledby="user-view-title" aria-hidden="true">
                 <div class="modal-dialog">
-                    <div class="modal-header">
-                        <h3 class="modal-title">User Account Details</h3>
-                        <button type="button" class="btn-close" data-close-modal>&times;</button>
-                    </div>
-                    <div class="modal-body" id="user-view-body"></div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-close-modal>Close</button>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title" id="user-view-title">User Account Details</h3>
+                            <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="user-view-body"></div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        </div>
                     </div>
                 </div>
             </div>

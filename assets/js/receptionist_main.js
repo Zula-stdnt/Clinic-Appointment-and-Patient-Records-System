@@ -2,42 +2,33 @@
 // Single-Page Application Router and Module Orchestrator for the Receptionist Portal
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_modules (ES module orchestration) & javascript_fundamentals (DOMContentLoaded initialization)
 
-import { requireSession } from './session-guard.js?v=22';
-import receptionistAppointments from './modules/receptionist_appointments.js?v=1';
+import { requireSession } from './session-guard.js?v=24';
+import { hideAllModals, closeSidebar } from './ui.js?v=24';
+import receptionistAppointments from './modules/receptionist_appointments.js?v=28';
+import receptionistPatients from './modules/receptionist_patients.js?v=28';
+import settingsModule from './modules/account_settings.js?v=24';
+import profileModule from './modules/my_profile.js?v=24';
 
 const modules = {
     'receptionist_appointments': {
         title: 'Appointments',
         instance: receptionistAppointments
+    },
+    'receptionist_patients': {
+        title: 'Patient Register',
+        instance: receptionistPatients
+    },
+    'settings': {
+        title: 'Settings',
+        instance: settingsModule
+    },
+    'profile': {
+        title: 'My Profile',
+        instance: profileModule
     }
 };
 
 let activeRouteKey = null;
-
-function isSidebarCollapsed() {
-    return window.matchMedia('(max-width: 1024px)').matches;
-}
-
-function openSidebar() {
-    document.body.classList.add('sidebar-open');
-    const toggle = document.getElementById('sidebar-toggle');
-    if (toggle) toggle.setAttribute('aria-expanded', 'true');
-}
-
-function closeSidebar() {
-    if (!document.body.classList.contains('sidebar-open')) return;
-    document.body.classList.remove('sidebar-open');
-    const toggle = document.getElementById('sidebar-toggle');
-    if (toggle) toggle.setAttribute('aria-expanded', 'false');
-}
-
-function toggleSidebar() {
-    if (document.body.classList.contains('sidebar-open')) {
-        closeSidebar();
-    } else {
-        openSidebar();
-    }
-}
 
 window.navigateTo = function(route) {
     const parts = route.split('/');
@@ -72,27 +63,34 @@ window.navigateTo = function(route) {
 
     const container = document.getElementById('module-viewport');
     if (container) {
+        hideAllModals();
         container.innerHTML = '';
         modules[moduleKey].instance.init(container);
     }
 };
 
 function populateShell(user) {
-    const initialEl = document.getElementById('user-avatar-initial');
-    if (initialEl) {
-        initialEl.textContent = (user.full_name || 'R').trim().charAt(0).toUpperCase();
-    }
+    const fallbackName = user.full_name || 'Receptionist';
+    const initial = fallbackName.trim().charAt(0).toUpperCase();
+    const roleLabel = user.role_name || 'Receptionist';
 
-    const nameEl = document.getElementById('user-name');
-    if (nameEl) {
-        nameEl.textContent = user.full_name || 'Receptionist';
-        nameEl.setAttribute('title', user.full_name || 'Receptionist');
-    }
+    ['user-avatar-initial', 'user-menu-avatar'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = initial;
+    });
 
-    const roleEl = document.getElementById('user-role');
-    if (roleEl) {
-        roleEl.textContent = user.role_name || 'Receptionist';
-    }
+    ['user-name', 'user-menu-name'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = fallbackName;
+            el.setAttribute('title', fallbackName);
+        }
+    });
+
+    ['user-role', 'user-menu-role'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = roleLabel;
+    });
 
     const dateEl = document.getElementById('current-date');
     if (dateEl) {
@@ -111,28 +109,6 @@ function startApp() {
             const moduleKey = link.getAttribute('data-module');
             window.navigateTo(moduleKey);
         });
-    });
-
-    const sidebarToggle = document.getElementById('sidebar-toggle');
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', toggleSidebar);
-    }
-
-    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
-    if (sidebarBackdrop) {
-        sidebarBackdrop.addEventListener('click', closeSidebar);
-    }
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            closeSidebar();
-        }
-    });
-
-    window.addEventListener('resize', () => {
-        if (!isSidebarCollapsed()) {
-            closeSidebar();
-        }
     });
 
     window.addEventListener('hashchange', () => {

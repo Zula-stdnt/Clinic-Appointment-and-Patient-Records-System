@@ -1,5 +1,7 @@
 // assets/js/ui.js
-// UI Utilities: Modals with focus trapping, Non-blocking Toasts, XSS escaping, and Confirmations
+// UI engine for the Hospital Patient Information System front end: custom modals with focus
+// trapping, non-blocking toasts, the top-bar dropdown menu, and the
+// off-canvas sidebar. No third-party framework required.
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_modules (DOM helper aliases create/gId), 02 DOM and UI/dom_apply_styles (classList API), and 03 APIs and Database Operations/header_detail_forms (Intl.NumberFormat PHP currency helper)
 
 // Reusable DOM & formatting helpers (javascript_modules.md / header_detail_forms.md)
@@ -23,7 +25,31 @@ export function escapeHtml(str) {
         .replace(/'/g, '&#039;');
 }
 
-// Toast Notification System
+// ---------------------------------------------------------------------------
+// Inline SVG icons (stroke-based, 24x24 viewBox)
+// ---------------------------------------------------------------------------
+
+const SVG_ATTRS = 'viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"';
+
+export const ICONS = {
+    check: `<svg ${SVG_ATTRS}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>`,
+    error: `<svg ${SVG_ATTRS}><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`,
+    warning: `<svg ${SVG_ATTRS}><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+    info: `<svg ${SVG_ATTRS}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>`
+};
+
+// ---------------------------------------------------------------------------
+// Toasts
+// ---------------------------------------------------------------------------
+
+const TOAST_TONES = {
+    success: { tone: 'success', title: 'Success', icon: ICONS.check },
+    danger: { tone: 'danger', title: 'Error', icon: ICONS.error },
+    error: { tone: 'danger', title: 'Error', icon: ICONS.error },
+    warning: { tone: 'warning', title: 'Notice', icon: ICONS.warning },
+    info: { tone: 'info', title: 'Notice', icon: ICONS.info }
+};
+
 export function showToast(message, type = 'success', duration = 4000) {
     let container = document.getElementById('toast-container');
     if (!container) {
@@ -33,75 +59,102 @@ export function showToast(message, type = 'success', duration = 4000) {
         document.body.appendChild(container);
     }
 
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.setAttribute('role', 'alert');
-    toast.innerHTML = `
-        <div style="flex: 1;">
-            <strong>${type === 'success' ? 'Success' : (type === 'danger' ? 'Error' : 'Notice')}</strong>
-            <p style="margin: 0.2rem 0 0 0;">${escapeHtml(message)}</p>
+    const meta = TOAST_TONES[type] || TOAST_TONES.info;
+
+    const toastEl = document.createElement('div');
+    toastEl.className = `toast toast-${meta.tone}`;
+    toastEl.setAttribute('role', 'alert');
+    toastEl.setAttribute('aria-live', 'assertive');
+    toastEl.setAttribute('aria-atomic', 'true');
+    toastEl.innerHTML = `
+        <div class="toast-header">
+            <span class="toast-icon">${meta.icon}</span>
+            <strong>${meta.title}</strong>
+            <button type="button" class="btn-close" data-dismiss="toast" aria-label="Close"></button>
         </div>
-        <button type="button" class="btn-close" style="font-size: 1.1rem; line-height: 1;">&times;</button>
+        <div class="toast-body">${escapeHtml(message)}</div>
     `;
 
-    const closeBtn = toast.querySelector('.btn-close');
-    closeBtn.addEventListener('click', () => removeToast(toast));
+    container.appendChild(toastEl);
 
-    container.appendChild(toast);
-
-    // Trigger CSS slide-in
     requestAnimationFrame(() => {
-        toast.classList.add('show');
+        toastEl.classList.add('show');
     });
 
-    const timer = setTimeout(() => {
-        removeToast(toast);
-    }, duration);
-
-    function removeToast(el) {
-        clearTimeout(timer);
-        el.classList.remove('show');
-        el.addEventListener('transitionend', () => {
-            if (el.parentNode) {
-                el.parentNode.removeChild(el);
-            }
-        }, { once: true });
-    }
+    const timer = setTimeout(() => removeToast(toastEl), duration);
+    toastEl._removeTimer = timer;
 }
 
-// Global active modal and focus tracking for accessibility
+function removeToast(el) {
+    if (!el || el._removing) return;
+    el._removing = true;
+    clearTimeout(el._removeTimer);
+    el.classList.remove('show');
+    setTimeout(() => {
+        if (el.parentNode) {
+            el.parentNode.removeChild(el);
+        }
+    }, 300);
+}
+
+// ---------------------------------------------------------------------------
+// Modals
+// ---------------------------------------------------------------------------
+
 let activeModal = null;
 let previousActiveElement = null;
 
+function resolveModal(modalId) {
+    return typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
+}
+
 export function openModal(modalId) {
-    const modal = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
-    if (!modal) return;
+    const modal = resolveModal(modalId);
+    if (!modal || modal.classList.contains('show')) return;
 
     previousActiveElement = document.activeElement;
-    modal.classList.add('active');
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.classList.add('modal-open');
     activeModal = modal;
 
-    // Focus the first focusable element inside the modal
-    const focusableElements = getFocusableElements(modal);
-    if (focusableElements.length > 0) {
-        focusableElements[0].focus();
-    }
+    // Wait for the visibility change to apply before moving focus inside
+    requestAnimationFrame(() => {
+        const focusable = getFocusableElements(modal);
+        if (focusable.length > 0) {
+            focusable[0].focus();
+        }
+    });
 
-    // Attach trap focus listener
     modal.addEventListener('keydown', handleModalKeydown);
 }
 
 export function closeModal(modalId) {
-    const modal = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
+    const modal = resolveModal(modalId) || activeModal;
     if (!modal) return;
 
-    modal.classList.remove('active');
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
     modal.removeEventListener('keydown', handleModalKeydown);
+
+    if (activeModal === modal) {
+        activeModal = null;
+    }
+
+    if (!document.querySelector('.modal.show')) {
+        document.body.classList.remove('modal-open');
+    }
 
     if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
         previousActiveElement.focus();
     }
-    activeModal = null;
+    previousActiveElement = null;
+}
+
+// Close every open modal. Safe to call before re-rendering a module view.
+export function hideAllModals() {
+    document.querySelectorAll('.modal.show').forEach(modal => closeModal(modal));
+    document.body.classList.remove('modal-open');
 }
 
 function getFocusableElements(container) {
@@ -140,27 +193,11 @@ function handleModalKeydown(e) {
     }
 }
 
-// Confirmation Modals: Soft Delete (Archive), Restore, and Hard Delete
-export function confirmSoftDelete({ title, message, itemName, btnText = 'Archive Record', btnClass = 'btn btn-warning', onConfirm }) {
-    const modal = document.getElementById('global-confirm-modal');
-    if (!modal) return;
+// ---------------------------------------------------------------------------
+// Confirmation Dialogs: Soft Delete (Archive), Restore, and Hard Delete
+// ---------------------------------------------------------------------------
 
-    const modalTitle = modal.querySelector('.modal-title');
-    const modalBody = modal.querySelector('.modal-body');
-    const confirmBtn = modal.querySelector('#global-confirm-btn');
-
-    modalTitle.textContent = title || 'Confirm Archive';
-    modalBody.innerHTML = `
-        <div class="alert alert-warning" style="margin-bottom: 1rem;">
-            <strong>Warning:</strong> Archiving this record will mark it as inactive and move it to Manage Archive.
-        </div>
-        <p>${escapeHtml(message || `Are you sure you want to archive "${itemName}"?`)}</p>
-    `;
-
-    confirmBtn.className = btnClass;
-    confirmBtn.textContent = btnText;
-    confirmBtn.disabled = false;
-
+function bindConfirmAction(modal, confirmBtn, onConfirm) {
     const cleanClone = confirmBtn.cloneNode(true);
     confirmBtn.parentNode.replaceChild(cleanClone, confirmBtn);
 
@@ -174,6 +211,30 @@ export function confirmSoftDelete({ title, message, itemName, btnText = 'Archive
         }
     });
 
+    return cleanClone;
+}
+
+export function confirmSoftDelete({ title, message, itemName, btnText = 'Archive Record', btnClass = 'btn btn-warning', onConfirm }) {
+    const modal = document.getElementById('global-confirm-modal');
+    if (!modal) return;
+
+    const modalTitle = modal.querySelector('.modal-title');
+    const modalBody = modal.querySelector('.modal-body');
+    const confirmBtn = modal.querySelector('#global-confirm-btn');
+
+    modalTitle.textContent = title || 'Confirm Archive';
+    modalBody.innerHTML = `
+        <div class="alert alert-warning mb-3">
+            <strong>Warning:</strong> Archiving this record will mark it as inactive and move it to Manage Archive.
+        </div>
+        <p class="mb-0">${escapeHtml(message || `Are you sure you want to archive "${itemName}"?`)}</p>
+    `;
+
+    confirmBtn.className = btnClass;
+    confirmBtn.textContent = btnText;
+    confirmBtn.disabled = false;
+
+    bindConfirmAction(modal, confirmBtn, onConfirm);
     openModal(modal);
 }
 
@@ -187,29 +248,17 @@ export function confirmRestore({ title = 'Restore Record', message, itemName, bt
 
     modalTitle.textContent = title || 'Restore Record';
     modalBody.innerHTML = `
-        <div class="alert alert-info" style="margin-bottom: 1rem;">
+        <div class="alert alert-info mb-3">
             <strong>Notice:</strong> Restoring this record will return it to active status and make it available across standard transactions and lists.
         </div>
-        <p>${escapeHtml(message || `Are you sure you want to restore "${itemName}"?`)}</p>
+        <p class="mb-0">${escapeHtml(message || `Are you sure you want to restore "${itemName}"?`)}</p>
     `;
 
     confirmBtn.className = 'btn btn-success';
     confirmBtn.textContent = btnText;
     confirmBtn.disabled = false;
 
-    const cleanClone = confirmBtn.cloneNode(true);
-    confirmBtn.parentNode.replaceChild(cleanClone, confirmBtn);
-
-    cleanClone.addEventListener('click', async () => {
-        cleanClone.disabled = true;
-        try {
-            await onConfirm();
-            closeModal(modal);
-        } catch (err) {
-            cleanClone.disabled = false;
-        }
-    });
-
+    bindConfirmAction(modal, confirmBtn, onConfirm);
     openModal(modal);
 }
 
@@ -223,12 +272,12 @@ export function confirmHardDelete({ title, message, itemName, typeToConfirmText 
 
     modalTitle.textContent = title || 'Confirm Permanent Delete (Hard Delete)';
     modalBody.innerHTML = `
-        <div class="alert alert-danger" style="margin-bottom: 1rem;">
+        <div class="alert alert-danger mb-3">
             <strong>Danger:</strong> This action cannot be undone! The record will be permanently purged from the database.
         </div>
-        <p style="margin-bottom: 1rem;">${escapeHtml(message || `You are about to permanently delete "${itemName}".`)}</p>
-        <div class="form-group" style="margin-bottom: 0;">
-            <label for="hard-delete-input">To confirm, type <strong style="color: var(--danger); font-family: monospace;">${escapeHtml(typeToConfirmText)}</strong> below:</label>
+        <p class="mb-3">${escapeHtml(message || `You are about to permanently delete "${itemName}".`)}</p>
+        <div class="form-group mb-0">
+            <label for="hard-delete-input">To confirm, type <strong class="text-danger font-monospace">${escapeHtml(typeToConfirmText)}</strong> below:</label>
             <input type="text" id="hard-delete-input" class="form-control" autocomplete="off" placeholder="${escapeHtml(typeToConfirmText)}">
         </div>
     `;
@@ -237,48 +286,120 @@ export function confirmHardDelete({ title, message, itemName, typeToConfirmText 
     confirmBtn.textContent = 'Permanently Delete';
     confirmBtn.disabled = true;
 
+    const cleanClone = bindConfirmAction(modal, confirmBtn, onConfirm);
+
     const input = modalBody.querySelector('#hard-delete-input');
     input.addEventListener('input', () => {
-        confirmBtn.disabled = (input.value.trim() !== typeToConfirmText);
-    });
-
-    const cleanClone = confirmBtn.cloneNode(true);
-    confirmBtn.parentNode.replaceChild(cleanClone, confirmBtn);
-
-    cleanClone.addEventListener('click', async () => {
-        cleanClone.disabled = true;
-        try {
-            await onConfirm();
-            closeModal(modal);
-        } catch (err) {
-            cleanClone.disabled = false;
-        }
+        cleanClone.disabled = (input.value.trim() !== typeToConfirmText);
     });
 
     openModal(modal);
-    // Focus input after modal opens
     setTimeout(() => input.focus(), 50);
 }
 
-// Global event delegation for modal backdrops and close buttons
+// ---------------------------------------------------------------------------
+// Dropdown menus (top-bar account menu)
+// ---------------------------------------------------------------------------
+
+export function closeAllDropdowns() {
+    document.querySelectorAll('.dropdown.show').forEach(dropdown => {
+        dropdown.classList.remove('show');
+        const toggle = dropdown.querySelector('[data-dropdown-toggle]');
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Off-canvas sidebar
+// ---------------------------------------------------------------------------
+
+export function closeSidebar() {
+    if (!document.body.classList.contains('sidebar-open')) return;
+    document.body.classList.remove('sidebar-open');
+    const toggle = document.querySelector('[data-sidebar-toggle]');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+}
+
+function toggleSidebar() {
+    const isOpen = document.body.classList.toggle('sidebar-open');
+    const toggle = document.querySelector('[data-sidebar-toggle]');
+    if (toggle) toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+}
+
+// ---------------------------------------------------------------------------
+// Global event delegation
+// ---------------------------------------------------------------------------
+
 document.addEventListener('click', (e) => {
-    // 1. Check if clicked directly on a modal backdrop
-    if (e.target.classList && e.target.classList.contains('modal-backdrop')) {
+    // Toasts
+    const toastClose = e.target.closest('[data-dismiss="toast"]');
+    if (toastClose) {
+        removeToast(toastClose.closest('.toast'));
+        return;
+    }
+
+    // Modals: explicit close buttons and backdrop clicks
+    const modalDismiss = e.target.closest('[data-dismiss="modal"]');
+    if (modalDismiss) {
+        closeModal(modalDismiss.closest('.modal'));
+        return;
+    }
+    if (e.target.classList && e.target.classList.contains('modal') && e.target.classList.contains('show')) {
         closeModal(e.target);
         return;
     }
 
-    // 2. Check if clicked on or inside a close/cancel button
-    const closeBtn = e.target.closest('[data-close-modal]');
-    if (closeBtn) {
-        // Find the parent modal
-        const modal = closeBtn.closest('.modal-backdrop');
-        if (modal) {
-            closeModal(modal);
-        } else if (activeModal) {
-            // Fallback just in case
-            closeModal(activeModal);
+    // Dropdown toggle
+    const dropdownToggle = e.target.closest('[data-dropdown-toggle]');
+    if (dropdownToggle) {
+        const dropdown = dropdownToggle.closest('.dropdown');
+        const isOpen = dropdown.classList.contains('show');
+        closeAllDropdowns();
+        if (!isOpen) {
+            dropdown.classList.add('show');
+            dropdownToggle.setAttribute('aria-expanded', 'true');
         }
+        return;
+    }
+
+    // Any dropdown item click closes the menu (hash links still navigate)
+    if (e.target.closest('.dropdown-item')) {
+        closeAllDropdowns();
+        return;
+    }
+
+    if (!e.target.closest('.dropdown')) {
+        closeAllDropdowns();
+    }
+
+    // Off-canvas sidebar
+    const sidebarToggle = e.target.closest('[data-sidebar-toggle]');
+    if (sidebarToggle) {
+        toggleSidebar();
+        return;
+    }
+    if (e.target.closest('#sidebar-backdrop')) {
+        closeSidebar();
+        return;
+    }
+    if (e.target.closest('.sidebar-nav .nav-link')) {
+        closeSidebar();
     }
 });
 
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        if (activeModal) {
+            closeModal(activeModal);
+            return;
+        }
+        closeAllDropdowns();
+        closeSidebar();
+    }
+});
+
+window.addEventListener('resize', () => {
+    if (window.matchMedia('(min-width: 992px)').matches) {
+        closeSidebar();
+    }
+});

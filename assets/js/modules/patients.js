@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_specific_record (Reusable View/Edit modals populated by ID) & mysql_update_records (Reflexive UI refresh on save)
 
 import api from '../api.js?v=7';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=22';
+import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=24';
 
 export default {
     state: {
@@ -88,13 +88,14 @@ export default {
             </div>
 
             <!-- Add/Edit Patient Modal -->
-            <div class="modal-backdrop" id="patient-form-modal">
+            <div class="modal" id="patient-form-modal" tabindex="-1" aria-labelledby="patient-form-title" aria-hidden="true">
                 <div class="modal-dialog modal-lg">
-                    <div class="modal-header">
-                        <h3 class="modal-title" id="patient-form-title">Add New Patient</h3>
-                        <button type="button" class="btn-close" data-close-modal>&times;</button>
-                    </div>
-                    <form id="patient-form" novalidate>
+                    <div class="modal-content">
+                        <form id="patient-form" novalidate>
+                            <div class="modal-header">
+                                <h3 class="modal-title" id="patient-form-title">Add New Patient</h3>
+                                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                            </div>
                         <div class="modal-body">
                             <input type="hidden" id="patient-id">
                             <div style="display: grid; grid-template-columns: 1fr 120px 1fr; gap: 1rem;">
@@ -152,24 +153,27 @@ export default {
                                 <div class="invalid-feedback" id="patient-address-error"></div>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
-                            <button type="submit" id="btn-save-patient" class="btn btn-primary">Save Patient</button>
-                        </div>
-                    </form>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                <button type="submit" id="btn-save-patient" class="btn btn-primary">Save Patient</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 
             <!-- View Patient Modal -->
-            <div class="modal-backdrop" id="patient-view-modal">
+            <div class="modal" id="patient-view-modal" tabindex="-1" aria-labelledby="patient-view-title" aria-hidden="true">
                 <div class="modal-dialog">
-                    <div class="modal-header">
-                        <h3 class="modal-title">Patient Profile</h3>
-                        <button type="button" class="btn-close" data-close-modal>&times;</button>
-                    </div>
-                    <div class="modal-body" id="patient-view-body"></div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-close-modal>Close</button>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title" id="patient-view-title">Patient Profile</h3>
+                            <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="patient-view-body"></div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        </div>
                     </div>
                 </div>
             </div>

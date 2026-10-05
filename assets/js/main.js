@@ -2,14 +2,18 @@
 // Single-Page Application Router and Module Orchestrator
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_modules (ES module orchestration) & javascript_fundamentals (DOMContentLoaded initialization)
 
-import { requireSession } from './session-guard.js?v=23';
-import overviewModule from './modules/overview.js?v=23';
-import usersModule from './modules/users.js?v=23';
-import patientsModule from './modules/patients.js?v=23';
-import doctorsModule from './modules/doctors.js?v=23';
-import specialtiesModule from './modules/specialties.js?v=23';
-import servicesModule from './modules/services.js?v=23';
-import archiveModule from './modules/archive.js?v=23';
+import { requireSession } from './session-guard.js?v=24';
+import { hideAllModals, closeSidebar } from './ui.js?v=24';
+import overviewModule from './modules/overview.js?v=24';
+import usersModule from './modules/users.js?v=24';
+import patientsModule from './modules/patients.js?v=24';
+import doctorsModule from './modules/doctors.js?v=24';
+import servicesModule from './modules/services.js?v=24';
+import medicationsModule from './modules/medications.js?v=1';
+import specialtiesModule from './modules/specialties.js?v=24';
+import archiveModule from './modules/archive.js?v=24';
+import settingsModule from './modules/account_settings.js?v=24';
+import profileModule from './modules/my_profile.js?v=24';
 
 const modules = {
     'overview': {
@@ -28,47 +32,33 @@ const modules = {
         title: 'Manage Doctors',
         instance: doctorsModule
     },
-    'specialties': {
-        title: 'Manage Specialties',
-        instance: specialtiesModule
-    },
     'services': {
         title: 'Manage Services',
         instance: servicesModule
     },
+    'medications': {
+        title: 'Manage Medications',
+        instance: medicationsModule
+    },
+    'specialties': {
+        title: 'Manage Specialties',
+        instance: specialtiesModule
+    },
     'archive': {
         title: 'Manage Archive',
         instance: archiveModule
+    },
+    'settings': {
+        title: 'Settings',
+        instance: settingsModule
+    },
+    'profile': {
+        title: 'My Profile',
+        instance: profileModule
     }
 };
 
 let activeModuleKey = null;
-
-// Off-canvas sidebar controls (active below 1024px; harmless on desktop)
-function isSidebarCollapsed() {
-    return window.matchMedia('(max-width: 1024px)').matches;
-}
-
-function openSidebar() {
-    document.body.classList.add('sidebar-open');
-    const toggle = document.getElementById('sidebar-toggle');
-    if (toggle) toggle.setAttribute('aria-expanded', 'true');
-}
-
-function closeSidebar() {
-    if (!document.body.classList.contains('sidebar-open')) return;
-    document.body.classList.remove('sidebar-open');
-    const toggle = document.getElementById('sidebar-toggle');
-    if (toggle) toggle.setAttribute('aria-expanded', 'false');
-}
-
-function toggleSidebar() {
-    if (document.body.classList.contains('sidebar-open')) {
-        closeSidebar();
-    } else {
-        openSidebar();
-    }
-}
 
 function navigateTo(moduleKey) {
     if (!modules[moduleKey]) {
@@ -77,7 +67,6 @@ function navigateTo(moduleKey) {
 
     activeModuleKey = moduleKey;
 
-    // Close the off-canvas sidebar after navigating on small screens
     closeSidebar();
 
     // Update active class on sidebar items
@@ -104,27 +93,34 @@ function navigateTo(moduleKey) {
     // Render module content in viewport
     const container = document.getElementById('module-viewport');
     if (container) {
+        hideAllModals();
         container.innerHTML = '';
         modules[moduleKey].instance.init(container);
     }
 }
 
 function populateShell(user) {
-    const initialEl = document.getElementById('user-avatar-initial');
-    if (initialEl) {
-        initialEl.textContent = (user.full_name || 'A').trim().charAt(0).toUpperCase();
-    }
+    const fallbackName = user.full_name || 'Administrator';
+    const initial = fallbackName.trim().charAt(0).toUpperCase();
+    const roleLabel = user.role_name || 'Administrator';
 
-    const nameEl = document.getElementById('user-name');
-    if (nameEl) {
-        nameEl.textContent = user.full_name || 'Administrator';
-        nameEl.setAttribute('title', user.full_name || 'Administrator');
-    }
+    ['user-avatar-initial', 'user-menu-avatar'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = initial;
+    });
 
-    const roleEl = document.getElementById('user-role');
-    if (roleEl) {
-        roleEl.textContent = user.role_name || 'Administrator';
-    }
+    ['user-name', 'user-menu-name'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = fallbackName;
+            el.setAttribute('title', fallbackName);
+        }
+    });
+
+    ['user-role', 'user-menu-role'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = roleLabel;
+    });
 
     const dateEl = document.getElementById('current-date');
     if (dateEl) {
@@ -146,31 +142,7 @@ function startApp() {
         });
     });
 
-    // Off-canvas sidebar: hamburger toggle, backdrop dismiss, and Escape key
-    const sidebarToggle = document.getElementById('sidebar-toggle');
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', toggleSidebar);
-    }
-
-    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
-    if (sidebarBackdrop) {
-        sidebarBackdrop.addEventListener('click', closeSidebar);
-    }
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            closeSidebar();
-        }
-    });
-
-    // Reset the sidebar state when resizing back to the desktop layout
-    window.addEventListener('resize', () => {
-        if (!isSidebarCollapsed()) {
-            closeSidebar();
-        }
-    });
-
-    // Hash change event (back/forward browser navigation)
+    // Hash change event (back/forward browser navigation and dropdown links)
     window.addEventListener('hashchange', () => {
         const hash = window.location.hash.replace('#', '');
         if (hash && hash !== activeModuleKey) {
@@ -194,4 +166,3 @@ if (currentUser) {
         startApp();
     }
 }
-

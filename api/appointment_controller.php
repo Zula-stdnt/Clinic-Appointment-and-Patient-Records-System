@@ -87,17 +87,24 @@ function listAppointments(PDO $pdo) {
 }
 
 function getAppointmentById(PDO $pdo, int $id) {
-    // Similar joins as list
+    // Full joined record used by the printable Patient Registration & Appointment Form
     $authUser = get_auth_user();
 
     $sql = "SELECT a.appointment_id, a.patient_id, a.doctor_id, a.created_by, 
-                   a.appointment_date, a.appointment_time, a.chief_complaint, a.status,
-                   p.first_name as patient_first, p.last_name as patient_last,
-                   u_doc.first_name as doctor_first, u_doc.last_name as doctor_last
+                   a.appointment_date, a.appointment_time, a.chief_complaint, a.status, a.created_at,
+                   p.first_name as patient_first, p.last_name as patient_last, p.middle_initial as patient_middle,
+                   p.gender as patient_gender, p.date_of_birth, p.contact_no, p.address, p.created_at as patient_created_at,
+                   u_doc.first_name as doctor_first, u_doc.last_name as doctor_last, u_doc.middle_initial as doctor_middle,
+                   (SELECT GROUP_CONCAT(DISTINCT s.specialty_name ORDER BY s.specialty_name SEPARATOR ', ')
+                      FROM doctor_specialty ds
+                      INNER JOIN specialties s ON ds.specialty_id = s.specialty_id
+                     WHERE ds.doctor_id = d.doctor_id) AS doctor_specialties,
+                   v.blood_pressure, v.temperature, v.oxygen_saturation
             FROM appointments a
             INNER JOIN patients p ON a.patient_id = p.patient_id
             INNER JOIN doctors d ON a.doctor_id = d.doctor_id
             INNER JOIN users u_doc ON d.user_id = u_doc.user_id
+            LEFT JOIN vital_signs v ON a.appointment_id = v.appointment_id
             WHERE a.appointment_id = ?";
             
     $stmt = $pdo->prepare($sql);
@@ -120,7 +127,8 @@ function getAppointmentById(PDO $pdo, int $id) {
     send_success('Appointment retrieved', ['item' => $appointment]);
 }
 
-// Dropdown data for the booking form: active patients only
+// Type-ahead data for the booking form: active patients only.
+// Supports ?search= so the picker never has to load/scroll the full table.
 function listPatientOptions(PDO $pdo): void {
     $search = trim($_GET['search'] ?? '');
     $sql = "SELECT patient_id, first_name, last_name, middle_initial, date_of_birth
@@ -129,33 +137,56 @@ function listPatientOptions(PDO $pdo): void {
     $params = [];
 
     if ($search !== '') {
-        $sql .= " AND (first_name LIKE :s1 OR last_name LIKE :s2 OR contact_no LIKE :s3)";
+        $sql .= " AND (first_name LIKE :s1 OR last_name LIKE :s2
+                       OR CONCAT(first_name, ' ', last_name) LIKE :s3
+                       OR contact_no LIKE :s4)";
         $params[':s1'] = '%' . $search . '%';
         $params[':s2'] = '%' . $search . '%';
         $params[':s3'] = '%' . $search . '%';
+        $params[':s4'] = '%' . $search . '%';
     }
 
-    $sql .= " ORDER BY last_name ASC, first_name ASC LIMIT 200";
+    $sql .= " ORDER BY last_name ASC, first_name ASC LIMIT 50";
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
     send_success('Patient options retrieved.', ['items' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
 }
 
-// Dropdown data for the booking form: active doctors with their specialties
+// Type-ahead data for the booking form: active doctors with their specialties.
+// Supports ?search= across name and specialty so users can jump straight to a doctor.
 function listDoctorOptions(PDO $pdo): void {
+    $search = trim($_GET['search'] ?? '');
+    $params = [];
+
     $sql = "SELECT d.doctor_id, u.first_name, u.last_name, u.middle_initial,
                    GROUP_CONCAT(DISTINCT s.specialty_name ORDER BY s.specialty_name SEPARATOR ', ') AS specialty_names
             FROM doctors d
             LEFT JOIN users u ON d.user_id = u.user_id
             LEFT JOIN doctor_specialty ds ON d.doctor_id = ds.doctor_id
             LEFT JOIN specialties s ON ds.specialty_id = s.specialty_id
-            WHERE d.deleted_at IS NULL
-            GROUP BY d.doctor_id, u.first_name, u.last_name, u.middle_initial
-            ORDER BY u.last_name ASC, u.first_name ASC
-            LIMIT 200";
+            WHERE d.deleted_at IS NULL";
 
-    $stmt = $pdo->query($sql);
+    if ($search !== '') {
+        $sql .= " AND (u.first_name LIKE :s1 OR u.last_name LIKE :s2
+                       OR CONCAT(u.first_name, ' ', u.last_name) LIKE :s3
+                       OR EXISTS (
+                           SELECT 1 FROM doctor_specialty ds2
+                           INNER JOIN specialties s2 ON ds2.specialty_id = s2.specialty_id
+                           WHERE ds2.doctor_id = d.doctor_id AND s2.specialty_name LIKE :s4
+                       ))";
+        $params[':s1'] = '%' . $search . '%';
+        $params[':s2'] = '%' . $search . '%';
+        $params[':s3'] = '%' . $search . '%';
+        $params[':s4'] = '%' . $search . '%';
+    }
+
+    $sql .= " GROUP BY d.doctor_id, u.first_name, u.last_name, u.middle_initial
+              ORDER BY u.last_name ASC, u.first_name ASC
+              LIMIT 50";
+
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
     send_success('Doctor options retrieved.', ['items' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
 }
 

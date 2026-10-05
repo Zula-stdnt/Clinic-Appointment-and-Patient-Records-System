@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays (Entity configuration dictionary) & 03 APIs and Database Operations/mysql_update_records (Callback-driven UI refresh via confirmRestore/confirmHardDelete)
 
 import api from '../api.js?v=7';
-import { escapeHtml, showToast, confirmRestore, confirmHardDelete } from '../ui.js?v=22';
+import { escapeHtml, showToast, confirmRestore, confirmHardDelete } from '../ui.js?v=24';
 
 const CONFIG = {
     'users': {

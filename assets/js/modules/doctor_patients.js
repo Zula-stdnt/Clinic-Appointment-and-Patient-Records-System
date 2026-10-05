@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_specific_record (Summary table with primary-key drill-down to full record) & 02 DOM and UI/dom_create_and_remove_elements (Container reset before re-render)
 
 import api from '../api.js?v=7';
-import { escapeHtml, showToast } from '../ui.js?v=22';
+import { escapeHtml, showToast } from '../ui.js?v=24';
 
 export default {
     state: {
@@ -196,7 +196,7 @@ export default {
                 let rxHtml = '';
                 if (e.prescriptions && e.prescriptions.length > 0) {
                     rxHtml = `<div style="margin-bottom: 0.75rem;"><strong>Prescriptions:</strong><ul style="margin: 0.25rem 0 0 1.5rem; padding: 0;">` +
-                             e.prescriptions.map(r => `<li>${escapeHtml(r.medication_name)} - ${escapeHtml(r.dosage)} (${escapeHtml(r.frequency)})</li>`).join('') +
+                             e.prescriptions.map(r => `<li>${escapeHtml(r.medication_name)} - ${escapeHtml(r.dosage)} (${escapeHtml(r.frequency)})${r.time_to_take ? ` &middot; ${escapeHtml(r.time_to_take)}` : ''}</li>`).join('') +
                              `</ul></div>`;
                 }
 

@@ -30,7 +30,7 @@ access_log
 
 # Node / Package managers (if applicable)
 node_modules/
-vendor/
+/vendor/
 
 # Test and scratch files
 scratch/

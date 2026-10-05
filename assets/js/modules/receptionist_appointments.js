@@ -3,22 +3,30 @@
 // ITE 387 Lessons applied: 03 APIs and Database Operations/header_detail_forms (appointment header + vital signs detail saved together) & 02 DOM and UI/dom_create_and_remove_elements (Create -> Configure -> Listen -> Append rows)
 
 import api from '../api.js?v=7';
-import { create, escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=22';
+import { create, escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=24';
+import { SearchSelect } from '../components/search-select.js?v=1';
+import { PatientRegisterForm } from '../components/patient-register.js?v=1';
+import { printAppointmentForm } from '../components/print-appointment-form.js?v=2';
 
 export default {
     state: {
         appointments: [],
-        patients: [],
-        doctors: [],
         search: '',
         status: ''
     },
 
     async init(container) {
         this.container = container;
+
+        // Dispose pickers from a previous visit; their option menus live in <body>
+        if (this.patientPicker) this.patientPicker.destroy();
+        if (this.doctorPicker) this.doctorPicker.destroy();
+
         this.renderStructure();
+        this.setupPickers();
+        this.setupRegisterForm();
         this.attachEventListeners();
-        await Promise.all([this.loadOptions(), this.loadData()]);
+        await this.loadData();
     },
 
     renderStructure() {
@@ -65,36 +73,40 @@ export default {
                                 <th>Chief Complaint</th>
                                 <th>Triage Vitals</th>
                                 <th>Status</th>
+                                <th style="text-align: right;">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="appointments-tbody">
-                            <tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading appointments...</td></tr>
+                            <tr><td colspan="7" class="text-center" style="padding: 2rem;">Loading appointments...</td></tr>
                         </tbody>
                     </table>
                 </div>
             </div>
 
-            <div class="modal-backdrop" id="appointment-form-modal">
+            <div class="modal" id="appointment-form-modal" tabindex="-1" aria-labelledby="appointment-form-title" aria-hidden="true">
                 <div class="modal-dialog modal-lg">
-                    <div class="modal-header">
-                        <h3 class="modal-title">New Patient Appointment</h3>
-                        <button type="button" class="btn-close" data-close-modal>&times;</button>
-                    </div>
-                    <form id="appointment-form" novalidate>
+                    <div class="modal-content">
+                        <form id="appointment-form" novalidate>
+                            <div class="modal-header">
+                                <h3 class="modal-title" id="appointment-form-title">New Patient Appointment</h3>
+                                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                            </div>
                         <div class="modal-body">
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div class="form-group">
-                                    <label for="appt-patient">Patient <span class="required-star">*</span></label>
-                                    <select id="appt-patient" class="form-control">
-                                        <option value="" disabled selected>Select Patient</option>
-                                    </select>
+                                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.4rem;">
+                                        <label for="appt-patient-input" style="margin-bottom: 0;">Patient <span class="required-star">*</span></label>
+                                        <button type="button" class="btn btn-secondary btn-sm" id="btn-register-patient">
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                                            Register Patient
+                                        </button>
+                                    </div>
+                                    <div id="appt-patient-picker"></div>
                                     <div class="invalid-feedback" id="appt-patient-error"></div>
                                 </div>
                                 <div class="form-group">
-                                    <label for="appt-doctor">Doctor <span class="required-star">*</span></label>
-                                    <select id="appt-doctor" class="form-control">
-                                        <option value="" disabled selected>Select Doctor</option>
-                                    </select>
+                                    <label for="appt-doctor-input">Doctor <span class="required-star">*</span></label>
+                                    <div id="appt-doctor-picker"></div>
                                     <div class="invalid-feedback" id="appt-doctor-error"></div>
                                 </div>
                             </div>
@@ -138,14 +150,94 @@ export default {
                                 </div>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
-                            <button type="submit" id="btn-save-appointment" class="btn btn-primary">Schedule Appointment</button>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                <button type="submit" id="btn-save-appointment" class="btn btn-primary">Schedule Appointment</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal" id="print-prompt-modal" tabindex="-1" aria-labelledby="print-prompt-title" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title" id="print-prompt-title">Appointment Scheduled</h3>
+                            <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
                         </div>
-                    </form>
+                        <div class="modal-body">
+                            <p style="margin-bottom: 0.5rem;">Appointment scheduled successfully.</p>
+                            <p class="text-muted" style="font-size: 0.9rem; margin-bottom: 0;">
+                                Print the combined Patient Registration &amp; Appointment Form for
+                                <strong id="print-prompt-patient">this patient</strong>?
+                            </p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Not Now</button>
+                            <button type="button" class="btn btn-primary" id="btn-print-appointment-now">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                                Print Form
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
+    },
+
+    setupPickers() {
+        // Type-ahead lookups: only the first 50 matches are fetched per keystroke,
+        // so neither the patient nor the doctor list has to be scrolled.
+        this.patientPicker = new SearchSelect({
+            inputId: 'appt-patient-input',
+            placeholder: 'Type a patient name or contact no...',
+            emptyText: 'No matching patients. Use "Register Patient" if they are new.',
+            remote: async (query) => {
+                const res = await api.get('api/appointment_controller.php', { meta: 'patients', search: query });
+                const items = res.success ? ((res.data && res.data.items) ? res.data.items : []) : [];
+                return items.map(p => ({
+                    value: p.patient_id,
+                    label: this.formatPatientName(p),
+                    meta: `PAT-${String(p.patient_id).padStart(4, '0')}`
+                }));
+            }
+        }).mount(this.container.querySelector('#appt-patient-picker'));
+
+        this.doctorPicker = new SearchSelect({
+            inputId: 'appt-doctor-input',
+            placeholder: 'Type a doctor name or specialty...',
+            emptyText: 'No matching doctors found.',
+            remote: async (query) => {
+                const res = await api.get('api/appointment_controller.php', { meta: 'doctors', search: query });
+                const items = res.success ? ((res.data && res.data.items) ? res.data.items : []) : [];
+                return items.map(d => ({
+                    value: d.doctor_id,
+                    label: `Dr. ${this.formatPatientName(d)}`,
+                    meta: d.specialty_names || 'General practice'
+                }));
+            }
+        }).mount(this.container.querySelector('#appt-doctor-picker'));
+    },
+
+    setupRegisterForm() {
+        this.registerForm = new PatientRegisterForm({
+            container: this.container,
+            modalId: 'register-patient-modal',
+            successMessage: 'Patient registered and selected for this appointment.',
+            onRegistered: (patient) => {
+                const label = this.formatPatientName(patient);
+                this.patientPicker.reload();
+                this.patientPicker.setValue(patient.patient_id, label);
+                this.patientPicker.setInvalid(false);
+                this.container.querySelector('#appt-patient-error').textContent = '';
+            }
+        });
+    },
+
+    formatPatientName(person) {
+        const mi = person.middle_initial ? ` ${person.middle_initial}.` : '';
+        return `${person.last_name}, ${person.first_name}${mi}`;
     },
 
     attachEventListeners() {
@@ -172,56 +264,29 @@ export default {
             e.preventDefault();
             this.saveAppointment();
         });
-    },
 
-    async loadOptions() {
-        try {
-            const [pRes, dRes] = await Promise.all([
-                api.get('api/appointment_controller.php', { meta: 'patients' }),
-                api.get('api/appointment_controller.php', { meta: 'doctors' })
-            ]);
-
-            if (pRes.success) {
-                this.state.patients = (pRes.data && pRes.data.items) ? pRes.data.items : [];
-            }
-            if (dRes.success) {
-                this.state.doctors = (dRes.data && dRes.data.items) ? dRes.data.items : [];
-            }
-
-            this.renderSelect(this.container.querySelector('#appt-patient'), this.state.patients, (p) => {
-                const name = `${p.last_name}, ${p.first_name}${p.middle_initial ? ' ' + p.middle_initial + '.' : ''}`;
-                return { value: p.patient_id, label: `${name} (PAT-${String(p.patient_id).padStart(4, '0')})` };
-            }, 'Select Patient');
-
-            this.renderSelect(this.container.querySelector('#appt-doctor'), this.state.doctors, (d) => {
-                const name = `${d.last_name}, ${d.first_name}${d.middle_initial ? ' ' + d.middle_initial + '.' : ''}`;
-                const specialty = d.specialty_names ? ` — ${d.specialty_names}` : '';
-                return { value: d.doctor_id, label: `Dr. ${name}${specialty}` };
-            }, 'Select Doctor');
-        } catch (err) {
-            showToast(err.response?.data?.message || 'Failed to load patients and doctors.', 'error');
-        }
-    },
-
-    renderSelect(select, items, toOption, placeholder) {
-        if (!select) return;
-        const previous = select.value;
-        select.innerHTML = `<option value="" disabled selected>${escapeHtml(placeholder)}</option>`;
-        items.forEach(item => {
-            const opt = toOption(item);
-            const option = create('option');
-            option.value = opt.value;
-            option.textContent = opt.label;
-            select.appendChild(option);
+        this.container.querySelector('#btn-register-patient').addEventListener('click', () => {
+            this.registerForm.open();
         });
-        if (previous) {
-            select.value = previous;
-        }
+
+        this.container.querySelector('#appointments-tbody').addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-print-appointment');
+            if (btn) {
+                printAppointmentForm(btn.getAttribute('data-id'));
+            }
+        });
+
+        this.container.querySelector('#btn-print-appointment-now').addEventListener('click', () => {
+            closeModal('print-prompt-modal');
+            if (this.pendingPrintId) {
+                printAppointmentForm(this.pendingPrintId);
+            }
+        });
     },
 
     async loadData() {
         const tbody = this.container.querySelector('#appointments-tbody');
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading appointments...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center" style="padding: 2rem;">Loading appointments...</td></tr>';
 
         try {
             const res = await api.get('api/appointment_controller.php');
@@ -232,7 +297,7 @@ export default {
                 throw new Error(res.message || 'Failed to load appointments.');
             }
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger" style="padding: 2rem;">${escapeHtml(err.response?.data?.message || err.message || 'Failed to load appointments.')}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger" style="padding: 2rem;">${escapeHtml(err.response?.data?.message || err.message || 'Failed to load appointments.')}</td></tr>`;
         }
     },
 
@@ -264,7 +329,7 @@ export default {
         if (items.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6">
+                    <td colspan="7">
                         <div class="empty-state">
                             <strong>No appointments found</strong>
                             <p>Book a new appointment or adjust your search and filters.</p>
@@ -310,6 +375,12 @@ export default {
                         ${escapeHtml((appt.status || '').toUpperCase())}
                     </span>
                 </td>
+                <td style="text-align: right;">
+                    <button type="button" class="btn btn-secondary btn-sm btn-print-appointment" data-id="${appt.appointment_id}" title="Print Patient Registration &amp; Appointment Form">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                        Print Form
+                    </button>
+                </td>
             `;
 
             frag.appendChild(tr);
@@ -347,15 +418,13 @@ export default {
         this.clearFormErrors();
         const form = this.container.querySelector('#appointment-form');
         form.reset();
+        this.patientPicker.clear();
+        this.doctorPicker.clear();
 
         const dateInput = this.container.querySelector('#appt-date');
         const now = new Date();
         const localToday = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
         dateInput.min = localToday.toISOString().slice(0, 10);
-
-        if (this.state.patients.length === 0 || this.state.doctors.length === 0) {
-            this.loadOptions();
-        }
 
         openModal('appointment-form-modal');
     },
@@ -367,12 +436,24 @@ export default {
         this.container.querySelectorAll('#appointment-form .form-control').forEach(el => {
             el.classList.remove('is-invalid');
         });
+        if (this.patientPicker) this.patientPicker.setInvalid(false);
+        if (this.doctorPicker) this.doctorPicker.setInvalid(false);
     },
 
     showFormErrors(errors) {
+        const patientFeedback = this.container.querySelector('#appt-patient-error');
+        if (errors.patient_id) {
+            this.patientPicker.setInvalid(true);
+            patientFeedback.textContent = errors.patient_id;
+        }
+
+        const doctorFeedback = this.container.querySelector('#appt-doctor-error');
+        if (errors.doctor_id) {
+            this.doctorPicker.setInvalid(true);
+            doctorFeedback.textContent = errors.doctor_id;
+        }
+
         const fieldMap = {
-            patient_id: ['#appt-patient', '#appt-patient-error'],
-            doctor_id: ['#appt-doctor', '#appt-doctor-error'],
             appointment_date: ['#appt-date', '#appt-date-error'],
             appointment_time: ['#appt-time', '#appt-time-error'],
             blood_pressure: ['#appt-bp', '#appt-bp-error'],
@@ -407,8 +488,8 @@ export default {
 
     async saveAppointment() {
         const payload = {
-            patient_id: parseInt(this.container.querySelector('#appt-patient').value || '0', 10),
-            doctor_id: parseInt(this.container.querySelector('#appt-doctor').value || '0', 10),
+            patient_id: parseInt(this.patientPicker.getValue() || '0', 10),
+            doctor_id: parseInt(this.doctorPicker.getValue() || '0', 10),
             appointment_date: this.container.querySelector('#appt-date').value,
             appointment_time: this.container.querySelector('#appt-time').value,
             chief_complaint: this.container.querySelector('#appt-complaint').value.trim(),
@@ -425,11 +506,23 @@ export default {
         try {
             const res = await api.post('api/appointment_controller.php', payload);
             if (res.success) {
-                showToast('Appointment scheduled successfully.', 'success');
+                const newAppointmentId = res.data ? res.data.appointment_id : null;
+                const patientLabel = this.patientPicker.getLabel();
+
                 this.container.querySelector('#appointment-form').reset();
+                this.patientPicker.clear();
+                this.doctorPicker.clear();
                 this.clearFormErrors();
                 closeModal('appointment-form-modal');
                 await this.loadData();
+
+                if (newAppointmentId) {
+                    this.pendingPrintId = newAppointmentId;
+                    this.container.querySelector('#print-prompt-patient').textContent = patientLabel || 'this patient';
+                    openModal('print-prompt-modal');
+                } else {
+                    showToast('Appointment scheduled successfully.', 'success');
+                }
             } else {
                 this.showFormErrors(res.errors || {});
                 showToast(res.message || 'Failed to schedule appointment.', 'error');

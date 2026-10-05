@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays (Mapping specialty objects to <option> text/value) & 03 APIs and Database Operations/mysql_update_records
 
 import api from '../api.js?v=7';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=22';
+import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=24';
 
 export default {
     state: {
@@ -97,13 +97,14 @@ export default {
             </div>
 
             <!-- Add/Edit Doctor Modal -->
-            <div class="modal-backdrop" id="doctor-form-modal">
-                <div class="modal-dialog">
-                    <div class="modal-header">
-                        <h3 class="modal-title" id="doctor-form-title">Add New Doctor</h3>
-                        <button type="button" class="btn-close" data-close-modal>&times;</button>
-                    </div>
-                    <form id="doctor-form" novalidate>
+            <div class="modal" id="doctor-form-modal" tabindex="-1" aria-labelledby="doctor-form-title" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <form id="doctor-form" novalidate>
+                            <div class="modal-header">
+                                <h3 class="modal-title" id="doctor-form-title">Add New Doctor</h3>
+                                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                            </div>
                         <div class="modal-body">
                             <input type="hidden" id="doctor-id">
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
@@ -180,24 +181,27 @@ export default {
                                 <small class="text-muted" id="doctor-password-hint" style="display: none; margin-top: 0.25rem;">Leave blank to keep password unchanged.</small>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
-                            <button type="submit" id="btn-save-doctor" class="btn btn-primary">Save Doctor</button>
-                        </div>
-                    </form>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                <button type="submit" id="btn-save-doctor" class="btn btn-primary">Save Doctor</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 
             <!-- View Doctor Modal -->
-            <div class="modal-backdrop" id="doctor-view-modal">
+            <div class="modal" id="doctor-view-modal" tabindex="-1" aria-labelledby="doctor-view-title" aria-hidden="true">
                 <div class="modal-dialog">
-                    <div class="modal-header">
-                        <h3 class="modal-title">Doctor Details</h3>
-                        <button type="button" class="btn-close" data-close-modal>&times;</button>
-                    </div>
-                    <div class="modal-body" id="doctor-view-body"></div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-close-modal>Close</button>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title" id="doctor-view-title">Doctor Details</h3>
+                            <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="doctor-view-body"></div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        </div>
                     </div>
                 </div>
             </div>

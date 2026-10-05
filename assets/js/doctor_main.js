@@ -2,12 +2,14 @@
 // Single-Page Application Router and Module Orchestrator for Doctor Portal
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_modules (ES module orchestration) & javascript_fundamentals (DOMContentLoaded initialization)
 
-import { requireSession } from './session-guard.js?v=22';
-import doctorOverview from './modules/doctor_overview.js?v=22';
-import doctorAppointments from './modules/doctor_appointments.js?v=22';
-import doctorPatients from './modules/doctor_patients.js?v=22';
-import doctorProfile from './modules/doctor_profile.js?v=22';
-import doctorConsultation from './modules/doctor_consultation.js?v=22';
+import { requireSession } from './session-guard.js?v=24';
+import { hideAllModals, closeSidebar } from './ui.js?v=24';
+import doctorOverview from './modules/doctor_overview.js?v=26';
+import doctorAppointments from './modules/doctor_appointments.js?v=24';
+import doctorPatients from './modules/doctor_patients.js?v=25';
+import doctorConsultation from './modules/doctor_consultation.js?v=29';
+import settingsModule from './modules/account_settings.js?v=24';
+import profileModule from './modules/my_profile.js?v=24';
 
 const modules = {
     'doctor_overview': {
@@ -22,43 +24,21 @@ const modules = {
         title: 'Patient Records',
         instance: doctorPatients
     },
-    'doctor_profile': {
-        title: 'My Profile',
-        instance: doctorProfile
-    },
     'doctor_consultation': {
         title: 'Consultation',
         instance: doctorConsultation
+    },
+    'settings': {
+        title: 'Settings',
+        instance: settingsModule
+    },
+    'profile': {
+        title: 'My Profile',
+        instance: profileModule
     }
 };
 
 let activeRouteKey = null;
-
-// Off-canvas sidebar controls
-function isSidebarCollapsed() {
-    return window.matchMedia('(max-width: 1024px)').matches;
-}
-
-function openSidebar() {
-    document.body.classList.add('sidebar-open');
-    const toggle = document.getElementById('sidebar-toggle');
-    if (toggle) toggle.setAttribute('aria-expanded', 'true');
-}
-
-function closeSidebar() {
-    if (!document.body.classList.contains('sidebar-open')) return;
-    document.body.classList.remove('sidebar-open');
-    const toggle = document.getElementById('sidebar-toggle');
-    if (toggle) toggle.setAttribute('aria-expanded', 'false');
-}
-
-function toggleSidebar() {
-    if (document.body.classList.contains('sidebar-open')) {
-        closeSidebar();
-    } else {
-        openSidebar();
-    }
-}
 
 // Ensure navigateTo is exposed globally for modules (like starting a consult)
 window.navigateTo = function(route) {
@@ -99,27 +79,34 @@ window.navigateTo = function(route) {
     // Render module content in viewport
     const container = document.getElementById('module-viewport');
     if (container) {
+        hideAllModals();
         container.innerHTML = '';
         modules[moduleKey].instance.init(container, param);
     }
 };
 
 function populateShell(user) {
-    const initialEl = document.getElementById('user-avatar-initial');
-    if (initialEl) {
-        initialEl.textContent = (user.full_name || 'D').trim().charAt(0).toUpperCase();
-    }
+    const fallbackName = user.full_name || 'Doctor';
+    const initial = fallbackName.trim().charAt(0).toUpperCase();
+    const roleLabel = user.role_name || 'Doctor';
 
-    const nameEl = document.getElementById('user-name');
-    if (nameEl) {
-        nameEl.textContent = user.full_name || 'Doctor';
-        nameEl.setAttribute('title', user.full_name || 'Doctor');
-    }
+    ['user-avatar-initial', 'user-menu-avatar'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = initial;
+    });
 
-    const roleEl = document.getElementById('user-role');
-    if (roleEl) {
-        roleEl.textContent = user.role_name || 'Doctor';
-    }
+    ['user-name', 'user-menu-name'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = fallbackName;
+            el.setAttribute('title', fallbackName);
+        }
+    });
+
+    ['user-role', 'user-menu-role'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = roleLabel;
+    });
 
     const dateEl = document.getElementById('current-date');
     if (dateEl) {
@@ -138,28 +125,6 @@ function startApp() {
             const moduleKey = link.getAttribute('data-module');
             window.navigateTo(moduleKey);
         });
-    });
-
-    const sidebarToggle = document.getElementById('sidebar-toggle');
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', toggleSidebar);
-    }
-
-    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
-    if (sidebarBackdrop) {
-        sidebarBackdrop.addEventListener('click', closeSidebar);
-    }
-
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') {
-            closeSidebar();
-        }
-    });
-
-    window.addEventListener('resize', () => {
-        if (!isSidebarCollapsed()) {
-            closeSidebar();
-        }
     });
 
     window.addEventListener('hashchange', () => {

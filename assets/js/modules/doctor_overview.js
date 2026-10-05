@@ -34,18 +34,22 @@ export default {
                 ? res.data.items
                 : [];
 
-            const todayStr = new Date().toISOString().split('T')[0];
+            // Use the local calendar date, not UTC: toISOString() would report
+            // yesterday's date for timezones ahead of UTC during the early hours.
+            const now = new Date();
+            const localToday = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
+            const todayStr = localToday.toISOString().split('T')[0];
             const todayAppointments = appointments.filter(a => a.appointment_date === todayStr);
             const pendingToday = todayAppointments.filter(a => ['scheduled', 'confirmed'].includes(a.status));
 
             const statsContainer = this.container.querySelector('#overview-stats');
             if (statsContainer) {
                 statsContainer.innerHTML = `
-                    <div style="flex: 1; padding: 1.5rem; background: var(--bg-alt); border: 1px solid var(--border); border-radius: var(--radius); text-align: center;">
+                    <div style="flex: 1; padding: 1.5rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); text-align: center;">
                         <div style="font-size: 2.5rem; font-weight: 700; color: var(--primary);">${todayAppointments.length}</div>
                         <div class="text-muted" style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Total Appointments Today</div>
                     </div>
-                    <div style="flex: 1; padding: 1.5rem; background: var(--bg-alt); border: 1px solid var(--border); border-radius: var(--radius); text-align: center;">
+                    <div style="flex: 1; padding: 1.5rem; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-md); text-align: center;">
                         <div style="font-size: 2.5rem; font-weight: 700; color: #ea580c;">${pendingToday.length}</div>
                         <div class="text-muted" style="font-size: 0.9rem; text-transform: uppercase; letter-spacing: 0.5px;">Pending Consultations</div>
                     </div>

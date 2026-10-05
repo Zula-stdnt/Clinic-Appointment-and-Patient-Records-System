@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_records, mysql_insert_records & mysql_update_records (Modular CRUD and DOM container reset before re-render)
 
 import api from '../api.js?v=7';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=22';
+import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=24';
 
 export default {
     state: {
@@ -76,13 +76,14 @@ export default {
             </div>
 
             <!-- Add/Edit Specialty Modal -->
-            <div class="modal-backdrop" id="specialty-form-modal">
+            <div class="modal" id="specialty-form-modal" tabindex="-1" aria-labelledby="specialty-form-title" aria-hidden="true">
                 <div class="modal-dialog">
-                    <div class="modal-header">
-                        <h3 class="modal-title" id="specialty-form-title">Add New Specialty</h3>
-                        <button type="button" class="btn-close" data-close-modal>&times;</button>
-                    </div>
-                    <form id="specialty-form" novalidate>
+                    <div class="modal-content">
+                        <form id="specialty-form" novalidate>
+                            <div class="modal-header">
+                                <h3 class="modal-title" id="specialty-form-title">Add New Specialty</h3>
+                                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                            </div>
                         <div class="modal-body">
                             <input type="hidden" id="specialty-id">
                             <div class="form-group">
@@ -91,24 +92,27 @@ export default {
                                 <div class="invalid-feedback" id="specialty-name-error"></div>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-close-modal>Cancel</button>
-                            <button type="submit" id="btn-save-specialty" class="btn btn-primary">Save Specialty</button>
-                        </div>
-                    </form>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                                <button type="submit" id="btn-save-specialty" class="btn btn-primary">Save Specialty</button>
+                            </div>
+                        </form>
+                    </div>
                 </div>
             </div>
 
             <!-- View Specialty Modal -->
-            <div class="modal-backdrop" id="specialty-view-modal">
+            <div class="modal" id="specialty-view-modal" tabindex="-1" aria-labelledby="specialty-view-title" aria-hidden="true">
                 <div class="modal-dialog">
-                    <div class="modal-header">
-                        <h3 class="modal-title">Specialty Details</h3>
-                        <button type="button" class="btn-close" data-close-modal>&times;</button>
-                    </div>
-                    <div class="modal-body" id="specialty-view-body"></div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-close-modal>Close</button>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title" id="specialty-view-title">Specialty Details</h3>
+                            <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body" id="specialty-view-body"></div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -117,7 +121,17 @@ export default {
 
     attachEventListeners() {
         let timer = null;
-        const searchInput = 
+        const searchInput = this.container.querySelector('#specialties-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    this.state.search = searchInput.value.trim();
+                    this.state.page = 1;
+                    this.loadData();
+                }, 300);
+            });
+        }
 
         this.container.querySelector('#specialties-page-size').addEventListener('change', (e) => {
             this.state.pageSize = parseInt(e.target.value, 10);

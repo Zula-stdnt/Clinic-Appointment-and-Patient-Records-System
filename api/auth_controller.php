@@ -22,6 +22,10 @@ switch ($action) {
         handle_me();
         break;
 
+    case 'change_password':
+        handle_change_password($pdo);
+        break;
+
     default:
         send_error('Invalid action specified.', [], 400);
         break;
@@ -153,4 +157,65 @@ function handle_me(): void {
         'user'       => get_auth_user(),
         'csrf_token' => get_csrf_token()
     ]);
+}
+
+function handle_change_password(PDO $pdo): void {
+    require_login();
+    verify_csrf_on_state_change();
+
+    $input = get_json_input();
+    if (empty($input)) {
+        $input = $_POST;
+    }
+
+    $currentPassword = $input['current_password'] ?? '';
+    $newPassword     = $input['new_password'] ?? '';
+    $confirmPassword = $input['confirm_password'] ?? '';
+
+    $errors = [];
+
+    if ($currentPassword === '') {
+        $errors['current_password'] = 'Your current password is required.';
+    }
+
+    $passwordRegex = '/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z\d]).{6,}$/';
+    if ($newPassword === '') {
+        $errors['new_password'] = 'A new password is required.';
+    } elseif (!preg_match($passwordRegex, $newPassword)) {
+        $errors['new_password'] = 'Password must be at least 6 characters, including uppercase, lowercase, number, and special character.';
+    } elseif ($newPassword === $currentPassword) {
+        $errors['new_password'] = 'The new password must be different from the current password.';
+    }
+
+    if ($confirmPassword === '') {
+        $errors['confirm_password'] = 'Please confirm your new password.';
+    } elseif ($newPassword !== $confirmPassword) {
+        $errors['confirm_password'] = 'Passwords do not match.';
+    }
+
+    if (!empty($errors)) {
+        send_error('Please correct the highlighted errors.', $errors, 422);
+    }
+
+    try {
+        $stmt = $pdo->prepare(
+            "SELECT password_hash FROM users WHERE user_id = ? AND deleted_at IS NULL LIMIT 1"
+        );
+        $stmt->execute([$_SESSION['user_id']]);
+        $user = $stmt->fetch();
+
+        if (!$user || !password_verify($currentPassword, $user['password_hash'])) {
+            send_error('Your current password is incorrect.', [
+                'current_password' => 'Your current password is incorrect.'
+            ], 422);
+        }
+
+        $update = $pdo->prepare("UPDATE users SET password_hash = ? WHERE user_id = ?");
+        $update->execute([password_hash($newPassword, PASSWORD_DEFAULT), $_SESSION['user_id']]);
+
+        send_success('Password updated successfully.');
+    } catch (PDOException $e) {
+        error_log('Change password error: ' . $e->getMessage());
+        send_error('An unexpected error occurred while updating your password. Please try again.', [], 500);
+    }
 }

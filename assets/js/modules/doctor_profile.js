@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_update_records (Pre-populated update form, ternary selected state, reflexive UI refresh) & 02 DOM and UI/dom_apply_styles (Safe classList.add/remove for validation feedback)
 
 import api from '../api.js?v=7';
-import { escapeHtml, showToast } from '../ui.js?v=22';
+import { escapeHtml, showToast } from '../ui.js?v=24';
 
 function showValidationErrors(errors, container) {
     for (const [fieldId, msg] of Object.entries(errors)) {

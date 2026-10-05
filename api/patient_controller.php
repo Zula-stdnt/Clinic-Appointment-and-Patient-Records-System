@@ -8,8 +8,20 @@ require_once __DIR__ . '/../includes/response.php';
 require_once __DIR__ . '/../includes/auth.php';
 
 require_login();
-require_role('Administrator');
 verify_csrf_on_state_change();
+
+// Receptionists may search and register patients at the front desk.
+// Update, archive, restore, and purge actions remain Administrator-only.
+$authRole = get_current_user_role();
+if (!in_array($authRole, ['Administrator', 'Receptionist'], true)) {
+    send_error('Access forbidden: insufficient role permissions.', [], 403);
+}
+
+function require_patient_admin(): void {
+    if (get_current_user_role() !== 'Administrator') {
+        send_error('Access forbidden: only Administrators may modify or archive patient records.', [], 403);
+    }
+}
 
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 $action = $_GET['action'] ?? null;
@@ -23,15 +35,19 @@ try {
         }
     } elseif ($method === 'POST') {
         if ($action === 'soft_delete') {
+            require_patient_admin();
             softDeletePatient($pdo);
         } elseif ($action === 'restore') {
+            require_patient_admin();
             restorePatient($pdo);
         } elseif ($action === 'hard_delete') {
+            require_patient_admin();
             hardDeletePatient($pdo);
         } else {
             createPatient($pdo);
         }
     } elseif ($method === 'PUT') {
+        require_patient_admin();
         if ($action === 'soft_delete') {
             softDeletePatient($pdo);
         } elseif ($action === 'restore') {
@@ -40,6 +56,7 @@ try {
             updatePatient($pdo);
         }
     } elseif ($method === 'DELETE') {
+        require_patient_admin();
         hardDeletePatient($pdo);
     } else {
         send_error('Method not allowed.', [], 405);
