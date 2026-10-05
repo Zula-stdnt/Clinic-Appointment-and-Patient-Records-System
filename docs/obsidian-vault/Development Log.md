@@ -32,6 +32,17 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
+### 2026-10-05 — Searchable, collapsible patient record timeline (`1152f50`)
+**Type:** feat
+**Database / migrations:** none
+**Files changed:**
+- `assets/js/components/patient-record-view.js` — added an in-record search that matches diagnosis name/ICD-10 code, medicine, lab test, doctor, chief complaint, clinical notes, and dates, with a **Showing X of Y visits** count. Each visit card can collapse to a one-line summary (`2 diagnoses · 1 prescription · 2 lab requests`) and there is a **Collapse All / Expand All** toggle. Status filter chips and print actions are unchanged and work together with the search.
+- `assets/css/style.css` — styles for the search/filter row, chevron rotation, collapsed cards, and visit counters.
+- `docs/obsidian-vault/Modules/Patient Records.md` — documented the new controls.
+**How to verify:**
+- Open any patient record with several visits; type `dengue`, a medicine, or a lab test: only matching visits remain with the count shown.
+- Click a visit header (or press Enter/Space) to collapse it; **Collapse All** compacts the timeline for scanning.
+
 ### 2026-10-05 — Manage Services modal fix (`cc76726`)
 **Type:** fix
 **Database / migrations:** none
