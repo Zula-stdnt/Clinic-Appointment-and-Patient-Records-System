@@ -32,6 +32,20 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
+### 2026-10-05 — Appointment cancellation for front desk and doctors (`b48c675`)
+**Type:** feat
+**Database / migrations:** none
+**Files changed:**
+- `api/appointment_controller.php` — new `PUT ?action=cancel&id`: cancels **Scheduled** or **Confirmed** visits; returns `409` for completed or already-cancelled visits; Administrators/Receptionists may cancel any visit, Doctors only their own (`403` otherwise). Cancelling frees the doctor's slot for rebooking.
+- `assets/js/components/confirm-dialog.js` — **new** reusable confirmation dialog for destructive actions, built on the existing modal styles (no change to `ui.js`).
+- `assets/js/modules/receptionist_appointments.js` — red **Cancel** action on scheduled/confirmed rows with a confirmation dialog, warning toast, and list refresh.
+- `assets/js/modules/doctor_appointments.js` — same Cancel action for the doctor's **own** list.
+- `docs/obsidian-vault/Modules/Receptionist Appointments.md` — documented the cancellation flow.
+**How to verify:**
+- Receptionist → Appointments → **Cancel** a scheduled visit → confirm: the row turns **Cancelled** and the slot can be rebooked at the same date/time.
+- Doctor → My Appointments → Cancel works on own visits; another doctor's appointment returns `403`.
+- Completed visits and repeat cancellations return `409`; anonymous requests return `401`.
+
 ### 2026-10-05 — Searchable, collapsible patient record timeline (`1152f50`)
 **Type:** feat
 **Database / migrations:** none
