@@ -32,6 +32,17 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
+### 2026-10-05 — Patient record layout + admin edit from record (`5f95389`)
+**Type:** fix
+**Database / migrations:** none
+**Files changed:**
+- `assets/css/style.css` — encounter cards now carry their own padding (the shared `.card` class has none) and record tables use wider cell padding, so text no longer sits flush against the left border.
+- `assets/js/components/patient-record-view.js` — optional **Edit Patient Info** action in the toolbar (shown only when the host module provides it).
+- `assets/js/modules/patients.js` — Administrator-only edit from inside the record; after saving, the open record refreshes in place. The **Manage Patients** name and its edit/archive capabilities are unchanged.
+**How to verify:**
+- Administrator → Manage Patients → **Record** → **Edit Patient Info** → save; the record refreshes with the new values.
+- Doctor and Receptionist record views show no edit button; spacing is consistent in all three portals.
+
 ### 2026-10-05 — Shared Patient Record across portals (`1ffe8ae`)
 **Type:** feat
 **Database / migrations:** none
