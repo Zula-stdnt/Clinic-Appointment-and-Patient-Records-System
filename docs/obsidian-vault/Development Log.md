@@ -32,6 +32,15 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
+### 2026-10-05 — Compact patient record visit cards (`0f11ab0`)
+**Type:** fix
+**Database / migrations:** none
+**Files changed:**
+- `assets/js/components/patient-record-view.js` — the diagnosis/prescription/lab counters now sit on the existing summary line instead of their own line, removing the extra height each visit card had gained.
+- `assets/css/style.css` — tightened encounter card padding, header spacing, grid gap, vitals margin, and action row spacing.
+**How to verify:**
+- Open any patient record: each visit card is shorter while keeping the counters; search, filters, collapse/expand, and printing are unchanged.
+
 ### 2026-10-05 — Appointment cancellation for front desk and doctors (`b48c675`)
 **Type:** feat
 **Database / migrations:** none
