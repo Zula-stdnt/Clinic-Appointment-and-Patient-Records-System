@@ -315,8 +315,7 @@ export function renderPatientRecord(container, data, options = {}) {
                         </span>
                         <div>
                             <h4 class="encounter-title">${escapeHtml(formatDate(enc.appointment_date))}${enc.appointment_time ? ` &middot; ${escapeHtml(formatTime(enc.appointment_time))}` : ''}</h4>
-                            <div class="encounter-sub">${doctor ? `Dr. ${escapeHtml(doctor)}` : 'Unassigned doctor'}${enc.chief_complaint ? ` &middot; ${escapeHtml(enc.chief_complaint)}` : ''}</div>
-                            ${counters.length ? `<div class="encounter-summary">${escapeHtml(counters.join(' · '))}</div>` : ''}
+                            <div class="encounter-sub">${doctor ? `Dr. ${escapeHtml(doctor)}` : 'Unassigned doctor'}${enc.chief_complaint ? ` &middot; ${escapeHtml(enc.chief_complaint)}` : ''}${counters.length ? ` &middot; ${escapeHtml(counters.join(' · '))}` : ''}</div>
                         </div>
                     </div>
                     <span class="badge ${status.className}">${escapeHtml(status.label)}</span>

@@ -4,7 +4,7 @@
 
 import api from '../api.js?v=7';
 import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=24';
-import { renderPatientRecord } from '../components/patient-record-view.js?v=3';
+import { renderPatientRecord } from '../components/patient-record-view.js?v=4';
 
 export default {
     state: {

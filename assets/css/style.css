@@ -2457,12 +2457,6 @@ body.modal-open {
     display: none;
 }
 
-.encounter-summary {
-    color: var(--text-muted);
-    font-size: 0.8rem;
-    margin-top: 0.15rem;
-}
-
 .record-filter {
     border: 1px solid var(--border);
     background: var(--surface);
@@ -2487,7 +2481,7 @@ body.modal-open {
 }
 
 .encounter-card {
-    padding: 1.25rem 1.5rem;
+    padding: 1rem 1.25rem;
     border-left: 4px solid var(--border);
 }
 
@@ -2514,8 +2508,8 @@ body.modal-open {
     align-items: flex-start;
     gap: 1rem;
     flex-wrap: wrap;
-    padding-bottom: 0.75rem;
-    margin-bottom: 1rem;
+    padding-bottom: 0.6rem;
+    margin-bottom: 0.85rem;
     border-bottom: 1px solid var(--border);
 }
 
@@ -2533,11 +2527,11 @@ body.modal-open {
 .encounter-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1.25rem;
+    gap: 1rem;
 }
 
 .encounter-block {
-    margin-bottom: 1rem;
+    margin-bottom: 0.85rem;
 }
 
 .encounter-block:last-child {
@@ -2554,9 +2548,9 @@ body.modal-open {
 
 .record-vitals {
     display: flex;
-    gap: 1.25rem;
+    gap: 1rem;
     flex-wrap: wrap;
-    margin-bottom: 1rem;
+    margin-bottom: 0.75rem;
 }
 
 .record-vital {
@@ -2613,8 +2607,8 @@ body.modal-open {
     display: flex;
     gap: 0.5rem;
     flex-wrap: wrap;
-    margin-top: 1rem;
-    padding-top: 1rem;
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
     border-top: 1px dashed var(--border);
 }
 
