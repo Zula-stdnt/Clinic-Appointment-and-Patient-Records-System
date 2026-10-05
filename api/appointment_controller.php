@@ -32,6 +32,12 @@ try {
         }
     } elseif ($method === 'POST') {
         createAppointment($pdo);
+    } elseif ($method === 'PUT') {
+        if ($action === 'cancel') {
+            cancelAppointment($pdo);
+        } else {
+            send_error('Unknown action.', [], 400);
+        }
     } else {
         send_error('Method not allowed.', [], 405);
     }
@@ -301,4 +307,54 @@ function createAppointment(PDO $pdo): void {
         $pdo->rollBack();
         throw $e;
     }
+}
+
+// Cancel a booked visit (patient changed their mind / no longer waiting).
+// Only scheduled or confirmed appointments can be cancelled; cancelling frees
+// the doctor's slot because the duplicate-slot check ignores cancelled rows.
+function cancelAppointment(PDO $pdo): void {
+    $authUser = get_auth_user();
+    $input = get_json_input();
+    $appointmentId = (int)($input['appointment_id'] ?? ($_GET['id'] ?? 0));
+
+    if ($appointmentId <= 0) {
+        send_error('appointment_id is required.', [], 400);
+    }
+
+    $stmt = $pdo->prepare("SELECT appointment_id, doctor_id, status FROM appointments WHERE appointment_id = ? LIMIT 1");
+    $stmt->execute([$appointmentId]);
+    $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$appointment) {
+        send_error('Appointment not found.', [], 404);
+    }
+
+    // Doctors may only cancel their own appointments; staff may cancel any.
+    if ($authUser['role_name'] === 'Doctor') {
+        $docStmt = $pdo->prepare("SELECT doctor_id FROM doctors WHERE user_id = ? LIMIT 1");
+        $docStmt->execute([$authUser['user_id']]);
+        $doc = $docStmt->fetch(PDO::FETCH_ASSOC);
+        if (!$doc || $appointment['doctor_id'] != $doc['doctor_id']) {
+            send_error('Unauthorized access to this appointment.', [], 403);
+        }
+    }
+
+    if ($appointment['status'] === 'completed') {
+        send_error('Completed visits cannot be cancelled.', [], 409);
+    }
+    if ($appointment['status'] === 'cancelled') {
+        send_error('This appointment is already cancelled.', [], 409);
+    }
+    if (!in_array($appointment['status'], ['scheduled', 'confirmed'], true)) {
+        send_error('Only scheduled appointments can be cancelled.', [], 409);
+    }
+
+    $upd = $pdo->prepare("UPDATE appointments SET status = 'cancelled' WHERE appointment_id = ? AND status IN ('scheduled', 'confirmed')");
+    $upd->execute([$appointmentId]);
+
+    if ($upd->rowCount() === 0) {
+        send_error('This appointment can no longer be cancelled.', [], 409);
+    }
+
+    send_success('Appointment cancelled. The time slot is now available for rebooking.');
 }

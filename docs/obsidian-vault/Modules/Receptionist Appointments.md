@@ -57,6 +57,20 @@ The front-desk appointment management screen. Receptionists use this screen to s
 
 ---
 
+### 4. Cancelling an Appointment
+* **When to use:** When the patient changes their mind, decides not to wait, or the visit cannot push through.
+* **What the receptionist does:**
+  1. Finds the appointment in the queue (only **Scheduled** or **Confirmed** visits can be cancelled).
+  2. Clicks the red **Cancel** button on that row.
+  3. Confirms in the **Cancel Appointment** dialog.
+* **What happens:**
+  - The visit becomes **Cancelled** and stays in the queue/history with a red status badge.
+  - The doctor's time slot is released and can be rebooked for another patient.
+  - Completed visits cannot be cancelled, and cancelling an already-cancelled visit is rejected.
+* **Doctors:** In the Doctor Portal → **My Appointments**, a doctor can cancel their **own** scheduled visits the same way, but cannot cancel another doctor's appointment.
+
+---
+
 ## Screen Elements & Information
 
 * **Appointments Queue Table:**
@@ -66,6 +80,7 @@ The front-desk appointment management screen. Receptionists use this screen to s
   * **Chief Complaint:** The main reason for the visit.
   * **Triage Vitals:** Displays initial blood pressure, temperature, and blood oxygen readings.
   * **Status:** Color-coded status badge showing `Scheduled`, `Confirmed`, `Completed`, `Cancelled`, or `No Show`.
+  * **Actions:** **Print Form** for any visit and **Cancel** for scheduled/confirmed visits.
 * **Search & Filters:**
   * **Search box:** Filter the schedule instantly by patient name, doctor name, or complaint.
   * **Status dropdown:** Filter by visit status (e.g., view only confirmed or completed appointments).

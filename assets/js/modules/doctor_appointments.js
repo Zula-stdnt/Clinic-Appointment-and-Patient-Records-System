@@ -4,6 +4,7 @@
 
 import api from '../api.js?v=7';
 import { create, escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=24';
+import { confirmDialog } from '../components/confirm-dialog.js?v=1';
 
 export default {
     state: {
@@ -140,6 +141,11 @@ export default {
                             : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> Start Consult`
                         }
                     </button>
+                    ${(appt.status === 'scheduled' || appt.status === 'confirmed') ? `
+                    <button class="btn btn-danger btn-sm btn-cancel-appointment" data-id="${appt.appointment_id}" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        Cancel
+                    </button>` : ''}
                 </td>
             `;
 
@@ -151,11 +157,37 @@ export default {
                 });
             }
 
+            const cancelBtn = tr.querySelector('.btn-cancel-appointment');
+            if (cancelBtn) {
+                cancelBtn.addEventListener('click', () => {
+                    this.cancelAppointment(appt.appointment_id, `${appt.patient_first} ${appt.patient_last}`);
+                });
+            }
+
             // 4. Append
             frag.appendChild(tr);
         });
 
         tbody.appendChild(frag);
+    },
+
+    cancelAppointment(appointmentId, patientName) {
+        confirmDialog({
+            title: 'Cancel Appointment',
+            message: `Cancel the appointment for "${patientName || 'this patient'}"? The time slot becomes available for rebooking.`,
+            btnText: 'Cancel Appointment',
+            btnClass: 'btn btn-danger',
+            cancelText: 'Keep Appointment',
+            onConfirm: async () => {
+                try {
+                    const res = await api.put(`api/appointment_controller.php?action=cancel&id=${appointmentId}`);
+                    showToast(res.message, 'warning');
+                    await this.loadData();
+                } catch (err) {
+                    showToast(err.response?.data?.message || err.message || 'Failed to cancel the appointment.', 'error');
+                }
+            }
+        });
     },
 
     getStatusColor(status) {

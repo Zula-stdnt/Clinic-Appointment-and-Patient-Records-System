@@ -7,6 +7,7 @@ import { create, escapeHtml, showToast, openModal, closeModal } from '../ui.js?v
 import { SearchSelect } from '../components/search-select.js?v=1';
 import { PatientRegisterForm } from '../components/patient-register.js?v=1';
 import { printAppointmentForm } from '../components/print-appointment-form.js?v=2';
+import { confirmDialog } from '../components/confirm-dialog.js?v=1';
 
 export default {
     state: {
@@ -270,9 +271,15 @@ export default {
         });
 
         this.container.querySelector('#appointments-tbody').addEventListener('click', (e) => {
-            const btn = e.target.closest('.btn-print-appointment');
-            if (btn) {
-                printAppointmentForm(btn.getAttribute('data-id'));
+            const printBtn = e.target.closest('.btn-print-appointment');
+            if (printBtn) {
+                printAppointmentForm(printBtn.getAttribute('data-id'));
+                return;
+            }
+
+            const cancelBtn = e.target.closest('.btn-cancel-appointment');
+            if (cancelBtn) {
+                this.cancelAppointment(cancelBtn.getAttribute('data-id'), cancelBtn.getAttribute('data-patient'));
             }
         });
 
@@ -376,10 +383,17 @@ export default {
                     </span>
                 </td>
                 <td style="text-align: right;">
-                    <button type="button" class="btn btn-secondary btn-sm btn-print-appointment" data-id="${appt.appointment_id}" title="Print Patient Registration &amp; Appointment Form">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
-                        Print Form
-                    </button>
+                    <div class="actions-cell">
+                        <button type="button" class="btn btn-secondary btn-sm btn-print-appointment" data-id="${appt.appointment_id}" title="Print Patient Registration &amp; Appointment Form">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+                            Print Form
+                        </button>
+                        ${(appt.status === 'scheduled' || appt.status === 'confirmed') ? `
+                        <button type="button" class="btn btn-danger btn-sm btn-cancel-appointment" data-id="${appt.appointment_id}" data-patient="${escapeHtml(appt.patient_last + ', ' + appt.patient_first)}" title="Cancel this appointment">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                            Cancel
+                        </button>` : ''}
+                    </div>
                 </td>
             `;
 
@@ -412,6 +426,25 @@ export default {
             case 'no_show':   return { bg: '#ffedd5', text: '#ea580c' };
             default:          return { bg: '#f3f4f6', text: '#374151' };
         }
+    },
+
+    cancelAppointment(appointmentId, patientName) {
+        confirmDialog({
+            title: 'Cancel Appointment',
+            message: `Cancel the appointment for "${patientName || 'this patient'}"? They will be removed from the doctor's schedule and the time slot becomes available for rebooking.`,
+            btnText: 'Cancel Appointment',
+            btnClass: 'btn btn-danger',
+            cancelText: 'Keep Appointment',
+            onConfirm: async () => {
+                try {
+                    const res = await api.put(`api/appointment_controller.php?action=cancel&id=${appointmentId}`);
+                    showToast(res.message, 'warning');
+                    await this.loadData();
+                } catch (err) {
+                    showToast(err.response?.data?.message || err.message || 'Failed to cancel the appointment.', 'error');
+                }
+            }
+        });
     },
 
     openBookModal() {
