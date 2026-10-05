@@ -23,6 +23,22 @@ BEGIN
         DROP TABLE payments;
     END IF;
 
+    -- experimental billing audit foreign key (created_by -> users) from
+    -- 009_billing_payments.sql; the 006 dependency gate does not whitelist it.
+    IF EXISTS (SELECT 1 FROM information_schema.TABLES
+               WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'billing') THEN
+        SET v_name = NULL;
+        SELECT CONSTRAINT_NAME INTO v_name
+        FROM information_schema.KEY_COLUMN_USAGE
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'billing'
+          AND REFERENCED_TABLE_NAME = 'users'
+        LIMIT 1;
+        IF v_name IS NOT NULL THEN
+            SET @s = CONCAT('ALTER TABLE billing DROP FOREIGN KEY `', v_name, '`');
+            PREPARE st FROM @s; EXECUTE st; DEALLOCATE PREPARE st;
+        END IF;
+    END IF;
+
     -- lab_requests.service_id (experimental lab<->service link)
     IF EXISTS (SELECT 1 FROM information_schema.COLUMNS
                WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'lab_requests' AND COLUMN_NAME = 'service_id') THEN
