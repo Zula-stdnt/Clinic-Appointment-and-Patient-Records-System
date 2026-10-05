@@ -1,7 +1,7 @@
 // assets/js/components/patient-record-view.js
 // Shared, read-only patient record screen used by the Administrator, Receptionist,
-// and Doctor portals: demographics, visit summary, color-coded encounter timeline,
-// and per-visit printing (prescription, lab request, appointment form).
+// and Doctor portals: demographics, visit summary, searchable and collapsible
+// color-coded encounter timeline, and per-visit printing.
 // ITE 387 Lessons applied: 02 DOM and UI/dom_create_and_remove_elements (view is
 // built, replaced, and torn down by the hosting module)
 
@@ -33,24 +33,21 @@ const FILTERS = [
 ];
 
 export function renderPatientRecord(container, data, options = {}) {
-    const state = { filter: 'all' };
+    const state = { filter: 'all', search: '' };
+    const p = data.patient || {};
+    const summary = data.summary || {};
+    const encounters = data.encounters || [];
+    const pid = `PAT-${String(p.patient_id).padStart(4, '0')}`;
+    const patientName = `${p.last_name || ''}, ${p.first_name || ''}${p.middle_initial ? ' ' + p.middle_initial + '.' : ''}`;
 
-    function render() {
-        const p = data.patient || {};
-        const summary = data.summary || {};
-        const encounters = data.encounters || [];
-        const pid = `PAT-${String(p.patient_id).padStart(4, '0')}`;
-        const fullName = `${p.last_name || ''}, ${p.first_name || ''}${p.middle_initial ? ' ' + p.middle_initial + '.' : ''}`;
+    renderShell();
+    renderTimeline();
+    bindControls();
+
+    function renderShell() {
         const archived = p.deleted_at
             ? '<span class="badge badge-warning">Archived</span>'
             : '<span class="badge badge-success">Active</span>';
-
-        const visible = encounters.filter(enc => {
-            if (state.filter === 'completed') return enc.status === 'completed';
-            if (state.filter === 'scheduled') return enc.status === 'scheduled' || enc.status === 'confirmed';
-            if (state.filter === 'cancelled') return enc.status === 'cancelled' || enc.status === 'no_show';
-            return true;
-        });
 
         const stats = [
             { label: 'Total Visits', value: summary.total_visits ?? encounters.length },
@@ -60,10 +57,6 @@ export function renderPatientRecord(container, data, options = {}) {
             { label: 'Next Visit', value: formatDate(summary.next_visit) }
         ];
         if (!summary.next_visit) stats.pop();
-
-        const timeline = visible.length
-            ? visible.map(renderEncounter).join('')
-            : '<div class="record-empty">No visits match the selected filter.</div>';
 
         container.innerHTML = `
             <div class="patient-record-toolbar">
@@ -81,7 +74,7 @@ export function renderPatientRecord(container, data, options = {}) {
             <div class="card patient-record-header">
                 <div class="patient-record-avatar">${escapeHtml((p.first_name || '?').charAt(0).toUpperCase())}</div>
                 <div class="patient-record-identity">
-                    <h2>${escapeHtml(fullName)} ${archived}</h2>
+                    <h2>${escapeHtml(patientName)} ${archived}</h2>
                     <div class="patient-record-meta">
                         <span><strong>ID:</strong> ${pid}</span>
                         <span><strong>Age:</strong> ${escapeHtml(p.age ?? '—')}</span>
@@ -101,33 +94,115 @@ export function renderPatientRecord(container, data, options = {}) {
                     </div>`).join('')}
             </div>
 
-            <div class="record-filters">
-                ${FILTERS.map(f => `
-                    <button type="button" class="record-filter ${state.filter === f.key ? 'active' : ''}" data-filter="${f.key}">
-                        ${escapeHtml(f.label)}
-                    </button>`).join('')}
+            <div class="record-controls">
+                <div class="search-input-wrapper record-search">
+                    <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                    <input type="text" id="pr-search" class="form-control" placeholder="Search diagnosis, medicine, lab test, doctor, or date..." value="${escapeHtml(state.search)}">
+                </div>
+                <div class="record-filters" id="pr-filters">
+                    ${FILTERS.map(f => `
+                        <button type="button" class="record-filter ${state.filter === f.key ? 'active' : ''}" data-filter="${f.key}">
+                            ${escapeHtml(f.label)}
+                        </button>`).join('')}
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" id="pr-toggle-all">Collapse All</button>
             </div>
 
-            <div class="record-timeline">${timeline}</div>
+            <div class="record-count" id="pr-count"></div>
+
+            <div class="record-timeline" id="pr-timeline"></div>
         `;
 
         container.querySelector('#pr-back')?.addEventListener('click', () => options.onBack && options.onBack());
         container.querySelector('#pr-edit')?.addEventListener('click', () => options.onEdit && options.onEdit());
-        container.querySelectorAll('.record-filter').forEach(btn => {
-            btn.addEventListener('click', () => {
-                state.filter = btn.getAttribute('data-filter');
-                render();
+    }
+
+    function bindControls() {
+        const searchInput = container.querySelector('#pr-search');
+        searchInput?.addEventListener('input', () => {
+            state.search = searchInput.value.trim();
+            renderTimeline();
+        });
+
+        container.querySelector('#pr-filters')?.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-filter]');
+            if (!btn) return;
+            state.filter = btn.getAttribute('data-filter');
+            container.querySelectorAll('#pr-filters .record-filter').forEach(el => {
+                el.classList.toggle('active', el.getAttribute('data-filter') === state.filter);
             });
+            renderTimeline();
         });
-        container.querySelectorAll('.btn-print-rx').forEach(btn => {
-            btn.addEventListener('click', () => printPrescription(parseInt(btn.getAttribute('data-id'), 10)));
+
+        const toggleAll = container.querySelector('#pr-toggle-all');
+        toggleAll?.addEventListener('click', () => {
+            const cards = container.querySelectorAll('.encounter-card');
+            const anyExpanded = Array.from(cards).some(card => !card.classList.contains('collapsed'));
+            cards.forEach(card => {
+                card.classList.toggle('collapsed', anyExpanded);
+                setExpanded(card, !anyExpanded);
+            });
+            toggleAll.textContent = anyExpanded ? 'Expand All' : 'Collapse All';
         });
-        container.querySelectorAll('.btn-print-lab').forEach(btn => {
-            btn.addEventListener('click', () => printLabRequest(parseInt(btn.getAttribute('data-id'), 10)));
+
+        container.querySelector('#pr-timeline')?.addEventListener('click', (e) => {
+            const printRx = e.target.closest('.btn-print-rx');
+            if (printRx) return printPrescription(parseInt(printRx.getAttribute('data-id'), 10));
+
+            const printLab = e.target.closest('.btn-print-lab');
+            if (printLab) return printLabRequest(parseInt(printLab.getAttribute('data-id'), 10));
+
+            const printForm = e.target.closest('.btn-print-form');
+            if (printForm) return printAppointmentForm(parseInt(printForm.getAttribute('data-id'), 10));
+
+            const head = e.target.closest('.encounter-head[data-toggle]');
+            if (head) {
+                const card = head.closest('.encounter-card');
+                const collapsed = card.classList.toggle('collapsed');
+                setExpanded(card, !collapsed);
+            }
         });
-        container.querySelectorAll('.btn-print-form').forEach(btn => {
-            btn.addEventListener('click', () => printAppointmentForm(parseInt(btn.getAttribute('data-id'), 10)));
+
+        container.querySelector('#pr-timeline')?.addEventListener('keydown', (e) => {
+            if (e.key !== 'Enter' && e.key !== ' ') return;
+            const head = e.target.closest('.encounter-head[data-toggle]');
+            if (head) {
+                e.preventDefault();
+                const card = head.closest('.encounter-card');
+                const collapsed = card.classList.toggle('collapsed');
+                setExpanded(card, !collapsed);
+            }
         });
+    }
+
+    function visibleEncounters() {
+        const query = state.search.toLowerCase();
+        return encounters.filter(enc => {
+            if (state.filter === 'completed' && enc.status !== 'completed') return false;
+            if (state.filter === 'scheduled' && enc.status !== 'scheduled' && enc.status !== 'confirmed') return false;
+            if (state.filter === 'cancelled' && enc.status !== 'cancelled' && enc.status !== 'no_show') return false;
+            if (query && !encounterText(enc).includes(query)) return false;
+            return true;
+        });
+    }
+
+    function renderTimeline() {
+        const timeline = container.querySelector('#pr-timeline');
+        const count = container.querySelector('#pr-count');
+        if (!timeline) return;
+
+        const visible = visibleEncounters();
+        timeline.innerHTML = visible.length
+            ? visible.map(renderEncounter).join('')
+            : '<div class="card record-empty">No visits match your search or filter.</div>';
+
+        if (count) {
+            const suffix = state.search ? ` matching “${state.search}”` : '';
+            count.textContent = `Showing ${visible.length} of ${encounters.length} visits${suffix}`;
+        }
+
+        const toggleAll = container.querySelector('#pr-toggle-all');
+        if (toggleAll) toggleAll.textContent = 'Collapse All';
     }
 
     function renderEncounter(enc) {
@@ -136,6 +211,14 @@ export function renderPatientRecord(container, data, options = {}) {
         const hasConsultation = !!enc.consultation_id;
         const doctor = fullDoctorName(enc);
         const canSeeNotes = options.viewerRole !== 'Receptionist';
+        const diagnoses = enc.diagnoses || [];
+        const prescriptions = enc.prescriptions || [];
+        const labs = enc.lab_requests || [];
+
+        const counters = [];
+        if (diagnoses.length) counters.push(`${diagnoses.length} diagnosis${diagnoses.length > 1 ? 'es' : ''}`);
+        if (prescriptions.length) counters.push(`${prescriptions.length} prescription${prescriptions.length > 1 ? 's' : ''}`);
+        if (labs.length) counters.push(`${labs.length} lab request${labs.length > 1 ? 's' : ''}`);
 
         let body = '';
         if (isCompleted && hasConsultation) {
@@ -145,22 +228,22 @@ export function renderPatientRecord(container, data, options = {}) {
                 enc.oxygen_saturation ? `<span class="record-vital"><strong>SpO2:</strong> ${escapeHtml(enc.oxygen_saturation)}%</span>` : ''
             ].filter(Boolean).join('');
 
-            const diagnoses = (enc.diagnoses || []).length
+            const diagnosesHtml = diagnoses.length
                 ? `<div class="encounter-block">
                         <h5>Diagnoses</h5>
                         <ul class="record-list">
-                            ${enc.diagnoses.map(d => `<li>${escapeHtml(d.diagnosis_name)}${d.icd10_code ? ` <span class="badge badge-secondary">${escapeHtml(d.icd10_code)}</span>` : ''}</li>`).join('')}
+                            ${diagnoses.map(d => `<li>${escapeHtml(d.diagnosis_name)}${d.icd10_code ? ` <span class="badge badge-secondary">${escapeHtml(d.icd10_code)}</span>` : ''}</li>`).join('')}
                         </ul>
                    </div>`
                 : '<div class="encounter-block"><h5>Diagnoses</h5><span class="text-muted">None recorded.</span></div>';
 
-            const labs = (enc.lab_requests || []).length
+            const labsHtml = labs.length
                 ? `<div class="encounter-block">
                         <h5>Laboratory &amp; Diagnostic Requests</h5>
                         <table class="record-table">
                             <thead><tr><th>Test / Procedure</th><th style="width: 30%;">Status</th><th style="width: 24%;">Date</th></tr></thead>
                             <tbody>
-                                ${enc.lab_requests.map(l => {
+                                ${labs.map(l => {
                                     const ls = LAB_STATUS[l.status] || { label: l.status, className: 'badge-secondary' };
                                     return `<tr>
                                         <td>${escapeHtml(l.test_name)}</td>
@@ -173,13 +256,13 @@ export function renderPatientRecord(container, data, options = {}) {
                    </div>`
                 : '<div class="encounter-block"><h5>Laboratory &amp; Diagnostic Requests</h5><span class="text-muted">None requested.</span></div>';
 
-            const prescriptions = (enc.prescriptions || []).length
+            const rxHtml = prescriptions.length
                 ? `<div class="encounter-block">
                         <h5>Prescriptions</h5>
                         <table class="record-table">
                             <thead><tr><th>Medication</th><th>Dosage</th><th>Frequency</th><th>Time to Take</th></tr></thead>
                             <tbody>
-                                ${enc.prescriptions.map(rx => `<tr>
+                                ${prescriptions.map(rx => `<tr>
                                     <td><strong>${escapeHtml(rx.medication_name)}</strong>${rx.generic_name ? `<div class="text-muted" style="font-size: 0.78rem;">${escapeHtml(rx.generic_name)}</div>` : ''}</td>
                                     <td>${escapeHtml(rx.dosage)}</td>
                                     <td>${escapeHtml(rx.frequency)}</td>
@@ -201,8 +284,8 @@ export function renderPatientRecord(container, data, options = {}) {
                 ${vitals ? `<div class="record-vitals">${vitals}</div>` : ''}
                 ${notes}
                 <div class="encounter-grid">
-                    <div>${diagnoses}${labs}</div>
-                    <div>${prescriptions}</div>
+                    <div>${diagnosesHtml}${labsHtml}</div>
+                    <div>${rxHtml}</div>
                 </div>`;
         } else {
             const message = enc.status === 'cancelled'
@@ -215,30 +298,53 @@ export function renderPatientRecord(container, data, options = {}) {
 
         const printActions = [
             hasConsultation
-                ? `<button type="button" class="btn btn-secondary btn-sm btn-print-rx" data-id="${enc.appointment_id}" ${(enc.prescriptions || []).length ? '' : 'disabled title="No prescription on this visit."'}>Print Prescription</button>`
+                ? `<button type="button" class="btn btn-secondary btn-sm btn-print-rx" data-id="${enc.appointment_id}" ${prescriptions.length ? '' : 'disabled title="No prescription on this visit."'}>Print Prescription</button>`
                 : '',
             hasConsultation
-                ? `<button type="button" class="btn btn-secondary btn-sm btn-print-lab" data-id="${enc.appointment_id}" ${(enc.lab_requests || []).length ? '' : 'disabled title="No laboratory request on this visit."'}>Print Lab Request</button>`
+                ? `<button type="button" class="btn btn-secondary btn-sm btn-print-lab" data-id="${enc.appointment_id}" ${labs.length ? '' : 'disabled title="No laboratory request on this visit."'}>Print Lab Request</button>`
                 : '',
             `<button type="button" class="btn btn-secondary btn-sm btn-print-form" data-id="${enc.appointment_id}">Print Form</button>`
         ].filter(Boolean).join('');
 
         return `
             <article class="card encounter-card status-${escapeHtml(enc.status)}">
-                <div class="encounter-head">
-                    <div>
-                        <h4 class="encounter-title">${escapeHtml(formatDate(enc.appointment_date))}${enc.appointment_time ? ` &middot; ${escapeHtml(formatTime(enc.appointment_time))}` : ''}</h4>
-                        <div class="encounter-sub">${doctor ? `Dr. ${escapeHtml(doctor)}` : 'Unassigned doctor'}${enc.chief_complaint ? ` &middot; ${escapeHtml(enc.chief_complaint)}` : ''}</div>
+                <div class="encounter-head" data-toggle role="button" tabindex="0" aria-expanded="true">
+                    <div class="encounter-head-main">
+                        <span class="encounter-chevron">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        </span>
+                        <div>
+                            <h4 class="encounter-title">${escapeHtml(formatDate(enc.appointment_date))}${enc.appointment_time ? ` &middot; ${escapeHtml(formatTime(enc.appointment_time))}` : ''}</h4>
+                            <div class="encounter-sub">${doctor ? `Dr. ${escapeHtml(doctor)}` : 'Unassigned doctor'}${enc.chief_complaint ? ` &middot; ${escapeHtml(enc.chief_complaint)}` : ''}</div>
+                            ${counters.length ? `<div class="encounter-summary">${escapeHtml(counters.join(' · '))}</div>` : ''}
+                        </div>
                     </div>
                     <span class="badge ${status.className}">${escapeHtml(status.label)}</span>
                 </div>
-                ${body}
-                <div class="encounter-actions">${printActions}</div>
+                <div class="encounter-body">
+                    ${body}
+                    <div class="encounter-actions">${printActions}</div>
+                </div>
             </article>
         `;
     }
 
-    render();
+    function setExpanded(card, expanded) {
+        const head = card.querySelector('.encounter-head');
+        if (head) head.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    }
+
+    function encounterText(enc) {
+        const parts = [
+            enc.appointment_date, formatDate(enc.appointment_date), enc.appointment_time,
+            enc.status, enc.chief_complaint, enc.notes,
+            enc.doctor_first, enc.doctor_last
+        ];
+        (enc.diagnoses || []).forEach(d => parts.push(d.diagnosis_name, d.icd10_code));
+        (enc.prescriptions || []).forEach(r => parts.push(r.medication_name, r.generic_name, r.dosage, r.frequency, r.time_to_take));
+        (enc.lab_requests || []).forEach(l => parts.push(l.test_name, l.status, l.request_date, formatDate(l.request_date)));
+        return parts.filter(Boolean).join(' ').toLowerCase();
+    }
 }
 
 function fullDoctorName(enc) {

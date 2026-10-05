@@ -2401,6 +2401,68 @@ body.modal-open {
     margin-bottom: 1.25rem;
 }
 
+.record-controls {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.record-controls .record-filters {
+    margin-bottom: 0;
+}
+
+.record-search {
+    flex: 1 1 260px;
+    min-width: 220px;
+}
+
+.record-count {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+}
+
+.encounter-head[data-toggle] {
+    cursor: pointer;
+    user-select: none;
+}
+
+.encounter-head[data-toggle]:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    border-radius: 6px;
+}
+
+.encounter-head-main {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    min-width: 0;
+}
+
+.encounter-chevron {
+    display: inline-flex;
+    margin-top: 0.15rem;
+    color: var(--text-muted);
+    transition: transform 0.15s ease;
+}
+
+.encounter-card.collapsed .encounter-chevron {
+    transform: rotate(-90deg);
+}
+
+.encounter-card.collapsed .encounter-body {
+    display: none;
+}
+
+.encounter-summary {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+    margin-top: 0.15rem;
+}
+
 .record-filter {
     border: 1px solid var(--border);
     background: var(--surface);

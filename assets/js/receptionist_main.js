@@ -5,7 +5,7 @@
 import { requireSession } from './session-guard.js?v=24';
 import { hideAllModals, closeSidebar } from './ui.js?v=24';
 import receptionistAppointments from './modules/receptionist_appointments.js?v=28';
-import receptionistPatients from './modules/receptionist_patients.js?v=30';
+import receptionistPatients from './modules/receptionist_patients.js?v=31';
 import settingsModule from './modules/account_settings.js?v=24';
 import profileModule from './modules/my_profile.js?v=24';
 

@@ -19,7 +19,9 @@ A single read-only clinical record screen shared by all three portals. It shows 
 ## Screen layout
 - **Header card** — patient ID (`PAT-0000`), name, active/archived badge, age, gender, date of birth, contact, address.
 - **Summary cards** — total visits, completed, upcoming, last visit, next visit.
-- **Filter chips** — All Visits / Completed / Scheduled / Cancelled.
+- **Search** — free-text search inside the record: diagnosis name, ICD-10 code, medicine, lab test, doctor, chief complaint, notes, or date. A **Showing X of Y visits** count updates as you type.
+- **Filter chips** — All Visits / Completed / Scheduled / Cancelled, usable together with the search.
+- **Collapse / Expand** — every visit card collapses to a one-line summary (date, doctor, status, `2 diagnoses · 1 prescription · 2 lab requests`); **Collapse All / Expand All** toggles the whole timeline for quick scanning.
 - **Encounter timeline** — newest first. Each card shows date, time, attending doctor, chief complaint, a status badge, and (for completed visits) vitals, notes, diagnoses with ICD-10 codes, prescriptions with dosage/frequency/time-to-take, and lab requests with status and date.
 
 ## Status colors

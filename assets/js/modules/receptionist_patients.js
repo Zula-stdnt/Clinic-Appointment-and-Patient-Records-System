@@ -7,7 +7,7 @@ import api from '../api.js?v=7';
 import { escapeHtml } from '../ui.js?v=24';
 import { PatientRegisterForm } from '../components/patient-register.js?v=1';
 import { printBlankForm } from '../components/print-appointment-form.js?v=2';
-import { renderPatientRecord } from '../components/patient-record-view.js?v=2';
+import { renderPatientRecord } from '../components/patient-record-view.js?v=3';
 
 export default {
     state: {
