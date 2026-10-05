@@ -32,6 +32,15 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
+### 2026-10-05 — Manage Services modal fix (`cc76726`)
+**Type:** fix
+**Database / migrations:** none
+**Files changed:**
+- `assets/js/modules/services.js` — the Add/Edit and View dialogs used `class="modal-backdrop"` (a class with no CSS) and `data-close-modal` (an attribute `ui.js` does not handle), so their content rendered inline below the table instead of as a centered dialog. Both now use the standard `.modal` > `.modal-content` structure with `data-dismiss="modal"` close buttons.
+- System-wide scan: every other module, component, and dashboard shell already used the correct structure; no remaining `modal-backdrop` or `data-close-modal` usages exist.
+**How to verify:**
+- Administrator → Manage Services → **Edit** / **View**: the dialog opens centered over a dark backdrop and closes via X, Cancel/Close, backdrop click, or Escape.
+
 ### 2026-10-05 — Manage Patients uses the full patient record as its only view (`fbdd911`)
 **Type:** fix
 **Database / migrations:** none
