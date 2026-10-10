@@ -589,6 +589,12 @@ body.sidebar-open .sidebar-backdrop {
     justify-content: flex-end;
 }
 
+td.actions-cell {
+    display: table-cell;
+    vertical-align: middle;
+    text-align: right;
+}
+
 /* Pagination */
 .pagination-wrapper {
     display: flex;

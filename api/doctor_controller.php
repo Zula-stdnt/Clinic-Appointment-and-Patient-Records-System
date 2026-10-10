@@ -191,6 +191,13 @@ function validateDoctorInput(PDO $pdo, array $input): array {
         $errors['last_name'] = 'Last name cannot exceed 80 characters.';
     }
 
+    $middleInitial = trim($input['middle_initial'] ?? '');
+    if ($middleInitial !== '') {
+        if (!preg_match('/^[A-Za-z]$/', $middleInitial)) {
+            $errors['middle_initial'] = 'Middle initial must be a single letter (A-Z).';
+        }
+    }
+
     if (empty($specialtyIds)) {
         $errors['specialty_id'] = 'Please select at least one valid specialty.';
     } elseif (!active_specialty_ids_exist($pdo, $specialtyIds)) {

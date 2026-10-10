@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_modules (ES module orchestration) & javascript_fundamentals (DOMContentLoaded initialization)
 
 import { requireSession } from './session-guard.js?v=22';
-import doctorOverview from './modules/doctor_overview.js?v=22';
+import doctorOverview from './modules/doctor_overview.js?v=24';
 import doctorAppointments from './modules/doctor_appointments.js?v=22';
 import doctorPatients from './modules/doctor_patients.js?v=22';
 import doctorProfile from './modules/doctor_profile.js?v=22';

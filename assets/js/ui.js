@@ -91,9 +91,15 @@ export function openModal(modalId) {
     modal.addEventListener('keydown', handleModalKeydown);
 }
 
-export function closeModal(modalId) {
+export function closeModal(modalId, force = false) {
     const modal = typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
     if (!modal) return;
+
+    if (!force) {
+        const event = new CustomEvent('beforeModalClose', { cancelable: true });
+        modal.dispatchEvent(event);
+        if (event.defaultPrevented) return;
+    }
 
     modal.classList.remove('active');
     modal.removeEventListener('keydown', handleModalKeydown);
@@ -140,7 +146,38 @@ function handleModalKeydown(e) {
     }
 }
 
-// Confirmation Modals: Soft Delete (Archive), Restore, and Hard Delete
+// Confirmation Modals: Action, Soft Delete (Archive), Restore, and Hard Delete
+export function confirmAction({ title, message, btnText = 'Confirm', btnClass = 'btn btn-primary', onConfirm }) {
+    const modal = document.getElementById('global-confirm-modal');
+    if (!modal) return;
+
+    const modalTitle = modal.querySelector('.modal-title');
+    const modalBody = modal.querySelector('.modal-body');
+    const confirmBtn = modal.querySelector('#global-confirm-btn');
+
+    modalTitle.textContent = title || 'Confirm Action';
+    modalBody.innerHTML = `<p>${escapeHtml(message)}</p>`;
+
+    confirmBtn.className = btnClass;
+    confirmBtn.textContent = btnText;
+    confirmBtn.disabled = false;
+
+    const cleanClone = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(cleanClone, confirmBtn);
+
+    cleanClone.addEventListener('click', async () => {
+        cleanClone.disabled = true;
+        try {
+            await onConfirm();
+            closeModal(modal);
+        } catch (err) {
+            cleanClone.disabled = false;
+        }
+    });
+
+    openModal(modal);
+}
+
 export function confirmSoftDelete({ title, message, itemName, btnText = 'Archive Record', btnClass = 'btn btn-warning', onConfirm }) {
     const modal = document.getElementById('global-confirm-modal');
     if (!modal) return;

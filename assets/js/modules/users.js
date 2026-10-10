@@ -133,7 +133,7 @@ export default {
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div class="form-group">
                                     <label for="user-middle-initial">Middle Initial <span class="text-muted" style="font-weight: normal; font-size: 0.85em;">(Optional)</span></label>
-                                    <input type="text" id="user-middle-initial" class="form-control" maxlength="5" placeholder="M.I.">
+                                    <input type="text" id="user-middle-initial" class="form-control" maxlength="1" placeholder="M.I.">
                                     <div class="invalid-feedback" id="user-middle-initial-error"></div>
                                 </div>
                                 <div class="form-group">
@@ -324,6 +324,22 @@ export default {
                 // Only set selection if the element is focused to avoid unwanted scrolling or focus issues
                 if (document.activeElement === input) {
                     input.setSelectionRange(newCursor, newCursor);
+                }
+            });
+        }
+
+        // Middle Initial real-time validation and feedback
+        const miInput = this.container.querySelector('#user-middle-initial');
+        if (miInput) {
+            miInput.addEventListener('input', (e) => {
+                const val = e.target.value.trim();
+                const errEl = this.container.querySelector('#user-middle-initial-error');
+                if (val !== '' && !/^[A-Za-z]$/.test(val)) {
+                    miInput.classList.add('is-invalid');
+                    if (errEl) errEl.textContent = 'Middle initial must be a single letter (A-Z).';
+                } else {
+                    miInput.classList.remove('is-invalid');
+                    if (errEl) errEl.textContent = '';
                 }
             });
         }
@@ -597,6 +613,10 @@ export default {
         }
         if (!lastName) {
             this.showFieldError('user-last-name', 'Last name is required.');
+            hasErrors = true;
+        }
+        if (middleInitial !== '' && !/^[A-Za-z]$/.test(middleInitial)) {
+            this.showFieldError('user-middle-initial', 'Middle initial must be a single letter (A-Z).');
             hasErrors = true;
         }
         if (!gender) {

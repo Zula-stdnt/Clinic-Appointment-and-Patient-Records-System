@@ -121,7 +121,7 @@ export default {
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div class="form-group">
                                     <label for="doctor-middle-initial">Middle Initial <span class="text-muted" style="font-weight: normal; font-size: 0.85em;">(Optional)</span></label>
-                                    <input type="text" id="doctor-middle-initial" class="form-control" maxlength="5" placeholder="M.I.">
+                                    <input type="text" id="doctor-middle-initial" class="form-control" maxlength="1" placeholder="M.I.">
                                     <div class="invalid-feedback" id="doctor-middle-initial-error"></div>
                                 </div>
                                 <div class="form-group">
@@ -261,6 +261,22 @@ export default {
                 
                 if (document.activeElement === input) {
                     input.setSelectionRange(newCursor, newCursor);
+                }
+            });
+        }
+
+        // Middle Initial real-time validation and feedback
+        const miInput = this.container.querySelector('#doctor-middle-initial');
+        if (miInput) {
+            miInput.addEventListener('input', (e) => {
+                const val = e.target.value.trim();
+                const errEl = this.container.querySelector('#doctor-middle-initial-error');
+                if (val !== '' && !/^[A-Za-z]$/.test(val)) {
+                    miInput.classList.add('is-invalid');
+                    if (errEl) errEl.textContent = 'Middle initial must be a single letter (A-Z).';
+                } else {
+                    miInput.classList.remove('is-invalid');
+                    if (errEl) errEl.textContent = '';
                 }
             });
         }
@@ -549,6 +565,10 @@ export default {
         }
         if (!lastName) {
             this.showFieldError('doctor-last-name', 'Last name is required.');
+            hasErrors = true;
+        }
+        if (middleInitial !== '' && !/^[A-Za-z]$/.test(middleInitial)) {
+            this.showFieldError('doctor-middle-initial', 'Middle initial must be a single letter (A-Z).');
             hasErrors = true;
         }
         

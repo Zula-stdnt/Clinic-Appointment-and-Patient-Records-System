@@ -4,9 +4,9 @@
 
 import { requireSession } from './session-guard.js?v=23';
 import overviewModule from './modules/overview.js?v=23';
-import usersModule from './modules/users.js?v=23';
-import patientsModule from './modules/patients.js?v=23';
-import doctorsModule from './modules/doctors.js?v=23';
+import usersModule from './modules/users.js?v=24';
+import patientsModule from './modules/patients.js?v=24';
+import doctorsModule from './modules/doctors.js?v=24';
 import specialtiesModule from './modules/specialties.js?v=23';
 import servicesModule from './modules/services.js?v=23';
 import archiveModule from './modules/archive.js?v=23';

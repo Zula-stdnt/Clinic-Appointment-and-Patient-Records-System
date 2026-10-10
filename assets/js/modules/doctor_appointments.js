@@ -1,13 +1,17 @@
 // assets/js/modules/doctor_appointments.js
-// Read-only view of appointments for the logged-in doctor
+// Read-only view of appointments for the logged-in doctor with bounded pagination and status gating
 // ITE 387 Lessons applied: 02 DOM and UI/dom_create_and_remove_elements (Create -> Configure -> Listen -> Append row pattern) & 03 APIs and Database Operations/javascript_working_with_apis (Async/await response validation)
 
-import api from '../api.js?v=7';
-import { create, escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=22';
+import api from '../api.js?v=8';
+import { create, escapeHtml, showToast } from '../ui.js?v=24';
 
 export default {
     state: {
-        appointments: []
+        appointments: [],
+        page: 1,
+        pageSize: 10,
+        total: 0,
+        pages: 1
     },
 
     async init(container) {
@@ -25,16 +29,26 @@ export default {
                         <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text);">My Appointments</h2>
                         <p class="text-muted" style="font-size: 0.85rem;">View scheduled appointments and start consultations.</p>
                     </div>
-                    <button class="btn btn-secondary" id="btn-refresh-appointments">
-                        Refresh
-                    </button>
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="text-muted" style="font-size: 0.85rem;">Rows:</span>
+                            <select id="doctor-page-size" class="form-control" style="width: auto; padding: 0.35rem 0.65rem;">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-secondary" id="btn-refresh-appointments">
+                            Refresh
+                        </button>
+                    </div>
                 </div>
 
                 <div class="table-responsive">
                     <table class="data-table" id="appointments-table">
                         <thead>
                             <tr>
-                                <th>Date & Time</th>
+                                <th>Date &amp; Time</th>
                                 <th>Patient Name</th>
                                 <th>Chief Complaint</th>
                                 <th>Status</th>
@@ -42,10 +56,11 @@ export default {
                             </tr>
                         </thead>
                         <tbody id="appointments-tbody">
-                            <tr><td colspan="5" class="text-center">Loading...</td></tr>
+                            <tr><td colspan="5" class="text-center text-muted" style="padding: 2rem;">Loading appointments...</td></tr>
                         </tbody>
                     </table>
                 </div>
+                <div class="pagination-wrapper" id="doctor-appointments-pagination"></div>
             </div>
         `;
     },
@@ -57,28 +72,48 @@ export default {
                 this.loadData();
             });
         }
+
+        const pageSizeSelect = this.container.querySelector('#doctor-page-size');
+        if (pageSizeSelect) {
+            pageSizeSelect.addEventListener('change', (e) => {
+                this.state.pageSize = parseInt(e.target.value, 10);
+                this.state.page = 1;
+                this.loadData();
+            });
+        }
     },
 
     async loadData() {
         const tbody = this.container.querySelector('#appointments-tbody');
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Loading appointments...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted" style="padding: 2rem;">Loading appointments...</td></tr>';
 
         try {
-            const res = await api.get('api/appointment_controller.php');
+            const params = {
+                page: this.state.page,
+                page_size: this.state.pageSize,
+                sort: 'upcoming'
+            };
+
+            const res = await api.get('api/appointment_controller.php', params);
             if (res.success) {
-                // res.data is an object (due to PHP's (object) cast).
-                // The array lives at res.data.items.
                 this.state.appointments = (res.data && res.data.items) ? res.data.items : [];
+                this.state.total = res.data.total ?? this.state.appointments.length;
+                this.state.page = res.data.page ?? 1;
+                this.state.pageSize = res.data.page_size ?? 10;
+                this.state.pages = res.data.pages ?? 1;
                 this.renderTable();
+                this.renderPagination(res.data);
             } else {
                 showToast(res.message || 'Failed to load appointments.', 'error');
-                tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading data.</td></tr>';
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger" style="padding: 2rem;">${escapeHtml(res.message || 'Error loading data.')}</td></tr>`;
+                this.renderPagination({ total: 0, page: 1, page_size: this.state.pageSize, pages: 1 });
             }
         } catch (err) {
             console.error('Error fetching appointments', err);
-            const msg = err.response?.data?.message || 'Failed to load appointments.';
+            const msg = err.response?.data?.message || err.message || 'Failed to load appointments.';
             showToast(msg, 'error');
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading data.</td></tr>';
+            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger" style="padding: 2rem;">${escapeHtml(msg)}</td></tr>`;
+            this.renderPagination({ total: 0, page: 1, page_size: this.state.pageSize, pages: 1 });
         }
     },
 
@@ -103,7 +138,6 @@ export default {
         const frag = document.createDocumentFragment();
 
         this.state.appointments.forEach(appt => {
-            // 1. Create row element (dom_create_and_remove_elements.md)
             const tr = create('tr');
 
             // Format date/time
@@ -113,15 +147,34 @@ export default {
 
             const statusColor = this.getStatusColor(appt.status);
 
-            // 2. Configure inner HTML using template literals
+            let actionContent = '';
+            if (appt.status === 'confirmed') {
+                actionContent = `
+                    <button class="btn btn-primary btn-sm btn-start-consult" data-id="${appt.appointment_id}" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> Start Consult
+                    </button>
+                `;
+            } else if (appt.status === 'scheduled') {
+                actionContent = `
+                    <span class="badge" style="background-color: #fef3c7; color: #92400e; font-size: 0.8rem; font-weight: 500;">Awaiting Confirmation</span>
+                `;
+            } else if (appt.status === 'completed') {
+                actionContent = `
+                    <button class="btn btn-outline-secondary btn-sm btn-start-consult" data-id="${appt.appointment_id}" style="display: inline-flex; align-items: center; gap: 0.4rem;">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> View Encounter
+                    </button>
+                `;
+            } else {
+                actionContent = `<span class="text-muted" style="font-size: 0.85rem;">N/A</span>`;
+            }
+
             tr.innerHTML = `
                 <td>
-                    <div style="font-weight: 500;">${dateStr}</div>
-                    <div class="text-muted" style="font-size: 0.85rem;">${timeStr}</div>
+                    <div style="font-weight: 500;">${escapeHtml(dateStr)}</div>
+                    <div class="text-muted" style="font-size: 0.85rem;">${escapeHtml(timeStr)}</div>
                 </td>
                 <td>
                     <div style="font-weight: 500;">${escapeHtml(appt.patient_first)} ${escapeHtml(appt.patient_last)}</div>
-                    <div class="text-muted" style="font-size: 0.85rem;">ID: PAT-${appt.patient_id.toString().padStart(4, '0')}</div>
                 </td>
                 <td>
                     <span style="display: block; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(appt.chief_complaint || 'None')}">
@@ -133,17 +186,13 @@ export default {
                         ${escapeHtml((appt.status || '').toUpperCase())}
                     </span>
                 </td>
-                <td class="actions-cell">
-                    <button class="btn btn-primary btn-sm btn-start-consult" data-id="${appt.appointment_id}" style="display: inline-flex; align-items: center; gap: 0.4rem;">
-                        ${appt.status === 'completed' 
-                            ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> View Encounter` 
-                            : `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> Start Consult`
-                        }
-                    </button>
+                <td style="text-align: right; vertical-align: middle;">
+                    <div class="actions-cell">
+                        ${actionContent}
+                    </div>
                 </td>
             `;
 
-            // 3. Listen: attach event listener to dynamic button inside row before appending
             const consultBtn = tr.querySelector('.btn-start-consult');
             if (consultBtn) {
                 consultBtn.addEventListener('click', () => {
@@ -151,11 +200,49 @@ export default {
                 });
             }
 
-            // 4. Append
             frag.appendChild(tr);
         });
 
         tbody.appendChild(frag);
+    },
+
+    renderPagination(data) {
+        const pagContainer = this.container.querySelector('#doctor-appointments-pagination');
+        if (!pagContainer) return;
+        const total = data.total ?? this.state.total;
+        const page = data.page ?? this.state.page;
+        const pageSize = data.page_size ?? this.state.pageSize;
+        const pages = data.pages ?? this.state.pages;
+
+        if (total === 0) {
+            pagContainer.innerHTML = '<span>No records</span>';
+            return;
+        }
+
+        const start = (page - 1) * pageSize + 1;
+        const end = Math.min(page * pageSize, total);
+
+        pagContainer.innerHTML = `
+            <div>Showing <strong>${start}</strong> to <strong>${end}</strong> of <strong>${total}</strong> appointments</div>
+            <div class="pagination-controls">
+                <button class="btn btn-secondary btn-sm" id="doctor-appointments-prev" ${page <= 1 ? 'disabled' : ''}>Previous</button>
+                <span style="margin: 0 0.5rem;">Page <strong>${page}</strong> of <strong>${pages || 1}</strong></span>
+                <button class="btn btn-secondary btn-sm" id="doctor-appointments-next" ${page >= pages ? 'disabled' : ''}>Next</button>
+            </div>
+        `;
+
+        pagContainer.querySelector('#doctor-appointments-prev')?.addEventListener('click', () => {
+            if (this.state.page > 1) {
+                this.state.page--;
+                this.loadData();
+            }
+        });
+        pagContainer.querySelector('#doctor-appointments-next')?.addEventListener('click', () => {
+            if (this.state.page < pages) {
+                this.state.page++;
+                this.loadData();
+            }
+        });
     },
 
     getStatusColor(status) {

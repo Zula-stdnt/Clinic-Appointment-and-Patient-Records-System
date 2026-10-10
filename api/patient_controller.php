@@ -6,6 +6,7 @@
 require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/patient_validation.php';
 
 require_login();
 require_role('Administrator');
@@ -135,56 +136,7 @@ function getPatientById(PDO $pdo, int $id): void {
     send_success('Patient details retrieved.', ['patient' => $patient]);
 }
 
-function validatePatientInput(array $input): array {
-    $errors = [];
-    $firstName = trim($input['first_name'] ?? '');
-    $middleInitial = trim($input['middle_initial'] ?? '');
-    $lastName  = trim($input['last_name'] ?? '');
-    $gender    = trim($input['gender'] ?? 'unknown');
-    $dob       = trim($input['date_of_birth'] ?? '');
-
-    if ($firstName === '') {
-        $errors['first_name'] = 'First name is required.';
-    } elseif (strlen($firstName) > 80) {
-        $errors['first_name'] = 'First name cannot exceed 80 characters.';
-    }
-
-    if (strlen($middleInitial) > 10) {
-        $errors['middle_initial'] = 'Middle initial cannot exceed 10 characters.';
-    }
-
-    if ($lastName === '') {
-        $errors['last_name'] = 'Last name is required.';
-    } elseif (strlen($lastName) > 80) {
-        $errors['last_name'] = 'Last name cannot exceed 80 characters.';
-    }
-
-    if ($gender === '') {
-        $errors['gender'] = 'Gender is required.';
-    } elseif (strlen($gender) > 50) {
-        $errors['gender'] = 'Gender cannot exceed 50 characters.';
-    }
-
-    if ($dob === '') {
-        $errors['date_of_birth'] = 'Date of birth is required.';
-    } else {
-        $d = DateTime::createFromFormat('Y-m-d', $dob);
-        if (!$d || $d->format('Y-m-d') !== $dob) {
-            $errors['date_of_birth'] = 'Date of birth must be a valid date in YYYY-MM-DD format.';
-        } elseif ($d > new DateTime()) {
-            $errors['date_of_birth'] = 'Date of birth cannot be in the future.';
-        }
-    }
-
-    $contactNo = trim($input['contact_no'] ?? '');
-    if ($contactNo !== '') {
-        if (!ctype_digit($contactNo) || strlen($contactNo) !== 11 || !str_starts_with($contactNo, '09')) {
-            $errors['contact_no'] = 'Contact number must be exactly 11 digits and start with 09.';
-        }
-    }
-
-    return $errors;
-}
+// validatePatientInput() is defined in includes/patient_validation.php (shared with the walk-in endpoint).
 
 function createPatient(PDO $pdo): void {
     $input = get_json_input();
