@@ -22,7 +22,11 @@ apiClient.interceptors.request.use((config) => {
     if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method)) {
         const token = getCsrfToken();
         if (token) {
-            config.headers['X-CSRF-Token'] = token;
+            if (config.headers && typeof config.headers.set === 'function') {
+                config.headers.set('X-CSRF-Token', token);
+            } else {
+                config.headers['X-CSRF-Token'] = token;
+            }
         }
     }
     return config;
@@ -46,10 +50,10 @@ apiClient.interceptors.response.use(
 );
 
 export const api = {
-    get: (url, params = {}) => apiClient.get(url, { params }),
-    post: (url, data = {}) => apiClient.post(url, data),
-    put: (url, data = {}) => apiClient.put(url, data),
-    delete: (url, params = {}) => apiClient.delete(url, { params })
+    get: (url, params = {}, config = {}) => apiClient.get(url, { params, ...config }),
+    post: (url, data = {}, config = {}) => apiClient.post(url, data, config),
+    put: (url, data = {}, config = {}) => apiClient.put(url, data, config),
+    delete: (url, params = {}, config = {}) => apiClient.delete(url, { params, ...config })
 };
 
 export default api;

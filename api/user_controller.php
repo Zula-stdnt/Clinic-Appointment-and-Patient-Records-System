@@ -179,7 +179,13 @@ function createUser(PDO $pdo): void {
 
     $firstName = trim($input['first_name'] ?? '');
     $lastName = trim($input['last_name'] ?? '');
-    $middleInitial = trim($input['middle_initial'] ?? '') ?: null;
+    $rawMiddleInitial = trim($input['middle_initial'] ?? '');
+    if ($rawMiddleInitial !== '') {
+        if (!preg_match('/^[A-Za-z]$/', $rawMiddleInitial)) {
+            $errors['middle_initial'] = 'Middle initial must be a single letter (A-Z).';
+        }
+    }
+    $middleInitial = $rawMiddleInitial ?: null;
     $gender = $input['gender'] ?? 'Other';
     $username = trim($input['username'] ?? '');
     $password = $input['password'] ?? '';
@@ -193,6 +199,9 @@ function createUser(PDO $pdo): void {
     }
     if ($lastName === '') {
         $errors['last_name'] = 'Last name is required.';
+    }
+    if ($rawMiddleInitial !== '' && !preg_match('/^[A-Za-z]$/', $rawMiddleInitial)) {
+        $errors['middle_initial'] = 'Middle initial must be a single letter (A-Z).';
     }
     if ($gender === '') {
         $errors['gender'] = 'Please select a valid gender.';
@@ -284,7 +293,8 @@ function updateUser(PDO $pdo): void {
     $userId   = (int)($_GET['id'] ?? ($input['user_id'] ?? 0));
     $firstName = trim($input['first_name'] ?? '');
     $lastName = trim($input['last_name'] ?? '');
-    $middleInitial = trim($input['middle_initial'] ?? '') ?: null;
+    $rawMiddleInitial = trim($input['middle_initial'] ?? '');
+    $middleInitial = $rawMiddleInitial ?: null;
     $gender = $input['gender'] ?? 'Other';
     $username = trim($input['username'] ?? '');
     $password = $input['password'] ?? '';
@@ -319,6 +329,9 @@ function updateUser(PDO $pdo): void {
     }
     if ($lastName === '') {
         $errors['last_name'] = 'Last name is required.';
+    }
+    if ($rawMiddleInitial !== '' && !preg_match('/^[A-Za-z]$/', $rawMiddleInitial)) {
+        $errors['middle_initial'] = 'Middle initial must be a single letter (A-Z).';
     }
     if ($gender === '') {
         $errors['gender'] = 'Please select a valid gender.';

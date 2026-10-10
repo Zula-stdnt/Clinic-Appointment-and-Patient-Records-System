@@ -180,7 +180,7 @@ CREATE TABLE `vital_signs` (
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`vital_sign_id`),
-  KEY `fk_vitals_appointment` (`appointment_id`),
+  UNIQUE KEY `unique_appointment_vitals` (`appointment_id`),
   CONSTRAINT `fk_vitals_appointment` FOREIGN KEY (`appointment_id`) REFERENCES `appointments` (`appointment_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

@@ -174,8 +174,8 @@ function updateProfile(PDO $pdo): void {
         }
 
         // Update doctors table to keep in sync
-        $dUpd = $pdo->prepare("UPDATE doctors SET first_name = ?, last_name = ?, middle_initial = ?, gender = ?, contact_no = ? WHERE doctor_id = ?");
-        $dUpd->execute([$firstName, $lastName, $middleInitial, $gender, $contactNo, $doctorId]);
+        $dUpd = $pdo->prepare("UPDATE doctors SET contact_no = ? WHERE doctor_id = ?");
+        $dUpd->execute([$contactNo, $doctorId]);
 
         // Update session
         $fullName = $lastName . ', ' . $firstName . ($middleInitial ? ' ' . $middleInitial . '.' : '');

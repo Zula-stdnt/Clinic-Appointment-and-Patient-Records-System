@@ -128,6 +128,8 @@ export default {
             `;
         }
 
+        const isReadOnly = !['scheduled', 'confirmed'].includes(appt.status);
+
         this.container.innerHTML = `
             <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem; background: var(--surface);">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
@@ -148,46 +150,42 @@ export default {
             </div>
 
             <form id="consultation-form">
-                <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
-                    <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Clinical Notes</h3>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <textarea id="cons-notes" class="form-control" rows="5" placeholder="Subjective, Objective, Assessment, Plan (SOAP) narrative...">${escapeHtml(cons?.notes || '')}</textarea>
+                <fieldset ${isReadOnly ? 'disabled' : ''} style="border: none; padding: 0; margin: 0;">
+                    <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
+                        <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Clinical Notes</h3>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <textarea id="cons-notes" class="form-control" rows="5" placeholder="Subjective, Objective, Assessment, Plan (SOAP) narrative...">${escapeHtml(cons?.notes || '')}</textarea>
+                        </div>
                     </div>
-                </div>
 
-                <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h3 style="font-size: 1.1rem; margin: 0;">Diagnosis</h3>
-                        <button type="button" class="btn btn-secondary btn-sm" id="btn-add-diagnosis">
-                            + Add Diagnosis
-                        </button>
+                    <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="font-size: 1.1rem; margin: 0;">Diagnosis</h3>
+                            ${!isReadOnly ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-add-diagnosis">+ Add Diagnosis</button>` : ''}
+                        </div>
+                        <div id="diagnoses-container"></div>
                     </div>
-                    <div id="diagnoses-container"></div>
-                </div>
 
-                <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h3 style="font-size: 1.1rem; margin: 0;">Prescriptions</h3>
-                        <button type="button" class="btn btn-secondary btn-sm" id="btn-add-prescription">
-                            + Add Rx
-                        </button>
+                    <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="font-size: 1.1rem; margin: 0;">Prescriptions</h3>
+                            ${!isReadOnly ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-add-prescription">+ Add Rx</button>` : ''}
+                        </div>
+                        <div id="prescriptions-container"></div>
                     </div>
-                    <div id="prescriptions-container"></div>
-                </div>
 
-                <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                        <h3 style="font-size: 1.1rem; margin: 0;">Lab Requests</h3>
-                        <button type="button" class="btn btn-secondary btn-sm" id="btn-add-lab">
-                            + Add Lab
-                        </button>
+                    <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                            <h3 style="font-size: 1.1rem; margin: 0;">Lab Requests</h3>
+                            ${!isReadOnly ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-add-lab">+ Add Lab</button>` : ''}
+                        </div>
+                        <div id="labs-container"></div>
                     </div>
-                    <div id="labs-container"></div>
-                </div>
+                </fieldset>
 
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;">
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                        <button type="button" class="btn btn-secondary" id="btn-cancel-consult">Cancel</button>
+                        <button type="button" class="btn btn-secondary" id="btn-cancel-consult">${isReadOnly ? 'Back to Appointments' : 'Cancel'}</button>
                         ${cons ? `
                         <button type="button" class="btn btn-secondary" id="btn-print-rx">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 0.35rem;"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
@@ -198,10 +196,12 @@ export default {
                             Print Lab Request
                         </button>` : ''}
                     </div>
+                    ${!isReadOnly ? `
                     <button type="submit" class="btn btn-primary" id="btn-save-consultation">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
                         Save &amp; Complete Encounter
                     </button>
+                    ` : ''}
                 </div>
             </form>
 

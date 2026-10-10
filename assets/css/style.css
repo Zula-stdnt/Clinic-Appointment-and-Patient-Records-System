@@ -896,6 +896,11 @@ select.form-control:not([multiple]) {
     flex-wrap: nowrap;
 }
 
+td.actions-cell {
+    text-align: right;
+    vertical-align: middle;
+}
+
 .pagination-wrapper {
     display: flex;
     align-items: center;

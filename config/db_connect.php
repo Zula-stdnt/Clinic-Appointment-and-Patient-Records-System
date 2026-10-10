@@ -2,13 +2,13 @@
 // config/db_connect.php
 // Single source of database credentials and PDO connection
 // ITE 387 Lesson applied: 03 APIs and Database Operations/mysql_retrieve_records (PDO connection with ERRMODE_EXCEPTION & FETCH_ASSOC)
-
-$db_host = '127.0.0.1';
-$db_port = '3306';
-$db_name = 'hospital_db';
-$db_user = 'root';
-$db_pass = '';
-$db_charset = 'utf8mb4';
+date_default_timezone_set('Asia/Manila');
+$db_host = getenv('DB_HOST') ?: '127.0.0.1';
+$db_port = getenv('DB_PORT') ?: '3306';
+$db_name = getenv('DB_NAME') ?: 'hospital_db';
+$db_user = getenv('DB_USER') ?: 'root';
+$db_pass = getenv('DB_PASS') !== false ? getenv('DB_PASS') : '';
+$db_charset = getenv('DB_CHARSET') ?: 'utf8mb4';
 
 $dsn = "mysql:host={$db_host};port={$db_port};dbname={$db_name};charset={$db_charset}";
 $options = [

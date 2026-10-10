@@ -129,11 +129,18 @@ export function openModal(modalId) {
     modal.addEventListener('keydown', handleModalKeydown);
 }
 
-export function closeModal(modalId) {
+export function closeModal(modalId, force = false) {
     const modal = resolveModal(modalId) || activeModal;
     if (!modal) return;
 
+    if (!force) {
+        const event = new CustomEvent('beforeModalClose', { cancelable: true });
+        modal.dispatchEvent(event);
+        if (event.defaultPrevented) return;
+    }
+
     modal.classList.remove('show');
+    modal.classList.remove('active');
     modal.setAttribute('aria-hidden', 'true');
     modal.removeEventListener('keydown', handleModalKeydown);
 
@@ -194,7 +201,7 @@ function handleModalKeydown(e) {
 }
 
 // ---------------------------------------------------------------------------
-// Confirmation Dialogs: Soft Delete (Archive), Restore, and Hard Delete
+// Confirmation Dialogs: Action, Soft Delete (Archive), Restore, and Hard Delete
 // ---------------------------------------------------------------------------
 
 function bindConfirmAction(modal, confirmBtn, onConfirm) {
@@ -212,6 +219,25 @@ function bindConfirmAction(modal, confirmBtn, onConfirm) {
     });
 
     return cleanClone;
+}
+
+export function confirmAction({ title, message, btnText = 'Confirm', btnClass = 'btn btn-primary', onConfirm }) {
+    const modal = document.getElementById('global-confirm-modal');
+    if (!modal) return;
+
+    const modalTitle = modal.querySelector('.modal-title');
+    const modalBody = modal.querySelector('.modal-body');
+    const confirmBtn = modal.querySelector('#global-confirm-btn');
+
+    modalTitle.textContent = title || 'Confirm Action';
+    modalBody.innerHTML = `<p>${escapeHtml(message)}</p>`;
+
+    confirmBtn.className = btnClass;
+    confirmBtn.textContent = btnText;
+    confirmBtn.disabled = false;
+
+    bindConfirmAction(modal, confirmBtn, onConfirm);
+    openModal(modal);
 }
 
 export function confirmSoftDelete({ title, message, itemName, btnText = 'Archive Record', btnClass = 'btn btn-warning', onConfirm }) {

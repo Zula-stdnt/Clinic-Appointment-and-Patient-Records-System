@@ -68,6 +68,15 @@ function getConsultationDetails(PDO $pdo, int $appointmentId) {
         }
     }
 
+    // Gating: Doctor must not load an editable consultation while Scheduled
+    if ($appointment['status'] === 'scheduled') {
+        send_error('Cannot consult an appointment that is scheduled. Appointment must be confirmed first.', ['status' => 'scheduled'], 409);
+    }
+    if (in_array($appointment['status'], ['cancelled', 'no_show']) && $appointment['status'] !== 'completed') {
+        // If not completed and cancelled/no_show, reject consultation access
+        send_error('Cannot consult an appointment that is ' . $appointment['status'] . '.', ['status' => $appointment['status']], 409);
+    }
+
     // Calculate patient age
     if (!empty($appointment['date_of_birth'])) {
         $dob = new DateTime($appointment['date_of_birth']);
@@ -137,21 +146,6 @@ function saveConsultation(PDO $pdo) {
 
     $appointmentId = (int)$input['appointment_id'];
 
-    // Verify ownership
-    if ($authUser['role_name'] === 'Doctor') {
-        $stmtDoc = $pdo->prepare("SELECT doctor_id FROM doctors WHERE user_id = ? LIMIT 1");
-        $stmtDoc->execute([$authUser['user_id']]);
-        $doc = $stmtDoc->fetch(PDO::FETCH_ASSOC);
-
-        $stmtAppt = $pdo->prepare("SELECT doctor_id FROM appointments WHERE appointment_id = ?");
-        $stmtAppt->execute([$appointmentId]);
-        $appt = $stmtAppt->fetch(PDO::FETCH_ASSOC);
-
-        if (!$appt || !$doc || $appt['doctor_id'] != $doc['doctor_id']) {
-            send_error('Unauthorized access to this appointment.', [], 403);
-        }
-    }
-
     // Validate referenced ICD-10 codes before writing
     $icdCodes = [];
     if (!empty($input['diagnoses']) && is_array($input['diagnoses'])) {
@@ -172,10 +166,52 @@ function saveConsultation(PDO $pdo) {
             send_error('Unknown ICD-10 code(s): ' . implode(', ', $missingIcd), ['diagnoses' => 'Select a valid ICD-10 code from the catalog.'], 422);
         }
     }
-
     $pdo->beginTransaction();
 
     try {
+        // Verify ownership and lifecycle with a row lock
+        if ($authUser['role_name'] === 'Doctor') {
+            $stmtDoc = $pdo->prepare("SELECT doctor_id FROM doctors WHERE user_id = ? LIMIT 1");
+            $stmtDoc->execute([$authUser['user_id']]);
+            $doc = $stmtDoc->fetch(PDO::FETCH_ASSOC);
+
+            $stmtAppt = $pdo->prepare("SELECT doctor_id, status FROM appointments WHERE appointment_id = ? FOR UPDATE");
+            $stmtAppt->execute([$appointmentId]);
+            $appt = $stmtAppt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$appt || !$doc || $appt['doctor_id'] != $doc['doctor_id']) {
+                $pdo->rollBack();
+                send_error('Unauthorized access to this appointment.', [], 403);
+            }
+            
+            if ($appt['status'] === 'scheduled') {
+                $pdo->rollBack();
+                send_error('Cannot consult an appointment that is scheduled. Appointment must be confirmed first.', ['status' => 'scheduled'], 409);
+            }
+            if ($appt['status'] !== 'confirmed') {
+                $pdo->rollBack();
+                send_error('Cannot modify an appointment that is ' . $appt['status'] . '.', ['status' => $appt['status']], 409);
+            }
+        } else {
+            // For Admin or other roles, still enforce lifecycle
+            $stmtAppt = $pdo->prepare("SELECT status FROM appointments WHERE appointment_id = ? FOR UPDATE");
+            $stmtAppt->execute([$appointmentId]);
+            $appt = $stmtAppt->fetch(PDO::FETCH_ASSOC);
+            
+            if (!$appt) {
+                $pdo->rollBack();
+                send_error('Appointment not found.', [], 404);
+            }
+            if ($appt['status'] === 'scheduled') {
+                $pdo->rollBack();
+                send_error('Cannot consult an appointment that is scheduled. Appointment must be confirmed first.', ['status' => 'scheduled'], 409);
+            }
+            if ($appt['status'] !== 'confirmed') {
+                $pdo->rollBack();
+                send_error('Cannot modify an appointment that is ' . $appt['status'] . '.', ['status' => $appt['status']], 409);
+            }
+        }
+
         // 1. Insert or Update Consultation
         $stmtConsCheck = $pdo->prepare("SELECT consultation_id FROM consultation WHERE appointment_id = ? FOR UPDATE");
         $stmtConsCheck->execute([$appointmentId]);

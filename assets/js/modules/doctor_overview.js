@@ -28,17 +28,15 @@ export default {
     async loadStats() {
         try {
             const res = await api.get('api/appointment_controller.php');
-            // res.data is an object because send_success wraps with (object).
-            // The appointments array lives at res.data.items.
-            const appointments = (res.success && res.data && res.data.items)
-                ? res.data.items
-                : [];
+            if (!res.success) throw new Error(res.message || 'Failed to fetch appointments');
 
-            // Use the local calendar date, not UTC: toISOString() would report
-            // yesterday's date for timezones ahead of UTC during the early hours.
-            const now = new Date();
-            const localToday = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
-            const todayStr = localToday.toISOString().split('T')[0];
+            const appointments = (res.data && res.data.items) ? res.data.items : [];
+
+            const today = new Date();
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            const todayStr = `${year}-${month}-${day}`;
             const todayAppointments = appointments.filter(a => a.appointment_date === todayStr);
             const pendingToday = todayAppointments.filter(a => ['scheduled', 'confirmed'].includes(a.status));
 
