@@ -44,7 +44,11 @@ export default {
                             <input type="text" id="services-search" class="form-control" placeholder="Search Service by name...">
                         </div>
 
-                        
+                        <select id="services-status-filter" class="form-control" style="width: auto; min-width: 130px;">
+                            <option value="active">Active</option>
+                            <option value="deleted">Archived</option>
+                            <option value="all">All Statuses</option>
+                        </select>
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -62,7 +66,7 @@ export default {
                         <thead>
                             <tr>
                                 <th data-sort="service_name">Service Name</th>
-                                <th>Status</th>
+                                <th data-sort="deleted_at">Status</th>
                                 <th style="text-align: right;">Actions</th>
                             </tr>
                         </thead>
@@ -132,6 +136,12 @@ export default {
                 }, 300);
             });
         }
+        this.container.querySelector('#services-status-filter').addEventListener('change', (e) => {
+            this.state.status = e.target.value;
+            this.state.page = 1;
+            this.loadData();
+        });
+
         this.container.querySelector('#services-page-size').addEventListener('change', (e) => {
             this.state.pageSize = parseInt(e.target.value, 10);
             this.state.page = 1;
@@ -147,6 +157,7 @@ export default {
                     this.state.sortBy = sortField;
                     this.state.sortOrder = 'ASC';
                 }
+                this.state.page = 1;
                 this.loadData();
             });
         });
@@ -159,6 +170,15 @@ export default {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
             this.saveService();
+        });
+    },
+
+    updateSortHeaders() {
+        this.container.querySelectorAll('th[data-sort]').forEach(th => {
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (th.getAttribute('data-sort') === this.state.sortBy) {
+                th.classList.add(this.state.sortOrder === 'ASC' ? 'sort-asc' : 'sort-desc');
+            }
         });
     },
 
@@ -180,6 +200,7 @@ export default {
                 this.state.total = res.data.total;
                 this.renderTable(res.data.items);
                 this.renderPagination(res.data);
+                this.updateSortHeaders();
             } else {
                 throw new Error(res.message);
             }
@@ -205,20 +226,26 @@ export default {
         }
 
         tbody.innerHTML = items.map(s => {
-            
+            const statusBadge = s.deleted_at
+                ? '<span class="badge badge-status-deleted">Archived</span>'
+                : '<span class="badge badge-status-active">Active</span>';
+
+            const archiveBtn = !s.deleted_at ? `
+                <button class="btn btn-warning btn-sm btn-archive" data-id="${s.service_id}" data-name="${escapeHtml(s.service_name)}" title="Archive">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                    Archive
+                </button>
+            ` : '';
 
             return `
                 <tr>
                     <td><strong>${escapeHtml(s.service_name)}</strong></td>
-                    <td><span class="badge badge-active">Active</span></td>
+                    <td>${statusBadge}</td>
                     <td>
                         <div class="actions-cell">
                             <button class="btn btn-secondary btn-sm btn-view" data-id="${s.service_id}" title="View Details">View</button>
                             <button class="btn btn-secondary btn-sm btn-edit" data-id="${s.service_id}" title="Edit Record">Edit</button>
-                            <button class="btn btn-warning btn-sm btn-archive" data-id="${s.service_id}" data-name="${escapeHtml(s.service_name)}" title="Archive">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
-                                Archive
-                            </button>
+                            ${archiveBtn}
                         </div>
                     </td>
                 </tr>
@@ -336,8 +363,13 @@ export default {
         } catch (err) {
             const data = err.response?.data;
             if (data?.errors) {
+                const fieldMap = {
+                    service_name: 'service-name',
+                    description: 'service-description'
+                };
                 for (const [f, msg] of Object.entries(data.errors)) {
-                    this.showFieldError(`service-${f.replace('_', '-')}`, msg);
+                    const targetId = fieldMap[f] || `service-${f.replace(/_/g, '-')}`;
+                    this.showFieldError(targetId, msg);
                 }
             }
             showToast(data?.message || err.message, 'danger');

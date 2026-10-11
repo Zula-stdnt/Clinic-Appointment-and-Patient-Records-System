@@ -6,6 +6,7 @@
 require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/audit.php';
 
 // Section 6: Enforce authentication and Administrator role at top
 require_login();
@@ -86,6 +87,15 @@ function listUsers(PDO $pdo): void {
         $params[':role_filter'] = $roleFilter;
     }
 
+    // Gender filter
+    $gender = strtolower(trim($_GET['gender'] ?? ''));
+    if ($gender === 'male' || $gender === 'female' || $gender === 'unknown') {
+        $where[] = 'LOWER(TRIM(u.gender)) = :gender';
+        $params[':gender'] = $gender;
+    } elseif ($gender === 'other') {
+        $where[] = "(LOWER(TRIM(COALESCE(u.gender, ''))) NOT IN ('male', 'female', 'unknown') AND LOWER(TRIM(COALESCE(u.gender, ''))) != '')";
+    }
+
     // Search filter
     if ($search !== '') {
         $where[] = "(u.username LIKE :search1 OR u.first_name LIKE :search2 OR u.last_name LIKE :search3)";
@@ -97,12 +107,16 @@ function listUsers(PDO $pdo): void {
     $whereSql = implode(' AND ', $where);
 
     // Sorting whitelist
-    $allowedSort = ['user_id', 'username', 'first_name', 'last_name', 'role_name', 'created_at', 'deleted_at'];
-    $sortBy = in_array($_GET['sort_by'] ?? '', $allowedSort, true) ? $_GET['sort_by'] : 'u.user_id';
-    if ($sortBy === 'role_name') {
+    $allowedSort = ['user_id', 'username', 'first_name', 'last_name', 'full_name', 'role_name', 'created_at', 'deleted_at'];
+    $rawSort = $_GET['sort_by'] ?? '';
+    if ($rawSort === 'full_name' || $rawSort === 'last_name') {
+        $sortBy = 'u.last_name';
+    } elseif ($rawSort === 'role_name') {
         $sortBy = 'r.role_name';
-    } elseif ($sortBy !== 'u.user_id') {
-        $sortBy = 'u.' . $sortBy;
+    } elseif (in_array($rawSort, $allowedSort, true)) {
+        $sortBy = 'u.' . $rawSort;
+    } else {
+        $sortBy = 'u.user_id';
     }
 
     $sortOrder = strtoupper($_GET['sort_order'] ?? 'ASC') === 'DESC' ? 'DESC' : 'ASC';
@@ -277,6 +291,7 @@ function createUser(PDO $pdo): void {
         }
 
         $pdo->commit();
+        log_audit($pdo, (int)$_SESSION['user_id'], 'CREATE_USER', 'user', $newUserId, null, ['username' => $username, 'role_name' => $role['role_name']]);
         send_success('User created successfully.', ['user_id' => $newUserId], 201);
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -424,6 +439,7 @@ function updateUser(PDO $pdo): void {
         }
 
         $pdo->commit();
+        log_audit($pdo, (int)$_SESSION['user_id'], 'UPDATE_USER', 'user', $userId, null, ['username' => $username, 'role_name' => $newRole['role_name']]);
         send_success('User updated successfully.');
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -454,6 +470,7 @@ function softDeleteUser(PDO $pdo): void {
         $pdo->prepare("UPDATE doctors SET deleted_at = NOW() WHERE user_id = ? AND deleted_at IS NULL")->execute([$userId]);
 
         $pdo->commit();
+        log_audit($pdo, (int)$_SESSION['user_id'], 'ARCHIVE_USER', 'user', $userId);
         send_success('User deactivated (soft-deleted) successfully.');
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -484,6 +501,7 @@ function restoreUser(PDO $pdo): void {
         $pdo->prepare("UPDATE doctors SET deleted_at = NULL WHERE user_id = ? AND deleted_at IS NOT NULL")->execute([$userId]);
 
         $pdo->commit();
+        log_audit($pdo, (int)$_SESSION['user_id'], 'RESTORE_USER', 'user', $userId);
         send_success('User restored successfully.');
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -513,6 +531,7 @@ function hardDeleteUser(PDO $pdo): void {
         $pdo->prepare("DELETE FROM users WHERE user_id = ?")->execute([$userId]);
 
         $pdo->commit();
+        log_audit($pdo, (int)$_SESSION['user_id'], 'PURGE_USER', 'user', $userId);
         send_success('User permanently deleted.');
     } catch (Exception $e) {
         $pdo->rollBack();

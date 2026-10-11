@@ -22,6 +22,10 @@ switch ($action) {
         handle_me();
         break;
 
+    case 'check':
+        handle_check();
+        break;
+
     case 'change_password':
         handle_change_password($pdo);
         break;
@@ -105,6 +109,11 @@ function handle_login(PDO $pdo): void {
 
         reset_login_throttle();
 
+        log_audit($pdo, (int)$user['user_id'], 'LOGIN', 'user', (int)$user['user_id'], null, [
+            'username' => $user['username'],
+            'role_name' => $user['role_name']
+        ]);
+
         // Determine destination based on role
         $redirect = 'admin_dashboard.html';
         if ($user['role_name'] === 'Doctor') {
@@ -126,6 +135,12 @@ function handle_login(PDO $pdo): void {
 }
 
 function handle_logout(): void {
+    global $pdo;
+    $userId = (int)($_SESSION['user_id'] ?? 0);
+    if ($userId > 0 && isset($pdo)) {
+        log_audit($pdo, $userId, 'LOGOUT', 'user', $userId);
+    }
+
     $_SESSION = [];
 
     if (ini_get('session.use_cookies')) {
@@ -154,6 +169,23 @@ function handle_me(): void {
     }
 
     send_success('Authenticated user data.', [
+        'user'       => get_auth_user(),
+        'csrf_token' => get_csrf_token()
+    ]);
+}
+
+function handle_check(): void {
+    if (!is_logged_in()) {
+        send_success('Session status.', [
+            'logged_in'  => false,
+            'user'       => null,
+            'csrf_token' => null
+        ]);
+        return;
+    }
+
+    send_success('Session status.', [
+        'logged_in'  => true,
         'user'       => get_auth_user(),
         'csrf_token' => get_csrf_token()
     ]);
@@ -212,6 +244,8 @@ function handle_change_password(PDO $pdo): void {
 
         $update = $pdo->prepare("UPDATE users SET password_hash = ? WHERE user_id = ?");
         $update->execute([password_hash($newPassword, PASSWORD_DEFAULT), $_SESSION['user_id']]);
+
+        log_audit($pdo, (int)$_SESSION['user_id'], 'CHANGE_PASSWORD', 'user', (int)$_SESSION['user_id']);
 
         send_success('Password updated successfully.');
     } catch (PDOException $e) {

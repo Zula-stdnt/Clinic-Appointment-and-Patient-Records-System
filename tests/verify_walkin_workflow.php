@@ -267,17 +267,19 @@ run_test("Invalid walk-in patient input is rejected", function() use ($baseUrl, 
     return true;
 });
 
-run_test("Duplicate patient creation is permitted (name & dob match)", function() use ($baseUrl, $cookieRec, $csrfRec) {
-    $pData = ['first_name' => 'Dup', 'last_name' => 'Test', 'gender' => 'Male', 'date_of_birth' => '1995-05-05', 'contact_no' => '09171234567'];
+run_test("Duplicate patient creation is blocked (name & dob match)", function() use ($baseUrl, $cookieRec, $csrfRec) {
+    $uniq = uniqid();
+    $randPhone = '09' . mt_rand(100000000, 999999999);
+    $pData = ['first_name' => "Dup_$uniq", 'last_name' => 'Test', 'gender' => 'Male', 'date_of_birth' => '1995-05-05', 'contact_no' => $randPhone];
     
     // First creation
     $res1 = http_request('POST', "$baseUrl/api/walkin_patient_controller.php", $pData, $cookieRec, ["X-CSRF-Token: $csrfRec"]);
+    if ($res1['status'] !== 201) return "First creation failed: {$res1['status']}";
     track_fixture('patients', $res1['json']['data']['patient_id']);
     
     // Duplicate creation
     $res2 = http_request('POST', "$baseUrl/api/walkin_patient_controller.php", $pData, $cookieRec, ["X-CSRF-Token: $csrfRec"]);
-    if ($res2['status'] !== 201) return "Expected 201 created, got {$res2['status']}";
-    track_fixture('patients', $res2['json']['data']['patient_id']);
+    if ($res2['status'] !== 409) return "Expected 409 conflict, got {$res2['status']}";
     return true;
 });
 
@@ -310,40 +312,29 @@ run_test("Doctors are denied walk-in creation", function() use ($baseUrl, $cooki
     return true;
 });
 
-run_test("Admin can use walk-in creation", function() use ($baseUrl, $cookieAdmin, $csrfAdmin) {
+run_test("Admin cannot use walk-in creation (Receptionist-only domain)", function() use ($baseUrl, $cookieAdmin, $csrfAdmin) {
     $pData = ['first_name' => 'AdmPat', 'last_name' => 'Test', 'gender' => 'Male', 'date_of_birth' => '1990-01-01', 'contact_no' => '09123456789'];
     $res = http_request('POST', "$baseUrl/api/walkin_patient_controller.php", $pData, $cookieAdmin, ["X-CSRF-Token: $csrfAdmin"]);
-    if ($res['status'] !== 201) return "Expected 201, got {$res['status']}";
-    track_fixture('patients', $res['json']['data']['patient_id']);
+    if ($res['status'] !== 403) return "Expected 403, got {$res['status']}";
     return true;
 });
 
-run_test("Receptionist is denied access to Admin patient management (list/view/edit/delete)", function() use ($baseUrl, $cookieRec, $csrfRec) {
-    // Attempt List
-    $resList = http_request('GET', "$baseUrl/api/patient_controller.php", null, $cookieRec);
-    if ($resList['status'] !== 403) return "List: Expected 403, got {$resList['status']}";
-    
-    // Attempt Create
-    $pData = ['first_name' => 'RecPat', 'last_name' => 'Test', 'gender' => 'Male', 'date_of_birth' => '1990-01-01'];
-    $resCreate = http_request('POST', "$baseUrl/api/patient_controller.php", $pData, $cookieRec, ["X-CSRF-Token: $csrfRec"]);
-    if ($resCreate['status'] !== 403) return "Create: Expected 403, got {$resCreate['status']}";
-    
-    // Attempt Delete
+run_test("Receptionist is denied archive and hard deletion of patients", function() use ($baseUrl, $cookieRec, $csrfRec) {
+    // Attempt Delete (Admin-only)
     $resDel = http_request('DELETE', "$baseUrl/api/patient_controller.php?action=hard_delete&id=1", null, $cookieRec, ["X-CSRF-Token: $csrfRec"]);
     if ($resDel['status'] !== 403) return "Delete: Expected 403, got {$resDel['status']}";
     
+    // Attempt Soft Delete (Admin-only)
+    $resSoftDel = http_request('POST', "$baseUrl/api/patient_controller.php?action=soft_delete&id=1", null, $cookieRec, ["X-CSRF-Token: $csrfRec"]);
+    if ($resSoftDel['status'] !== 403) return "Soft Delete: Expected 403, got {$resSoftDel['status']}";
+    
     return true;
 });
 
-run_test("Admin patient management still works", function() use ($baseUrl, $cookieAdmin, $csrfAdmin) {
+run_test("Admin direct patient creation is blocked (governance role)", function() use ($baseUrl, $cookieAdmin, $csrfAdmin) {
     $pData = ['first_name' => 'Admin2', 'last_name' => 'Test', 'gender' => 'Male', 'date_of_birth' => '1990-01-01'];
     $resCreate = http_request('POST', "$baseUrl/api/patient_controller.php", $pData, $cookieAdmin, ["X-CSRF-Token: $csrfAdmin"]);
-    if ($resCreate['status'] !== 201) return "Admin create failed: {$resCreate['status']}";
-    $patId = track_fixture('patients', $resCreate['json']['data']['patient_id']);
-    
-    $resList = http_request('GET', "$baseUrl/api/patient_controller.php?id=$patId", null, $cookieAdmin);
-    if ($resList['status'] !== 200) return "Admin read failed: {$resList['status']}";
-    
+    if ($resCreate['status'] !== 403) return "Expected 403 for Admin patient create, got {$resCreate['status']}";
     return true;
 });
 

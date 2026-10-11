@@ -4,61 +4,50 @@ tags: [module]
 
 # Patient Records
 
-**Entry points:** `#doctor_patients` (Doctor) · `#receptionist_patients` (Receptionist) · **Record** button in `#patients` (Administrator)
-**Files:** `assets/js/components/patient-record-view.js`, `assets/js/modules/doctor_patients.js`, `assets/js/modules/receptionist_patients.js`, `assets/js/modules/patients.js`
+**Entry points:** `#doctor_patients` (Doctor) · `#receptionist_patients` (Receptionist) · **Record** button in `#patients` (Administrator)  
+**Files:** `assets/js/components/patient-record-view.js`, `assets/js/modules/doctor_patients.js`, `assets/js/modules/receptionist_patients.js`, `assets/js/modules/patients.js`  
 **Controller:** `api/patient_record_controller.php` · **Roles:** Administrator, Receptionist, Doctor
 
 ## Purpose
-A single read-only clinical record screen shared by all three portals. It shows the patient's demographics, a visit summary, and a color-coded timeline of every appointment with its vitals, diagnoses, prescriptions, and laboratory requests — plus printing per completed visit.
+A unified patient record view component that provides role-tailored perspectives: front-desk administrative staff see a dedicated demographics card, administrators see governance information, and attending doctors access the full longitudinal clinical history.
 
-## Access rules
-- **Administrator** — any patient.
-- **Receptionist** — any patient. The doctor's clinical notes are omitted **server-side**; vitals, diagnoses, prescriptions, and laboratory requests remain visible so the front desk can assist patients.
-- **Doctor** — only patients who have an appointment under that doctor. Any other patient returns `403` (privacy scope preserved from the original doctor records screen).
+## Access rules & role separation
+- **Administrator** — Demographics profile with administrative governance notice; clinical encounter records are blocked.
+- **Receptionist** — Strict Clinical Privacy. Receptionists only see the dedicated **Patient Demographics Profile** card (contact info, date of birth, home address, emergency contacts). Medical encounters, doctor notes, diagnoses, prescriptions, and lab orders are completely blocked on both client and server sides.
+- **Doctor** — Full accumulated clinical encounter history for assigned patients. Unassigned patient charts are locked by default and require an audited Break-Glass emergency override to view.
 
 ## Screen layout
-- **Header card** — patient ID (`PAT-0000`), name, active/archived badge, age, gender, date of birth, contact, address.
-- **Summary cards** — total visits, completed, upcoming, last visit, next visit.
-- **Search** — free-text search inside the record: diagnosis name, ICD-10 code, medicine, lab test, doctor, chief complaint, notes, or date. A **Showing X of Y visits** count updates as you type.
-- **Filter chips** — All Visits / Completed / Scheduled / Cancelled, usable together with the search.
-- **Collapse / Expand** — every visit card collapses to a one-line summary (date, doctor, status, `2 diagnoses · 1 prescription · 2 lab requests`); **Collapse All / Expand All** toggles the whole timeline for quick scanning.
-- **Encounter timeline** — newest first. Each card shows date, time, attending doctor, chief complaint, a status badge, and (for completed visits) vitals, notes, diagnoses with ICD-10 codes, prescriptions with dosage/frequency/time-to-take, and lab requests with status and date.
+### Demographics Profile View (Receptionist & Administrator)
+- **Identity Header:** Patient full name, active/archived status badge, date of birth, age, and gender. Database primary keys (`PAT-XXXX`) are masked from view.
+- **Contact & Address Card:** Contact number formatted as `09XX XXX XXXX`, residential address, and emergency contact details.
+- **Allergy Intake Note:** Displays allergy notes captured at front-desk registration along with confirmation status (`Unconfirmed Intake Note` vs `Doctor Confirmed`).
+- **Quick Actions:** Front-desk staff can click **Edit Patient Info** to update demographics or return to the directory.
 
-## Status colors
-| Appointment status | Badge |
-| --- | --- |
-| Scheduled | blue (`badge-info`) |
-| Confirmed | solid green (`badge-primary`) |
-| Completed | green (`badge-success`) |
-| Cancelled | red (`badge-deleted`) |
-| No-show | orange (`badge-warning`) |
+### Clinical Encounter Timeline View (Doctor)
+- **Clinical Header:** Full patient identity and verified allergy alert banner.
+- **Summary Cards:** Total visits, completed visits, upcoming appointments, last visit, and next visit dates.
+- **In-Record Search:** Search across diagnosis names, ICD-10 codes, prescribed medicines, lab tests, and dates.
+- **Status Filter Chips:** Filter encounters by All, Completed, Scheduled, or Cancelled.
+- **Collapsible Cards:** Click visit headers or use **Collapse All / Expand All** to scan historical visits quickly.
+- **Encounter Details:** Displays SOAP clinical notes, attributed dated addenda notes, ICD-10 diagnoses, prescriptions with dosing instructions and timing, and lab tests.
 
-| Lab request status | Badge |
-| --- | --- |
-| Requested | orange (`badge-warning`) |
-| In progress | blue (`badge-info`) |
-| Completed | green (`badge-success`) |
-| Cancelled | gray (`badge-secondary`) |
-
-The encounter card's left border color matches the appointment status.
+## Status colors & badge tokens
+| Status | Badge Token | Appearance |
+| --- | --- | --- |
+| Scheduled | `.badge-status-scheduled` | Clinical Sky Blue |
+| Confirmed | `.badge-status-confirmed` | Warm Amber |
+| Completed | `.badge-status-completed` | Medical Forest Green |
+| Cancelled / Archived | `.badge-status-cancelled` / `.badge-status-deleted` | Emergency Crimson |
+| No-Show | `.badge-status-noshow` | Professional Slate Neutral |
 
 ## Printing
-Each visit card offers:
-- **Print Prescription** — completed visits with at least one prescription.
-- **Print Lab Request** — completed visits with at least one lab request.
-- **Print Form** — the patient registration & appointment form for any visit.
-
-Receptionists can print because `consultation_controller.php` allows `GET` for the Receptionist role; saving a consultation stays Doctor/Administrator only.
-
-## API
-| Action | Request |
-| --- | --- |
-| History | `GET api/patient_record_controller.php?action=history&patient_id` |
-
-Response: `data.patient`, `data.summary` (total_visits, completed, upcoming, cancelled, last_visit, next_visit), `data.encounters[]` (status, doctor name, vitals, notes, diagnoses, prescriptions, lab_requests), `data.viewer_role`.
+Attending doctors can print documents per completed encounter:
+- **Print Prescription** — Completed visits with at least one prescription.
+- **Print Lab Request** — Completed visits with at least one lab request.
+- **Print Form** — Patient registration and encounter summary sheet.
 
 ## Related notes
-- [[Doctor Patient Records]] — the original doctor-scoped screen.
-- [[Receptionist Appointments]] — how visits and vitals are booked.
-- [[Doctor Consultation]] — where diagnoses, prescriptions, and labs are recorded.
-- [[API Endpoints]] — endpoint reference.
+- [[Doctor Patient Records]] — Doctor-scoped universal directory and break-glass protocol.
+- [[Receptionist Appointments]] — Front-desk appointment and triage workflow.
+- [[Doctor Consultation]] — Clinical consultation charting and allergy verification.
+- [[API Endpoints]] — Complete API reference.

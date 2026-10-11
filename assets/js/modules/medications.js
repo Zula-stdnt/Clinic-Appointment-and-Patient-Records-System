@@ -43,6 +43,12 @@ export default {
                             <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             <input type="text" id="medications-search" class="form-control" placeholder="Search by name, generic name, or manufacturer...">
                         </div>
+
+                        <select id="medications-status-filter" class="form-control" style="width: auto; min-width: 130px;">
+                            <option value="active">Active</option>
+                            <option value="deleted">Archived</option>
+                            <option value="all">All Statuses</option>
+                        </select>
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -62,7 +68,7 @@ export default {
                                 <th data-sort="name">Medication Name</th>
                                 <th data-sort="generic_name">Generic Name</th>
                                 <th data-sort="manufacturer">Manufacturer</th>
-                                <th>Status</th>
+                                <th data-sort="deleted_at">Status</th>
                                 <th style="text-align: right;">Actions</th>
                             </tr>
                         </thead>
@@ -145,6 +151,12 @@ export default {
             });
         }
 
+        this.container.querySelector('#medications-status-filter').addEventListener('change', (e) => {
+            this.state.status = e.target.value;
+            this.state.page = 1;
+            this.loadData();
+        });
+
         this.container.querySelector('#medications-page-size').addEventListener('change', (e) => {
             this.state.pageSize = parseInt(e.target.value, 10);
             this.state.page = 1;
@@ -160,6 +172,7 @@ export default {
                     this.state.sortBy = sortField;
                     this.state.sortOrder = 'ASC';
                 }
+                this.state.page = 1;
                 this.loadData();
             });
         });
@@ -172,6 +185,15 @@ export default {
         form.addEventListener('submit', (e) => {
             e.preventDefault();
             this.saveMedication();
+        });
+    },
+
+    updateSortHeaders() {
+        this.container.querySelectorAll('th[data-sort]').forEach(th => {
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (th.getAttribute('data-sort') === this.state.sortBy) {
+                th.classList.add(this.state.sortOrder === 'ASC' ? 'sort-asc' : 'sort-desc');
+            }
         });
     },
 
@@ -193,6 +215,7 @@ export default {
                 this.state.total = res.data.total;
                 this.renderTable(res.data.items);
                 this.renderPagination(res.data);
+                this.updateSortHeaders();
             } else {
                 throw new Error(res.message);
             }
@@ -218,20 +241,28 @@ export default {
         }
 
         tbody.innerHTML = items.map(m => {
+            const statusBadge = m.deleted_at
+                ? '<span class="badge badge-status-deleted">Archived</span>'
+                : '<span class="badge badge-status-active">Active</span>';
+
+            const archiveBtn = !m.deleted_at ? `
+                <button class="btn btn-warning btn-sm btn-archive" data-id="${m.medication_id}" data-name="${escapeHtml(m.name)}" title="Archive">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                    Archive
+                </button>
+            ` : '';
+
             return `
                 <tr>
                     <td><strong>${escapeHtml(m.name)}</strong></td>
                     <td>${escapeHtml(m.generic_name || '—')}</td>
                     <td>${escapeHtml(m.manufacturer || '—')}</td>
-                    <td><span class="badge badge-active">Active</span></td>
+                    <td>${statusBadge}</td>
                     <td>
                         <div class="actions-cell">
                             <button class="btn btn-secondary btn-sm btn-view" data-id="${m.medication_id}" title="View Details">View</button>
                             <button class="btn btn-secondary btn-sm btn-edit" data-id="${m.medication_id}" title="Edit Record">Edit</button>
-                            <button class="btn btn-warning btn-sm btn-archive" data-id="${m.medication_id}" data-name="${escapeHtml(m.name)}" title="Archive">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
-                                Archive
-                            </button>
+                            ${archiveBtn}
                         </div>
                     </td>
                 </tr>
@@ -358,8 +389,14 @@ export default {
         } catch (err) {
             const data = err.response?.data;
             if (data?.errors) {
+                const fieldMap = {
+                    name: 'medication-name',
+                    generic_name: 'medication-generic',
+                    manufacturer: 'medication-manufacturer'
+                };
                 for (const [f, msg] of Object.entries(data.errors)) {
-                    this.showFieldError(`medication-${f.replace(/_/g, '-')}`, msg);
+                    const targetId = fieldMap[f] || `medication-${f.replace(/_/g, '-')}`;
+                    this.showFieldError(targetId, msg);
                 }
             }
             showToast(data?.message || err.message, 'danger');

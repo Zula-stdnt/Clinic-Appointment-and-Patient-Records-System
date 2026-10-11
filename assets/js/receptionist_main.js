@@ -4,12 +4,17 @@
 
 import { requireSession } from './session-guard.js?v=24';
 import { hideAllModals, closeSidebar } from './ui.js?v=24';
-import receptionistAppointments from './modules/receptionist_appointments.js?v=30';
-import receptionistPatients from './modules/receptionist_patients.js?v=32';
+import receptionistOverview from './modules/receptionist_overview.js?v=2';
+import receptionistAppointments from './modules/receptionist_appointments.js?v=34';
+import receptionistPatients from './modules/receptionist_patients.js?v=33';
 import settingsModule from './modules/account_settings.js?v=24';
 import profileModule from './modules/my_profile.js?v=24';
 
 const modules = {
+    'receptionist_overview': {
+        title: 'Dashboard',
+        instance: receptionistOverview
+    },
     'receptionist_appointments': {
         title: 'Appointments',
         instance: receptionistAppointments
@@ -35,7 +40,7 @@ window.navigateTo = function(route) {
     let moduleKey = parts[0];
 
     if (!modules[moduleKey]) {
-        moduleKey = 'receptionist_appointments';
+        moduleKey = 'receptionist_overview';
         route = moduleKey;
     }
 
@@ -119,7 +124,7 @@ function startApp() {
     });
 
     const initialHash = window.location.hash.replace('#', '');
-    window.navigateTo(initialHash || 'receptionist_appointments');
+    window.navigateTo(initialHash || 'receptionist_overview');
 }
 
 const currentUser = await requireSession(['Receptionist']);

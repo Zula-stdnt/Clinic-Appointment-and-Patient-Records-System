@@ -209,3 +209,518 @@ This update delivers the core clinical flow required for the Patient Records Sys
   - The system dynamically generates an accumulated medical history timeline showing **every past consultation and diagnosis** for that patient, sorted with the newest visits at the top.
   - For each visit, the doctor sees the date, chief complaint, triage vital signs, clinical examination notes, and all recorded diagnoses with their ICD-10 codes.
 
+---
+
+## 18. System Stability, Visual Polish, and Bug Fixes
+
+This update resolves errors discovered during system testing and refines the user interface so every portal (Administrator, Doctor, and Receptionist) works smoothly and reliably.
+
+### 1. Clean Sign-In Check on Login Page
+- **The Problem:** When opening the login page, the browser console showed an ugly red error message saying `401 (Unauthorized)`.
+- **Why It Happened:** The sign-in page checks if a user is already logged in so it can automatically forward them to their dashboard. If nobody was logged in, the server responded with an error code instead of simply saying "No active user".
+- **The Fix:** We updated the server to return a normal, friendly message saying "No session found" (`logged_in: false`). The login page works as intended without generating any red console errors.
+
+### 2. Patient Medical History Display Fix (Internal Server Error)
+- **The Problem:** Clicking "View Record" on a patient in the Administrator or Doctor portal crashed with a `500 Internal Server Error`.
+- **Why It Happened:** The system was querying two newly added database items (official diagnosis ICD-10 codes and prescription timing instructions) that were missing in the database.
+- **The Fix:** We added the missing tables and columns to the database. We also added automatic safety checks so that even if an optional column is not found, the patient record opens cleanly without crashing.
+
+### 3. Doctor "My Appointments" Table Alignment
+- **The Problem:** On the Doctor portal's appointments list, the action buttons (such as "Start Consult" or "View Encounter") were uneven and misaligned across different rows.
+- **Why It Happened:** The buttons sat in a general table cell that stretched or shrank depending on how long the patient's complaint text was.
+- **The Fix:** We wrapped all action buttons in a dedicated, right-aligned button container. Every button now lines up cleanly in its column.
+
+### 4. Table "Rows" Dropdown Display Fix
+- **The Problem:** In tables across the system, the dropdown menu used to choose how many rows to display per page (such as 5, 10, or 25) had the down-arrow overlapping the numbers.
+- **Why It Happened:** The dropdown box was too narrow and lacked padding on the right side.
+- **The Fix:** We adjusted the dropdown styling and spacing so the numbers and the arrow icon sit neatly apart with plenty of breathing room.
+
+### 5. Receptionist Appointments Page Cleanup & Walk-in Form Modal
+- **The Problem:** In the Receptionist portal, the "Register Walk-in Patient" form was awkwardly displayed directly on the screen underneath the appointments table instead of popping up as a separate window. In addition, the table action buttons looked bulky.
+- **Why It Happened:** The walk-in form had outdated styling that placed it directly inside the page layout rather than as a hidden pop-up dialog.
+- **The Fix:** We converted the walk-in form into a proper pop-up window (modal) that only appears when clicking "+ Register Walk-in". We also redesigned the action buttons into compact, neat icon buttons with helpful hover tooltips.
+
+### 6. Receptionist "New Appointment" Button Crash Fix
+- **The Problem:** Clicking the "+ New Patient Appointment" button sometimes triggered a crash error: `Cannot read properties of undefined (reading 'length')`.
+- **Why It Happened:** The pop-up tried to count how many patients and doctors were loaded before the server had finished sending the lists.
+- **The Fix:** We initialized the patient and doctor lists as safe empty containers, pre-loaded them when the page first opens, and added proper waiting logic so the scheduling form opens quickly without freezing.
+
+### 7. Receptionist Appointment Form Input Recognition Fix
+- **The Problem:** A receptionist would open the appointment window, select a patient and a doctor from the visible dropdown menus, and click "Schedule Appointment", only for the system to reject the form with "Please choose a patient" or "Please choose a doctor".
+- **Why It Happened:** The background save code was only checking hidden search pickers that were turned off, completely ignoring the visible dropdown menus the receptionist was actually interacting with.
+- **The Fix:** We rewired the form so it directly reads the values from the visible dropdowns. Appointments now schedule immediately with zero validation confusion.
+
+### 8. Doctor Portal "My Profile" Navigation Reconnection
+- **The Problem:** When a doctor clicked "My Profile" in the user dropdown menu, the system showed a generic read-only overview card meant for office staff instead of their doctor profile.
+- **Why It Happened:** The page router was mistakenly importing the office staff profile module instead of the dedicated Doctor Profile module.
+- **The Fix:** We updated the doctor navigation router so clicking "My Profile" opens the full Doctor Profile editor, allowing doctors to view their clinical specialty badges, update their phone number, and change their password.
+
+### 9. Clear Error Messages on Form Fields (Patients, Doctors, Services, Specialties, Medications)
+- **The Problem:** When a user filled out an Add or Edit form and made a mistake (like entering an already-used name or an invalid phone number), the server rejected the submission, but the red warning message did not appear underneath the field.
+- **Why It Happened:** The server used database names (like `service_name` or `date_of_birth`), while the form input boxes had website IDs (like `service-name` or `patient-dob`). Because the names did not match, the webpage did not know which box to highlight in red.
+- **The Fix:** We created an exact matching dictionary across all five management screens. When a server error occurs, the red warning message and red outline now appear directly beneath the correct text box.
+
+### 10. Added Medications to Manage Archive Recycle Bin
+- **The Problem:** Administrators could archive inactive medications, but the Manage Archive recycle bin did not have a "Medications" option in its dropdown, meaning archived medicines could not be inspected, restored, or permanently deleted.
+- **Why It Happened:** The Manage Archive screen had not been connected to the medication catalog.
+- **The Fix:** We added "Medications" to the Manage Archive category dropdown. Administrators can now easily restore or permanently purge archived medications.
+
+### 11. Complete System Verification Testing (100% Passed)
+- **What Was Checked:** We ran the automated test suites verifying user logins, security rules (CSRF protection and role restrictions), clinic appointment rules (no Sunday bookings, lunch break closures, and 10-appointment daily clinic capacity), doctor clinical encounters, diagnosis recording, and medical history timeline generation.
+- **Results:**
+  - System Acceptance Test Suite: **20 / 20 Passed (100%)**
+  - Clinical Consultation & Concurrency Suite: **4 / 4 Passed (100%)**
+  - Doctor Gating & Queue Sorting Suite: **35 / 35 Passed (100%)**
+  - End-to-End Medical Flow Suite: **20 / 20 Passed (100%)**
+  - Receptionist Isolated Actions Suite: **7 / 7 Passed (100%)**
+  - Walk-in Patient Workflow Suite: **8 / 8 Passed (100%)**
+  - Syntax Quality Checks: **0 syntax errors** across all PHP scripts and JavaScript modules.
+
+---
+
+## 19. System-Wide Deep Analysis, Security Hardening & Bug Fixes
+
+This update resolves hidden errors discovered during comprehensive system analysis across the PHP backend, database queries, and frontend user interfaces, ensuring that all features work reliably and securely.
+
+### 1. Fix for Server Crash on Admin and Patient Actions (Undefined Function `log_audit`)
+- **The Problem:** Creating a new user, saving an edited patient, or changing hospital data caused server crashes (`Call to undefined function log_audit()`). In addition, the Administrator dashboard could not load because its audit trail script was empty.
+- **Why It Happened:** Several controllers attempted to record actions into the audit log, but the actual audit logging program (`includes/audit.php`), the server controller (`api/audit_log_controller.php`), and the web page viewer (`assets/js/modules/audit_logs.js`) had not been implemented yet and were completely empty files.
+- **The Fix:**
+  - Built the centralized audit logging helper in `includes/audit.php` and loaded it system-wide through `includes/auth.php`. It writes details into the `audit_logs` table cleanly without ever crashing normal hospital workflows if a minor database hiccup occurs.
+  - Implemented `api/audit_log_controller.php` so Administrators can review all security events, patient demographic changes, appointment cancellation requests, and emergency doctor overrides.
+  - Built `assets/js/modules/audit_logs.js`, giving Administrators a clean, searchable dashboard to inspect who performed each action, when it happened, what was changed, and why.
+
+### 2. Elimination of Raw Database Error Leakage (Security Vulnerability)
+- **The Problem:** When an unexpected database issue occurred, five backend controllers returned raw database error messages (`$e->getMessage()`) directly to the user's browser.
+- **Why It Happened:** The error handlers in `appointment_controller.php`, `consultation_controller.php`, `doctor_patients_controller.php`, `medication_controller.php`, and `patient_record_controller.php` included database details in their error responses, which could reveal table names and system structure to unauthorized users.
+- **The Fix:** We updated all five controllers to return safe, friendly messages (`"A database error occurred. Please try again."`) to the user, while keeping technical error details safely recorded in the private server error log for developers to inspect.
+
+### 3. Patient Identity Collision Protection
+- **The Problem:** While registering a brand-new patient blocked duplicate names and birth dates, updating an existing patient did not check if the new name belonged to someone else. This meant someone could accidentally rename Patient A into an exact duplicate of Patient B.
+- **Why It Happened:** The `updatePatient()` function in `api/patient_controller.php` was missing the duplicate check that was already present in the registration function.
+- **The Fix:** Added a duplicate identity guard (`patient_id != ?`) to both `api/patient_controller.php` and `api/appointment_patient_controller.php`. The system now rejects any edit that would duplicate another living patient's name and birth date or phone number with a clear warning: *"Another patient record for this person already exists."*
+
+### 4. Patient Address Length Safety Limit
+- **The Problem:** If someone entered a very long address (over 255 characters), the database crashed with a strict data-too-long error.
+- **Why It Happened:** `includes/patient_validation.php` checked maximum lengths for first name, last name, and gender, but had no length check for the address.
+- **The Fix:** Added validation ensuring that addresses cannot exceed 255 characters, showing a helpful red error message under the text box before saving.
+
+### 5. Proper Staff Role Separation on Appointment Patient Edits
+- **The Problem:** The appointment patient edit screen allowed Administrators to edit patient demographics, conflicting with the hospital's privacy rule that Administrators govern the system while Receptionists manage patient charts.
+- **Why It Happened:** `api/appointment_patient_controller.php` listed both `Administrator` and `Receptionist` as allowed roles for saving edits.
+- **The Fix:** We updated `api/appointment_patient_controller.php` so only Receptionists can modify patient identity details. We also added support for the doctor's allergy alerts and recorded before-and-after change diffs in the audit log.
+
+### 6. Full Audit Tracking for Staff Logins and Doctor Records
+- **The Problem:** Some system activities, like staff logins, logouts, password changes, and creating new doctors, were not being recorded in the compliance audit trail.
+- **Why It Happened:** Audit calls had not yet been connected to `api/doctor_controller.php` and `api/auth_controller.php`.
+- **The Fix:** Added automatic audit logging for every sign-in, sign-out, password change, and doctor profile creation, update, or deactivation.
+
+### 7. Receptionist JavaScript Cleanup
+- **The Problem:** An extra closing curly brace sat at the very end of `assets/js/modules/receptionist_patients.js`.
+- **Why It Happened:** A formatting artifact was left behind during an earlier code edit.
+- **The Fix:** Removed the extra brace, ensuring clean, standard JavaScript code formatting.
+
+### 8. System-Wide Test Suite Verification (100% Passed)
+- **What Was Checked:** We created a new hardening test suite (`tests/verify_improvements.php`) and verified the entire collection of test suites across the project:
+  - System Acceptance Test Suite: **20 / 20 Passed (100%)**
+  - System Hardening & Audit Suite: **10 / 10 Passed (100%)**
+  - Receptionist Isolated Actions Suite: **7 / 7 Passed (100%)**
+  - Walk-in Patient Workflow Suite: **8 / 8 Passed (100%)**
+  - Clinical Consultation & Concurrency Suite: **4 / 4 Passed (100%)**
+  - Master File CRUD Suite (All 6 Modules): **All 6 Passed (100%)**
+  - Isolated API Test Suites (7 Suites): **All Passed (100%)**
+
+---
+
+## Section 20: System Improvement To-Do List Implementation & Privacy Hardening
+
+This update addresses the four major user experience and privacy improvements outlined in the System Improvement To-Do List.
+
+### 1. Receptionist Patient Records: Removed Internal Patient IDs
+- **The Problem:** The Patient Records table in the Receptionist portal had a "Patient ID" column displaying internal database codes (like `PAT-0001`), cluttering the table for front-desk staff.
+- **The Fix:** Removed the "Patient ID" column from the table. The table now cleanly displays only what the receptionist needs: Patient Name, Gender, Date of Birth, Contact Number, Registration Date, and Action buttons.
+
+### 2. Fixed Empty "Edit Patient Demographics" Form Bug
+- **The Problem:** When a receptionist clicked "Edit" on a patient record, the modal form opened with completely blank text boxes, even though the patient already had information in the system.
+- **Why It Happened:** The server was returning patient data packed inside a container named `patient`, but the front-desk script was looking for the fields directly on the top level. Because it couldn't find them, it filled every text box with empty text.
+- **The Fix:** We updated both the server and the frontend script to handle the data smoothly. Now, clicking "Edit" instantly loads the patient's existing first name, middle initial, last name, gender, birth date, phone number, address, and intake allergy note into the form.
+
+### 3. Dedicated Front-Desk Patient Demographics View (Strict Clinical Privacy)
+- **The Problem:** In the hospital workflow, only doctors are permitted to see medical histories and clinical notes. Previously, when a receptionist viewed a patient, the screen showed an empty medical timeline layout with clinical search bars (*"Search diagnosis, medicine..."*) and visit counter cards, which looked confusing and unnecessary for front-desk staff.
+- **The Fix:** We created a dedicated "Patient Demographics & Front-Desk Profile" card just for Receptionists:
+  - It clearly shows only non-clinical identity details: Name, Date of Birth, Age, Gender, Contact Number, Address, and Registration Date.
+  - It includes an intake allergy note so receptionists know if the patient reported any drug allergies during check-in.
+  - It completely removes the medical timeline, doctor SOAP notes, diagnoses, and prescription tools.
+  - It displays a helpful privacy notice reminding staff that clinical medical charts remain confidential and restricted to attending doctors.
+
+### 4. Universal Technical ID Masking Across Doctor and Receptionist Pages
+- **The Problem:** Internal database IDs (like `PAT-0001` or database primary keys) were visible in multiple places, such as dropdown menus, patient cards, and doctor headers.
+- **The Fix:** We removed visible database IDs across doctor and receptionist interfaces:
+  - Removed `PAT-0001` from the patient record top header.
+  - Removed `PAT-0001` from the doctor consultation patient header.
+  - Replaced `PAT-0001` in the receptionist appointment booking dropdown with helpful, privacy-safe details (the patient's phone number or birth date).
+  - Ensured all modal popups and forms keep technical IDs completely hidden behind the scenes.
+
+### 5. Universal Patient Directory & Working Break-Glass Protocol for Doctors
+- **The Problem:** Previously, doctors could only see patients who already had an appointment booked with them. Because unassigned patients never appeared in the doctor's table, doctors had no way to find an unassigned patient to use the emergency "Break-Glass Protocol" when urgent care was needed.
+- **The Fix:**
+  - Doctors can now search and browse the full directory of all registered hospital patients.
+  - In the directory table, patients clearly display a green **"Assigned"** badge if the doctor has an appointment with them, or a gray **"Unassigned"** badge if they do not.
+  - If a patient is unassigned, clicking their record triggers the **Break-Glass Emergency Modal**.
+  - The doctor must enter a clinical reason (at least 10 characters long, such as *"Emergency trauma resuscitation in ICU"*).
+  - Once submitted, the system permanently records the doctor's name, timestamp, patient, and exact reason in the compliance audit log (`BREAK_GLASS_ACCESS`), and opens the chart with a prominent red emergency alert banner.
+
+### 6. Automated Verification Testing
+- We created and executed a dedicated automated test suite (`tests/verify_todo_improvements.php`) covering all 4 improvement areas:
+  - **8 / 8 Tests Passed (100%)**
+- We also re-verified the entire existing test suite:
+  - System Hardening Suite: **10 / 10 Passed (100%)**
+  - Acceptance Suite: **20 / 20 Passed (100%)**
+  - Full Master File CRUD Suite: **All 6 Modules Passed (100%)**
+
+---
+
+## Section 21: System-Wide Quality Audit, Consistency Refinements & Verification
+
+Following the implementation of the System Improvement To-Do List, a thorough end-to-end audit was conducted across the entire application—reviewing backend API controllers, frontend interface modules, role boundaries, and user interactions. Five subtle inconsistencies were identified and resolved without introducing regressions:
+
+### 1. Administrative Patient Record View Polished
+- **What was happening:** When a hospital administrator viewed a patient record in the Admin portal, the system previously displayed an empty clinical timeline shell with medical search bars (*"Search diagnosis, medicine..."*). Because administrators do not have clinical roles, the encounters list was blank, making the screen look unfinished.
+- **The Fix:** Updated the patient record viewer so administrators see the clean, dedicated **Patient Identity & Demographics Profile** card with an Administrative Governance privacy notice. This keeps patient demographic management consistent and clear without showing empty clinical tools to non-clinical staff.
+
+### 2. Standard "Rows:" Page-Size Selector Added to Doctor Patient Records
+- **What was happening:** Every table across the Admin and Receptionist portals had a "Rows:" dropdown (allowing users to choose 5, 10, or 25 records per page), but the Doctor's Patient Records table was missing this control.
+- **The Fix:** Added the standard "Rows:" selector to the Doctor Patient Records toolbar and updated the search box placeholder to indicate that searching by name, phone number, or address is supported.
+
+### 3. Doctor Profile Internal ID Removed
+- **What was happening:** The Doctor Profile banner showed an internal database identifier (`DOC-0001`) in a blue badge next to the doctor's name.
+- **The Fix:** Replaced the internal database code with a clean, professional **"Licensed Physician"** status badge, keeping technical database primary keys hidden from view.
+
+### 4. Audit Log Filter Flexibility Enhanced
+- **What was happening:** The audit log backend controller strictly expected the parameter `action` for filtering audit categories, while some administrative search callers used `action_filter`.
+- **The Fix:** Updated the controller to accept both `action` and `action_filter` seamlessly, preventing any missed filters when reviewing hospital security logs.
+
+### 5. Removed Inactive Code from Admin Patients Module
+- **What was happening:** The Admin patients script still contained leftover event listener code for gender and phone number inputs from an older version of the system (before patient registration was delegated exclusively to front-desk receptionists).
+- **The Fix:** Safely removed the dead listener code, keeping the script clean, lightweight, and easy to maintain.
+
+---
+
+### Verification and Stability Results
+
+All automated verification test suites were executed to verify system stability, role permissions, and functionality:
+
+| Test Suite | Focus Area | Result |
+| :--- | :--- | :--- |
+| **`tests/verify_todo_improvements.php`** | Front-desk demographics auto-fill, ID removal, Break-Glass emergency access | **8 / 8 Passed (100%)** |
+| **`tests/verify_improvements.php`** | Audit log immutability, RBAC role boundaries, patient identity protection | **10 / 10 Passed (100%)** |
+| **`tests/verify_acceptance.php`** | Authentication, CSRF guards, session security, data protection | **20 / 20 Passed (100%)** |
+| **`tests/verify_all_modules_crud.php`** | Master File CRUD across all 6 core hospital modules | **6 / 6 Passed (100%)** |
+| **`run_api_tests.js`** | Appointment scheduling, capacity rules, doctor gating, full clinical workflow | **4 / 4 Suites Passed (100%)** |
+
+---
+
+## Section 22: Doctor Clinical Cockpit & Operations Dashboard
+
+This update transforms the previously barebones Doctor Dashboard into an interactive, high-efficiency **Clinical Cockpit** tailored to the daily workflow of a hospital physician.
+
+### 1. Personalized Physician Banner
+- **What was there before:** A generic title that said *"Welcome to the Doctor Portal"*.
+- **What it does now:** Greets the doctor personally (*"Good morning / afternoon / evening, Dr. [Name]"*), displays their medical specialties (e.g. *Internal Medicine*, *Cardiology*), shows today's full date, and indicates live clinic status with a count of patients currently waiting in the clinic.
+
+### 2. Live 4-Card Clinical Metric Grid
+- **Today's Patients:** Total number of appointments booked for today.
+- **Waiting in Clinic (High Priority):** Patients who have already arrived and were checked in by the receptionist. Highlights in orange so the doctor immediately knows someone is ready for consultation.
+- **Upcoming Scheduled:** Patients booked for later today who have not yet arrived.
+- **Completed Consultations:** Shows the number and percentage of today's patients seen so far.
+- **Interactive Filtering:** Clicking on any of these cards instantly filters the patient queue table below!
+
+### 3. Live "Today's Patient Queue & Triage"
+- Lists all patients scheduled for today in chronological order.
+- Shows patient name, appointment time (with an alert if overdue), chief complaint (the reason they came to the hospital), and any triage vitals recorded at the front desk (blood pressure, temperature).
+- **One-Click "Start Consult":** For patients waiting in the clinic, a prominent **"🩺 Consult"** button lets the doctor jump directly into the consultation and diagnosis screen with a single click—no need to switch tabs or search through menus.
+- **"📋 View Chart":** For completed consultations, allows instant review of the notes and prescriptions given.
+- Includes quick filter buttons at the top (*All*, *Waiting*, *Completed*) to focus on specific patients quickly.
+
+### 4. "Call Next Patient" Quick Action
+- A prominent button in the sidebar that automatically identifies the earliest patient waiting in the clinic and starts their consultation immediately.
+- If no patients are currently waiting, it informs the doctor that the queue is clear.
+
+### 5. Shift Progress & Quick Shortcuts
+- Displays a visual progress bar showing how much of the day's schedule has been completed.
+- Provides one-click shortcuts to the full Patient Records directory, the complete appointments calendar, and the doctor's profile.
+
+---
+
+### Automated Verification Results
+
+All automated test suites were re-executed:
+- **`run_api_tests.js` (All 4 Suites):** 100% Passed
+- **`tests/verify_todo_improvements.php`:** 8 / 8 Passed (100%)
+- **`tests/verify_acceptance.php`:** 20 / 20 Passed (100%)
+- **JavaScript Syntax Check (`node --check`):** All files passed with zero errors.
+
+---
+
+## Section 23: Doctor Dashboard Multi-Period Statistics & Insights
+
+To help doctors track both their immediate daily clinic queue and their longer-term clinical productivity, the Doctor Dashboard was enhanced with an interactive **Time-Horizon Filter** (`Today`, `This Week`, `This Month`, `All-Time`).
+
+### 1. Instant Time-Horizon Switcher
+- Doctors can switch between periods using dedicated buttons in the top header:
+  - **Today:** Displays the live daily operational queue, waiting patients, and next-patient call button.
+  - **This Week:** Analyzes the current Monday-to-Saturday clinic week, showing weekly volume, completion rates, and weekly patient history.
+  - **This Month:** Aggregates all encounters for the current calendar month.
+  - **All-Time:** Provides a comprehensive historical view of all recorded consultations and patients treated by the doctor.
+- Switching between tabs happens instantly with zero delay because data is computed directly in the browser.
+
+### 2. Context-Aware Metric Cards
+The 4 main metric cards automatically adapt their statistics based on the selected period:
+- **When viewing "Today":**
+  1. *Today's Patients* (Total load for the day)
+  2. *Waiting in Clinic* (Patients checked in by reception, ready for consultation)
+  3. *Upcoming Scheduled* (Appointments later today)
+  4. *Completed Consults* (Consultations finished today)
+- **When viewing "This Week", "This Month", or "All-Time":**
+  1. *Total Appointments* (Total volume in the period)
+  2. *Completed Consultations* (Total completed with completion percentage)
+  3. *Unique Patients Treated* (Distinct individuals seen, measuring reach and continuity)
+  4. *Cancelled / No-Show Rate* (Tracks clinic attendance health)
+
+### 3. Adaptive Consultation Activity & History Table
+- When viewing historical periods (`This Week` / `This Month` / `All-Time`), the main table switches from a live queue to a **Consultation Activity Log**, showing the appointment date, time, patient name, visit reason, and clinical status.
+- Doctors can click **"📋 View Chart"** on any past consultation to review previous SOAP notes and prescriptions without leaving the dashboard.
+- Includes sub-filters to filter by *All*, *Completed*, *Scheduled*, or *Cancelled* encounters.
+
+---
+
+### Verification and Codebase Health
+- **`node run_api_tests.js` (All 4 Suites):** 100% Passed
+- **Syntax Check (`node --check`):** All JavaScript modules verified with 0 errors.
+- **Cache-Busting:** Bumped to `doctor_overview.js?v=28` and `doctor_main.js?v=41` for immediate client reload.
+
+---
+
+## Section 24: Receptionist Front-Desk Command Center (Dashboard)
+
+This update introduces a dedicated **Front-Desk Command Center** for receptionists, giving staff complete visibility over the waiting lobby, daily capacity, and active doctors upon logging in.
+
+### 1. Front-Desk Greeting & Live Capacity Monitor
+- Greets the front-desk team (*"Good morning / afternoon / evening, Front-Desk Team"*).
+- Features a live **Capacity Monitor Banner**:
+  - Automatically tracks the hospital's rule of **10 appointments maximum per day**.
+  - Shows color-coded alerts:
+    - **Normal (Green):** Slots available.
+    - **Approaching Limit (Amber):** Warning when 8 or 9 slots are booked.
+    - **Full Capacity (Red):** Alert when all 10 daily slots are filled.
+
+### 2. Time-Horizon Selector
+- Like the Doctor Dashboard, receptionists can switch between **Today**, **This Week**, **This Month**, and **All-Time** with instant client-side rendering.
+
+### 3. Four Front-Desk Metric Cards
+- **Today's Clinic Load:** Total appointments scheduled across all doctors for the day.
+- **Waiting in Lobby (High Priority):** Patients who have arrived and checked in, waiting for their physician.
+- **Completed Consultations:** Consultations completed today with completion percentage.
+- **New Patients Registered Today:** Patient accounts registered at the front desk today.
+
+### 4. Live Lobby & Triage Board
+- Shows arriving patients in chronological order, their assigned doctor, their visit reason, and triage vitals.
+- **Vitals Status:** Clearly shows whether intake vitals (BP, temperature) have been recorded or are still pending.
+- **Fast Action:** Unarrived patients display a direct **"Check-In"** button to record vitals as soon as they step up to the desk.
+
+### 5. Front-Desk Fast Actions Bar
+- **➕ Register Walk-in Patient:** Immediate shortcut to create a new patient demographic profile.
+- **📅 Book / Manage Appointments:** Quick shortcut to schedule appointments.
+- **🖨️ Print Blank Intake Sheet:** 1-click physical paper printout of the registration sheet for walk-in patients who prefer filling out forms by hand while seated in the lobby.
+
+### 6. Doctors on Duty Widget
+- Real-time tracker showing which physicians have appointments today, how many patients are assigned to each doctor, and how many are currently waiting in the lobby.
+
+---
+
+### Verification and System Stability
+- **`node run_api_tests.js`:** 100% Passed across all 4 suites.
+- **`tests/verify_acceptance.php`:** 20 / 20 Passed (100%).
+- **`tests/verify_todo_improvements.php`:** 8 / 8 Passed (100%).
+- **Syntax Check (`node --check`):** Zero errors across all JavaScript modules.
+
+---
+
+## Section 25: Universal Table Sorting, Advanced Filtering, and Design Token Standardization
+
+This update establishes permanent visual and behavioral consistency across all data tables in the Administrator, Doctor, and Receptionist portals, and standardizes all iconography and badge tokens.
+
+### 1. Elimination of Informal Emojis & Icon Standardization
+- **100% Emoji Removal:** Replaced all informal emojis (e.g., `🚨`, `⚠️`, `🚩`, `⚡`, `🩺`, `📋`, `💓`, `⏱️`, `✓`, `ℹ️`) across all HTML files, templates, and JavaScript modules.
+- **Lucide/Feather Inline SVGs:** Standardized on clean, crisp vector SVGs for all alert states, action buttons, triage vitals indicators, capacity badges, and navigation items.
+- **Automated Emoji Audit:** Confirmed with automated regex scanning across all `.js` and `.html` files that 0 emojis remain in the codebase.
+
+### 2. Centralized Status Color & Size Design Tokens (`assets/css/style.css`)
+- Replaced fragmented, inline CSS hex codes (`#16a34a`, `#ea580c`, `#eef2ff`, etc.) and inconsistent `.badge-*` classes with single-source-of-truth semantic CSS design tokens:
+  - `.badge-status-scheduled`: Clinical Sky Blue (`#eff6ff` / `#1d4ed8` / border `#bfdbfe`).
+  - `.badge-status-confirmed`: Lobby Warm Amber (`#fff7ed` / `#c2410c` / border `#fed7aa`).
+  - `.badge-status-completed` & `.badge-status-active`: Medical Forest Green (`#ecfdf5` / `#047857` / border `#a7f3d0`).
+  - `.badge-status-cancelled` & `.badge-status-deleted` & `.badge-status-critical`: Emergency Crimson (`#fef2f2` / `#b91c1c` / border `#fecaca`).
+  - `.badge-status-noshow` & `.badge-status-secondary`: Professional Slate Neutral (`#f8fafc` / `#475569` / border `#e2e8f0`).
+  - `.badge-status-overdue`: Urgent Coral (`#fff1f2` / `#be123c` / border `#fecdd3`).
+  - `.badge-status-breakglass`: High-Security Deep Crimson (`#450a0a` / `#fecaca` / border `#991b1b`).
+- Base `.badge` standardized to `display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.25rem 0.65rem; font-size: 0.72rem; font-weight: 600; line-height: 1.1; border-radius: var(--radius-full); text-transform: uppercase; border: 1px solid transparent;`.
+
+### 3. Universal Interactive Table Column Sorting with Visual Carets
+- Styled all sortable table headers (`th[data-sort]`) with dual carets (`▲`/`▼`) in subtle muted grey via CSS `::after`.
+- Clicking a header automatically toggles between ascending (`.sort-asc` with bold `▲`) and descending (`.sort-desc` with bold `▼`).
+- Integrated dynamic `updateSortHeaders()` across all data tables:
+  - **Administrator Portal:**
+    - **Patients (`patients.js`):** Sortable by Patient Name, Gender, Date of Birth, Contact No, and Status (`deleted_at`).
+    - **Doctors (`doctors.js`):** Sortable by Doctor Name, Specialty, Contact No, and Status (`deleted_at`).
+    - **Users (`users.js`):** Sortable by Full Name, Username, Role, and Status (`deleted_at`).
+    - **Services (`services.js`):** Sortable by Service Name and Status (`deleted_at`).
+    - **Specialties (`specialties.js`):** Sortable by Specialty Name and Status (`deleted_at`).
+    - **Medications (`medications.js`):** Sortable by Medication Name, Generic Name, Manufacturer, and Status (`deleted_at`).
+    - **Manage Archive (`archive.js`):** Dynamic sortable headers generated per active entity type (e.g., Name, Specialty, Role, Generic Name, Archived At) with persistent caret tracking.
+    - **Compliance & Audit Logs (`audit_logs.js`):** Sortable by Timestamp, User (Actor), Action, and Target Entity.
+  - **Doctor Portal:**
+    - **Overview Queue (`doctor_overview.js`):** Interactive queue sorting on Time, Patient Name, and Status.
+    - **Doctor Appointments (`doctor_appointments.js`):** Sortable by Date & Time, Patient, Chief Complaint, and Status.
+    - **Doctor Patients (`doctor_patients.js`):** Sortable by Patient Name, Date of Birth, Age/Gender, and Contact No.
+  - **Receptionist Portal:**
+    - **Lobby Board (`receptionist_overview.js`):** Interactive lobby sorting on Time, Patient, Doctor, and Status.
+    - **Front-Desk Appointments (`receptionist_appointments.js`):** Sortable by Date & Time, Patient, Doctor, Chief Complaint, and Status.
+    - **Patient Directory (`receptionist_patients.js`):** Sortable by Patient Name, Gender, Date of Birth, Contact No, and Registered Date.
+
+### 4. Advanced Toolbar Filtering
+- **Admin Patients:** Added Gender filter and Status filter (`active`, `deleted`, `all`).
+- **Admin Doctors:** Added Specialty filter, Gender filter (`male`, `female`, `other`), and Status filter (`active`, `deleted`, `all`).
+- **Admin Users:** Added Role filter (`Doctor`, `Receptionist`) and Status filter (`active`, `deleted`, `all`).
+- **Admin Services, Specialties, Medications:** Added Status filter (`active`, `deleted`, `all`).
+- **Admin Audit Logs:** Added Action filter and Date filter (`all`, `today`, `last_7_days`, `last_30_days`).
+- **Doctor Appointments:** Added Date Range filter (`upcoming` [default], `today`, `past`) and Appointment Status filter (`all`, `scheduled`, `confirmed`, `completed`, `cancelled`, `no_show`).
+- **Doctor Patients:** Added Assignment Status filter (`all`, `assigned`, `unassigned [break-glass]`).
+- **Receptionist Appointments:** Added Date Range filter (`today`, `upcoming`, `past`) and Status filter.
+
+### 5. Backend Controller Sorting & Filter Parity
+- Updated `api/appointment_controller.php`: Added `date_filter` and dynamic column sorting for `appointment_date`, `patient_name`, `doctor_name`, `chief_complaint`, and `status`.
+- Updated `api/doctor_patients_controller.php`: Added `assignment_status` filtering and dynamic sorting by `last_name`, `date_of_birth`, `gender`, and `contact_no`.
+- Updated `api/patient_controller.php`: Added `contact_no` to allowed sorting columns.
+- Updated `api/doctor_controller.php`: Added `gender` filter and `gender`, `contact_no` to allowed sorting columns.
+- Updated `api/user_controller.php`: Added `full_name` mapping to `u.last_name` in sorting whitelist.
+- Updated `api/audit_log_controller.php`: Added `date_filter` (`today`, `last_7_days`, `last_30_days`, `all`) and dynamic sorting for `created_at`, `username`, `action`, and `entity_type`.
+
+### 6. Verification & Test Suite Results
+- **Emoji Audit:** Verified 0 emojis remain across all `.js` and `.html` files via node regex scan.
+- **`node run_api_tests.js`:** 100% Passed across all 4 suites (47 schedule/capacity tests, 35 doctor gating/sorting tests, 20 minimum required features tests).
+- **`tests/verify_acceptance.php`:** 20 / 20 Passed (100%).
+- **`tests/verify_todo_improvements.php`:** 8 / 8 Passed (100%).
+
+---
+
+### Section 26: Patient Allergy Intake & Clinical Confirmation Workflow
+
+### 1. Architectural Philosophy & Clinical Safety Boundary
+- **Front-Desk Intake (Receptionist):** When a patient walks in or registers for an appointment and reports an allergy, the receptionist is empowered to capture this clinical note immediately so vital warnings are not lost before consultation.
+- **Strict Clinical Distinction:** All receptionist-entered allergies are automatically stored with `allergies_confirmed_by_doctor = 0` (`Unconfirmed Intake Note`, styled with an amber status badge `.badge-status-scheduled`). Receptionists cannot elevate this to verified status.
+- **Physician Confirmation (Doctor):** When an attending doctor opens the consultation workspace, the allergy alert is prominently displayed in the patient header banner. Completing the consultation encounter automatically elevates `allergies_confirmed_by_doctor = 1` (`Doctor Confirmed`, styled with a green status badge `.badge-status-confirmed`).
+- **Demographic Update Safety:** Any subsequent front-desk demographic edit that modifies allergies automatically resets the confirmation flag to `0`, requiring re-verification by a medical provider.
+
+### 2. Backend Implementation Details
+- **`api/appointment_controller.php`:**
+  - Expanded `listPatientOptions` (`meta=patients`) and `getAppointmentById` (`?id=`) to include `allergies_alerts` and `allergies_confirmed_by_doctor`.
+  - Added allergy note capture during `createAppointment` and `updateAppointment`. If the intake allergy note differs from the existing patient record, it updates the patient's record with `allergies_confirmed_by_doctor = 0` and records an immutable audit log entry under `UPDATE_ALLERGIES_AT_INTAKE`.
+- **`api/appointment_patient_controller.php`:**
+  - When the receptionist updates patient demographics during appointment booking, `allergies_confirmed_by_doctor` is explicitly reset to `0` whenever allergy notes are edited.
+- **`api/consultation_controller.php`:**
+  - When a doctor completes a consultation encounter and submits the clinical note, `allergies_confirmed_by_doctor` is set to `1` and audit-logged with the physician's user credentials.
+
+### 3. Frontend & Printable Slip Integration
+- **Front-Desk Appointment Modal (`receptionist_appointments.js`):**
+  - Added the **Allergies & Clinical Alerts** textarea to the appointment booking modal with dynamic real-time status badge rendering (`Doctor Confirmed` vs `Unconfirmed Intake Note`).
+  - Added the allergy field to the **Quick Register Walk-in** modal.
+  - Selecting a patient from the searchable combobox automatically loads their existing allergies and displays the confirmation badge.
+- **Doctor Consultation Workspace (`doctor_consultation.js`):**
+  - Updated the patient allergy alert banner with standard `.badge-status-*` tokens, Lucide warning SVG icons, and a quick `Set NKDA` (No Known Drug Allergies) button.
+- **Printable Appointment Slip (`print-appointment-form.js`):**
+  - Formatted the patient intake slip to display a prominent `Allergies / Alerts` section with clean inline SVG alert icons and exact confirmation status badge.
+- **Design Tokens & Emojis:** Zero emojis used; 100% Lucide inline SVGs with standard 12x12/14x14px dimensions and consistent status color tokens.
+
+### 4. Automated Verification (`tests/verify_allergy_workflow.php`)
+- **Suite Pass Rate:** 6 / 6 Passed (100%):
+  1. Receptionist and Doctor multi-role authentication.
+  2. Patient combobox metadata includes allergy text and doctor confirmation flags.
+  3. Walk-in patient registration captures intake allergy notes as `allergies_confirmed_by_doctor = 0`.
+  4. Scheduling an appointment updates intake allergies, retains unconfirmed status, and writes `UPDATE_ALLERGIES_AT_INTAKE` to `audit_logs`.
+  5. `getAppointmentById` returns allergy data for printable slips.
+  6. Doctor consultation encounter successfully promotes status to `allergies_confirmed_by_doctor = 1` (`Doctor Confirmed`).
+
+---
+
+## Section 27: Receptionist Dashboard Direct Landing & Doctor Controller Permissions
+
+### 1. Default Landing on Dashboard
+- **What:** Configured the Receptionist login flow so that upon authenticating, receptionists land directly on the **Overview Dashboard** (`#receptionist_overview`) instead of being routed straight to the Appointments calendar.
+- **Why:** When front-desk staff start their shift, they must see the daily clinic load, current waiting queue, and capacity warnings before navigating into specific scheduling tasks.
+- **Where:** [`api/auth_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/auth_controller.php), [`assets/js/receptionist_main.js`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/assets/js/receptionist_main.js), and [`receptionist_dashboard.html`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/receptionist_dashboard.html).
+- **How:** Updated the redirect response in `auth_controller.php` to `#receptionist_overview` and aligned the client router default route.
+
+### 2. Resolution of 403 Forbidden Console Error on Dashboard Refresh
+- **What:** Fixed an issue where clicking "Refresh" on the Receptionist Dashboard caused an Axios `403 (Forbidden)` error in the browser developer console when calling `api/doctor_controller.php`.
+- **Why:** The dashboard needs to read active doctors and specialty metrics to display doctor availability widgets, but `doctor_controller.php` previously restricted all requests exclusively to Administrators.
+- **Where:** [`api/doctor_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/doctor_controller.php).
+- **How:** Granted Receptionists read-only permissions (`require_role(['Administrator', 'Receptionist'])` on `GET` requests), while preserving strict Administrator-only restrictions for create, edit, archive, and delete operations.
+
+---
+
+## Section 28: Doctor Patients Break-Glass Modal Interaction & Event Delegation Fix
+
+### 1. Elimination of Screen Flicker and Unauthorized Network Calls
+- **What:** Fixed the emergency **Break-Glass** button in the Doctor Patient Records table so it opens `#break-glass-modal` immediately without screen flicker or network errors.
+- **Why:** Clicking the button previously attempted to fetch medical chart data (`api/patient_record_controller.php?action=history`) before displaying the modal. Because the doctor was unassigned to that patient, the backend correctly returned `403 Forbidden`, triggering an error toast and causing the screen to jump.
+- **Where:** [`assets/js/modules/doctor_patients.js`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/assets/js/modules/doctor_patients.js).
+- **How:** Tagged action buttons with `data-assigned="0"`. When clicked for unassigned patients, the script immediately extracts the patient's identity attributes and opens the Break-Glass modal directly without issuing any premature chart requests.
+
+### 2. Clean Event Delegation Architecture
+- **What:** Refactored row click and modal trigger handlers from individual row bindings to container-level event delegation (`table.addEventListener('click', ...)`).
+- **Why:** Repeated table re-renders caused event listeners to stack and multiply, resulting in duplicate modal triggers.
+- **How:** Replaced inline row listeners with event delegation using `e.target.closest('.btn-break-glass')` and `e.target.closest('.btn-view-record')`.
+
+---
+
+## Section 29: System-Wide Gender Filtering & Resolution of the "Other" Gender Filtering Bug
+
+### 1. Root Cause Analysis
+- **The Issue:** In the Admin and Receptionist portals, selecting `"Other"` from the Gender dropdown resulted in an empty table with 0 records, even though records with custom gender identities (e.g., *Transgender*, *Non-Binary*, *Queer*) existed in the database. Furthermore, the Doctor Patient Records table lacked a gender filter entirely.
+- **Root Cause:**
+  1. When patients registered with custom gender identities, their actual input was stored in the `gender` column (e.g., `Transgender`).
+  2. The backend SQL query executed `LOWER(gender) = 'other'`. Because `'transgender' != 'other'`, all custom gender records were excluded.
+  3. The Doctor Patient Records toolbar did not include a gender filter selector.
+
+### 2. Comprehensive SQL Semantic Resolution
+- Updated the backend query across all controllers managing gender filtering:
+  - [`api/patient_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/patient_controller.php)
+  - [`api/doctor_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/doctor_controller.php)
+  - [`api/doctor_patients_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/doctor_patients_controller.php)
+  - [`api/user_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/user_controller.php)
+- When `$gender === 'other'` is queried, the SQL condition evaluates:
+  ```sql
+  (LOWER(TRIM(COALESCE(gender, ''))) NOT IN ('male', 'female', 'unknown') 
+   AND LOWER(TRIM(COALESCE(gender, ''))) != '')
+  ```
+- This captures all custom and non-binary gender values cleanly while keeping `Male`, `Female`, and `Unknown` strictly isolated.
+
+### 3. Doctor Portal Toolbar Parity
+- Added `#patients-gender-filter` to the Doctor Patient Records toolbar (`assets/js/modules/doctor_patients.js`).
+- Doctors can now filter the universal patient directory across `All Genders`, `Male`, `Female`, `Other`, and `Unknown`.
+
+---
+
+## Section 30: Final System Verification & Acceptance Results
+
+All automated verification test suites across the entire application were executed to guarantee full system stability:
+
+| Test Suite | Purpose | Status |
+| :--- | :--- | :--- |
+| **`tests/verify_acceptance.php`** | Role-based authentication, CSRF validation, session guards | **20 / 20 Passed (100%)** |
+| **`tests/verify_todo_improvements.php`** | Demographics auto-fill, ID removal, Break-Glass emergency access | **8 / 8 Passed (100%)** |
+| **`tests/verify_allergy_workflow.php`** | Two-stage allergy intake, printed slips, doctor verification | **6 / 6 Passed (100%)** |
+| **`tests/run_api_tests.php`** | Daily capacity model, operating hours, doctor gating | **4 / 4 Suites Passed (100%)** |
+| **`tests/verify_gender_filters.php`** | System-wide gender filtering, custom identities, 'Other' query logic | **6 / 6 Passed (100%)** |
+| **`tests/test_gender_ui.js`** | End-to-end browser automation (Playwright) testing table filtering | **100% Passed (0 console errors)** |

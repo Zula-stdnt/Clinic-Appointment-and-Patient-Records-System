@@ -11,6 +11,7 @@ export default {
         pageSize: 10,
         search: '',
         status: 'active',
+        gender: '',
         specialtyId: '',
         sortBy: 'doctor_id',
         sortOrder: 'ASC',
@@ -63,7 +64,19 @@ export default {
                             ${this.state.specialties.map(s => `<option value="${s.specialty_id}">${escapeHtml(s.specialty_name)}</option>`).join('')}
                         </select>
 
-                        
+                        <select id="doctors-gender-filter" class="form-control" style="width: auto; min-width: 130px;">
+                            <option value="">All Genders</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                            <option value="unknown">Unknown</option>
+                        </select>
+
+                        <select id="doctors-status-filter" class="form-control" style="width: auto; min-width: 130px;">
+                            <option value="active">Active</option>
+                            <option value="deleted">Archived</option>
+                            <option value="all">All Statuses</option>
+                        </select>
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -82,8 +95,8 @@ export default {
                             <tr>
                                 <th data-sort="last_name">Doctor Name</th>
                                 <th data-sort="specialty_name">Specialty</th>
-                                <th>Contact No</th>
-                                <th>Status</th>
+                                <th data-sort="contact_no">Contact No</th>
+                                <th data-sort="deleted_at">Status</th>
                                 <th style="text-align: right;">Actions</th>
                             </tr>
                         </thead>
@@ -308,7 +321,17 @@ export default {
             this.loadData();
         });
 
-        
+        this.container.querySelector('#doctors-gender-filter').addEventListener('change', (e) => {
+            this.state.gender = e.target.value;
+            this.state.page = 1;
+            this.loadData();
+        });
+
+        this.container.querySelector('#doctors-status-filter').addEventListener('change', (e) => {
+            this.state.status = e.target.value;
+            this.state.page = 1;
+            this.loadData();
+        });
 
         this.container.querySelector('#doctors-page-size').addEventListener('change', (e) => {
             this.state.pageSize = parseInt(e.target.value, 10);
@@ -325,6 +348,7 @@ export default {
                     this.state.sortBy = sortField;
                     this.state.sortOrder = 'ASC';
                 }
+                this.state.page = 1;
                 this.loadData();
             });
         });
@@ -340,6 +364,15 @@ export default {
         });
     },
 
+    updateSortHeaders() {
+        this.container.querySelectorAll('th[data-sort]').forEach(th => {
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (th.getAttribute('data-sort') === this.state.sortBy) {
+                th.classList.add(this.state.sortOrder === 'ASC' ? 'sort-asc' : 'sort-desc');
+            }
+        });
+    },
+
     async loadData() {
         const tbody = this.container.querySelector('#doctors-table-body');
         tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding: 2rem;">Loading doctors...</td></tr>';
@@ -350,6 +383,7 @@ export default {
                 page_size: this.state.pageSize,
                 search: this.state.search,
                 status: this.state.status,
+                gender: this.state.gender,
                 specialty_id: this.state.specialtyId,
                 sort_by: this.state.sortBy,
                 sort_order: this.state.sortOrder
@@ -359,6 +393,7 @@ export default {
                 this.state.total = res.data.total;
                 this.renderTable(res.data.items);
                 this.renderPagination(res.data);
+                this.updateSortHeaders();
             } else {
                 throw new Error(res.message);
             }
@@ -386,27 +421,35 @@ export default {
         tbody.innerHTML = items.map(d => {
             const fullName = `${d.last_name}, ${d.first_name}${d.middle_initial ? ' ' + d.middle_initial + '.' : ''}`;
 
-            let specialtyHtml = '<span class="badge badge-role">General Medicine</span>';
+            let specialtyHtml = '<span class="badge badge-status-scheduled">General Medicine</span>';
             if (d.specialty_names) {
                 specialtyHtml = `<div style="display: flex; flex-wrap: wrap; gap: 4px; max-width: 250px;">
-                    ${d.specialty_names.split(',').map(s => `<span class="badge badge-role">${escapeHtml(s.trim())}</span>`).join('')}
+                    ${d.specialty_names.split(',').map(s => `<span class="badge badge-status-scheduled">${escapeHtml(s.trim())}</span>`).join('')}
                 </div>`;
             }
+
+            const statusBadge = d.deleted_at
+                ? '<span class="badge badge-status-deleted">Archived</span>'
+                : '<span class="badge badge-status-active">Active</span>';
+
+            const archiveBtn = !d.deleted_at ? `
+                <button class="btn btn-warning btn-sm btn-archive" data-id="${d.doctor_id}" data-name="${escapeHtml(fullName)}" title="Archive">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                    Archive
+                </button>
+            ` : '';
 
             return `
                 <tr>
                     <td><strong>${escapeHtml(fullName)}</strong></td>
                     <td>${specialtyHtml}</td>
                     <td>${escapeHtml(d.contact_no || '-')}</td>
-                    <td><span class="badge badge-active">Active</span></td>
+                    <td>${statusBadge}</td>
                     <td>
                         <div class="actions-cell">
                             <button class="btn btn-secondary btn-sm btn-view" data-id="${d.doctor_id}" title="View Record">View</button>
                             <button class="btn btn-secondary btn-sm btn-edit" data-id="${d.doctor_id}" title="Edit Record">Edit</button>
-                            <button class="btn btn-warning btn-sm btn-archive" data-id="${d.doctor_id}" data-name="${escapeHtml(fullName)}" title="Archive">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
-                                Archive
-                            </button>
+                            ${archiveBtn}
                         </div>
                     </td>
                 </tr>
@@ -647,8 +690,21 @@ export default {
         } catch (err) {
             const data = err.response?.data;
             if (data?.errors) {
+                const fieldMap = {
+                    contact_no: 'doctor-contact',
+                    first_name: 'doctor-first-name',
+                    middle_initial: 'doctor-middle-initial',
+                    last_name: 'doctor-last-name',
+                    gender: 'doctor-gender',
+                    custom_gender: 'doctor-custom-gender',
+                    specialty_id: 'doctor-specialty-id',
+                    specialty_ids: 'doctor-specialty-id',
+                    username: 'doctor-username',
+                    password: 'doctor-password'
+                };
                 for (const [f, msg] of Object.entries(data.errors)) {
-                    this.showFieldError(`doctor-${f.replace('_', '-')}`, msg);
+                    const targetId = fieldMap[f] || `doctor-${f.replace(/_/g, '-')}`;
+                    this.showFieldError(targetId, msg);
                 }
             }
             showToast(data?.message || err.message, 'danger');

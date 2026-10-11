@@ -43,6 +43,7 @@ export default {
             diagnoses: [],
             prescriptions: [],
             lab_requests: [],
+            addenda: [],
             medicationPickers: [],
             icd10Pickers: [],
             labPickers: [],
@@ -90,6 +91,7 @@ export default {
                 this.state.diagnoses = res.data.diagnoses || [];
                 this.state.prescriptions = res.data.prescriptions || [];
                 this.state.lab_requests = res.data.lab_requests || [];
+                this.state.addenda = res.data.addenda || [];
                 
                 // If it's a new consultation, push one empty row for each to guide the user
                 if (!this.state.consultation) {
@@ -105,6 +107,21 @@ export default {
             const msg = err.response?.data?.message || 'Error loading consultation details';
             showToast(msg, 'error');
         }
+    },
+
+    renderAddendaHtml() {
+        if (!this.state.addenda || this.state.addenda.length === 0) {
+            return '<p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">No addenda recorded for this encounter.</p>';
+        }
+        return this.state.addenda.map(a => `
+            <div style="background: var(--bg-alt, #f8fafc); border-left: 3px solid var(--primary, #3b82f6); padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 0.75rem;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.35rem;">
+                    <span style="font-weight: 600; color: var(--text);">${escapeHtml(a.author_name || 'Clinician')}</span>
+                    <span>${escapeHtml(a.created_at || '')}</span>
+                </div>
+                <div style="font-size: 0.9rem; white-space: pre-wrap; color: var(--text);">${escapeHtml(a.notes || '')}</div>
+            </div>
+        `).join('');
     },
 
     renderUI() {
@@ -130,12 +147,33 @@ export default {
 
         const isReadOnly = !['scheduled', 'confirmed'].includes(appt.status);
 
+        const allergyBannerHtml = appt.allergies_alerts ? `
+            <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+                <div style="color: #991b1b; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+                    ALLERGY ALERT: ${escapeHtml(appt.allergies_alerts)}
+                </div>
+                <div>
+                    ${appt.allergies_confirmed_by_doctor ? '<span class="badge badge-status-completed" style="white-space: nowrap;">Doctor Confirmed</span>' : '<span class="badge badge-status-confirmed" style="white-space: nowrap;">Unconfirmed Intake Note</span>'}
+                </div>
+            </div>
+        ` : `
+            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 4px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="color: #92400e; font-weight: 500; font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem;">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                    No allergy info recorded for this patient. Please verify with patient during intake.
+                </div>
+            </div>
+        `;
+
         this.container.innerHTML = `
+            ${allergyBannerHtml}
+
             <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem; background: var(--surface);">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
                     <div>
                         <h2 style="margin: 0; font-size: 1.5rem;">${escapeHtml(appt.patient_first)} ${escapeHtml(appt.patient_last)}</h2>
-                        <div style="color: var(--text-muted); margin-top: 0.25rem;">Age: ${appt.age} | Gender: ${escapeHtml(appt.gender || 'Unknown')} | PAT-${appt.patient_id.toString().padStart(4, '0')}</div>
+                        <div style="color: var(--text-muted); margin-top: 0.25rem;">Age: ${appt.age} | Gender: ${escapeHtml(appt.gender || 'Unknown')}</div>
                     </div>
                     <div style="text-align: right;">
                         <div style="font-weight: 600;">Chief Complaint</div>
@@ -151,6 +189,21 @@ export default {
 
             <form id="consultation-form">
                 <fieldset ${isReadOnly ? 'disabled' : ''} style="border: none; padding: 0; margin: 0;">
+                    <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem;">
+                            <h3 style="font-size: 1.1rem; margin: 0;">Allergies &amp; Clinical Alerts</h3>
+                            ${!isReadOnly ? `
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <button type="button" class="btn btn-secondary btn-sm" id="btn-set-nkda" style="font-size: 0.8rem;">Set NKDA</button>
+                                </div>
+                            ` : ''}
+                        </div>
+                        <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.75rem;">Document known drug/food allergies or update records. Completing encounter confirms the allergy profile.</p>
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <input type="text" id="cons-allergies" class="form-control" placeholder="e.g. Penicillin (anaphylaxis), Sulfa drugs (rash) or 'No Known Drug Allergies (NKDA)'" value="${escapeHtml(appt.allergies_alerts || '')}">
+                        </div>
+                    </div>
+
                     <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
                         <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Clinical Notes</h3>
                         <div class="form-group" style="margin-bottom: 0;">
@@ -183,6 +236,21 @@ export default {
                     </div>
                 </fieldset>
 
+                ${isReadOnly && cons ? `
+                <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <div>
+                            <h3 style="font-size: 1.1rem; margin: 0;">Clinical Addenda</h3>
+                            <small style="color: var(--text-muted);">Immutable clinical notes amendments recorded chronologically.</small>
+                        </div>
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-open-addendum">+ Add Dated Addendum</button>
+                    </div>
+                    <div id="addenda-container">
+                        ${this.renderAddendaHtml()}
+                    </div>
+                </div>
+                ` : ''}
+
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;">
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                         <button type="button" class="btn btn-secondary" id="btn-cancel-consult">${isReadOnly ? 'Back to Appointments' : 'Cancel'}</button>
@@ -204,6 +272,30 @@ export default {
                     ` : ''}
                 </div>
             </form>
+
+            <div class="modal" id="addendum-modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="addendum-title" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title" id="addendum-title">Add Dated Clinical Addendum</h3>
+                            <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p style="margin-top: 0; font-size: 0.875rem; color: var(--text-muted);">
+                                Addenda permanently append dated corrections, follow-up remarks, or late-received test interpretations to this completed encounter.
+                            </p>
+                            <div class="form-group">
+                                <label for="addendum-notes" style="font-weight: 500;">Addendum Note *</label>
+                                <textarea id="addendum-notes" class="form-control" rows="4" placeholder="Enter clinical addendum..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="btn-save-addendum">Submit Addendum</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
             <div class="modal" id="after-visit-modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="after-visit-title" aria-hidden="true">
                 <div class="modal-dialog">
@@ -420,6 +512,15 @@ export default {
             window.navigateTo('doctor_appointments');
         });
 
+        // NKDA helper button
+        c.querySelector('#btn-set-nkda')?.addEventListener('click', () => {
+            const input = c.querySelector('#cons-allergies');
+            if (input) {
+                input.value = 'No Known Drug Allergies (NKDA)';
+                input.focus();
+            }
+        });
+
         // Reprint actions for an already-saved consultation
         c.querySelector('#btn-print-rx')?.addEventListener('click', () => printPrescription(this.state.appointmentId));
         c.querySelector('#btn-print-lab')?.addEventListener('click', () => printLabRequest(this.state.appointmentId));
@@ -490,9 +591,12 @@ export default {
                 btnSave.disabled = true;
                 btnSave.textContent = 'Saving...';
 
+                const allergiesVal = c.querySelector('#cons-allergies') ? c.querySelector('#cons-allergies').value.trim() : null;
+
                 const payload = {
                     appointment_id: this.state.appointmentId,
                     notes: c.querySelector('#cons-notes').value.trim(),
+                    allergies_alerts: allergiesVal,
                     diagnoses: this.state.diagnoses.filter(d => d.diagnosis_name.trim() !== ''),
                     prescriptions: this.state.prescriptions.filter(p => p.medication_id !== '' && p.dosage.trim() !== '' && p.frequency.trim() !== ''),
                     lab_requests: this.state.lab_requests.filter(l => l.test_name.trim() !== '')
@@ -514,6 +618,55 @@ export default {
                     showToast(msg, 'error');
                     btnSave.disabled = false;
                     btnSave.textContent = 'Save & Complete Encounter';
+                }
+            });
+        }
+
+        // Addendum modal controls
+        c.querySelector('#btn-open-addendum')?.addEventListener('click', () => {
+            const notesInput = c.querySelector('#addendum-notes');
+            if (notesInput) notesInput.value = '';
+            openModal('addendum-modal');
+        });
+
+        const btnSaveAddendum = c.querySelector('#btn-save-addendum');
+        if (btnSaveAddendum) {
+            btnSaveAddendum.addEventListener('click', async () => {
+                const notesInput = c.querySelector('#addendum-notes');
+                const notes = notesInput ? notesInput.value.trim() : '';
+                if (!notes) {
+                    showToast('Please enter an addendum note.', 'warning');
+                    return;
+                }
+
+                btnSaveAddendum.disabled = true;
+                btnSaveAddendum.textContent = 'Saving...';
+
+                try {
+                    const res = await api.post('api/consultation_controller.php?action=addendum', {
+                        appointment_id: this.state.appointmentId,
+                        notes: notes
+                    });
+
+                    if (res.success) {
+                        showToast('Addendum recorded successfully.', 'success');
+                        closeModal('addendum-modal');
+                        if (notesInput) notesInput.value = '';
+                        await this.loadConsultationData();
+                        const addendaCont = c.querySelector('#addenda-container');
+                        if (addendaCont) {
+                            addendaCont.innerHTML = this.renderAddendaHtml();
+                        }
+                    } else {
+                        showToast(res.message || 'Failed to save addendum.', 'error');
+                    }
+                } catch (err) {
+                    console.error('Error saving addendum', err);
+                    const msg = err.response?.data?.message || 'Failed to save addendum.';
+                    showToast(msg, 'error');
+                } finally {
+                    btnSaveAddendum.disabled = false;
+                    btnSaveAddendum.textContent = 'Submit Addendum';
                 }
             });
         }

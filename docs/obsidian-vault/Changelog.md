@@ -9,6 +9,36 @@ A plain-English summary of major updates, new modules, and bug fixes across the 
 > [!info] Looking for the technical trail?
 > This note summarizes **features**. For a per-commit record (commit IDs, exact files, verification steps), see [[Development Log]].
 
+## Recent — System Improvements, Clinical Privacy, and Modernization
+### System-Wide Table Sorting, Filtering & Gender "Other" Resolution
+- **Universal Interactive Table Sorting:** Clickable column headers across all tables in Admin, Doctor, and Receptionist portals with ascending/descending caret indicators.
+- **Universal Gender Filter Fix:** Resolved the "Other" gender filter across all modules and controllers so selecting "Other" cleanly matches non-binary, transgender, and all custom gender identities without returning empty tables. Added the gender filter dropdown to Doctor Patient Records for full portal parity.
+
+### Two-Stage Patient Allergy Workflow
+- **Front-Desk Allergy Intake:** Receptionists can capture patient-reported allergies during booking or walk-in registration. The system marks them with an amber `Unconfirmed Intake Note` badge so clinical staff are alerted before consultations.
+- **Doctor Clinical Confirmation:** Attending physicians see a prominent allergy banner during consultation and automatically elevate the allergy to `Doctor Confirmed` upon completing the visit.
+- **Printed Slips & Safety Resets:** Physical intake slips display the allergy warning, and demographic updates safely reset confirmation to ensure doctor re-verification.
+
+### Clinical Privacy Separation & Universal ID Masking
+- **Demographics-Only Front-Desk Card:** Receptionists see a dedicated patient demographics profile card; clinical encounter histories and doctor notes are blocked on both client and server sides to protect patient privacy.
+- **Universal Database ID Masking:** Removed visible database IDs and primary keys (`PAT-0001`, `APT-0042`, etc.) across all screens, headers, dialogs, and forms in favor of real-world patient names, birth dates, and contact numbers.
+
+### Doctor Universal Directory & Break-Glass Emergency Protocol
+- **Universal Patient Directory:** Doctors can browse all registered hospital patients, with clear `Assigned` vs `Unassigned` status indicators.
+- **Audited Break-Glass Emergency Override:** Access to unassigned patients is locked by default. In medical emergencies, doctors can activate the Break-Glass protocol by entering a clinical justification, immediately opening the chart with an emergency alert banner and recording a permanent audit log entry.
+
+### Immutable Audit Trail & Administrator Viewer
+- **Permanent Compliance Logging:** Introduced an immutable `audit_logs` table tracking critical actions across the system (Break-Glass emergency access, patient demographic edits, and appointment status changes).
+- **Admin Audit Viewer:** Dedicated Administrator module (`assets/js/modules/audit_logs.js`) with date range, user, action, and keyword filters.
+
+### Receptionist Navigation & Permissions
+- **Direct Dashboard Landing:** Configured Receptionists to land directly on the Overview Dashboard (`receptionist_overview.js`) upon login to review daily clinic volume and lobby queues before booking.
+- **Doctor Read Permissions:** Granted Receptionists read-only access to doctor availability and specialties to resolve console errors on dashboard refresh.
+
+### Design System Standardization
+- **Permanent Status Badges:** Centralized semantic CSS status badge tokens (`.badge-status-*`) across all views.
+- **Complete Emoji Elimination:** Replaced all informal emojis with lightweight Feather/Lucide inline SVG vector graphics sized consistently at 14x14px.
+
 ## Recent — Patient Records System & Clinic Operations
 ### Patient Records Core Flow (`Appointment → Consultation → Diagnosis → Medical History`)
 - **Walk-in Patient Intake:** Receptionists can now register brand-new walk-in patients on the spot directly from the appointment booking modal with single-letter middle initial support, immediately selecting them for scheduling without navigating away.

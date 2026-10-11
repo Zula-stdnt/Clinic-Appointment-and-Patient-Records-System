@@ -10,10 +10,11 @@ document.addEventListener('DOMContentLoaded', () => {
         'Receptionist': 'receptionist_dashboard.html'
     };
 
-    axios.get('api/auth_controller.php?action=me', {
+    axios.get('api/auth_controller.php?action=check', {
         headers: { 'Accept': 'application/json' }
     }).then((response) => {
-        const user = response.data && response.data.data ? response.data.data.user : null;
+        const data = response.data && response.data.data;
+        const user = data && data.logged_in ? data.user : null;
         if (user && dashboards[user.role_name]) {
             showActiveSession(user, dashboards[user.role_name]);
         }

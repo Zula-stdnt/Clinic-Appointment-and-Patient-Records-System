@@ -55,5 +55,10 @@ function validatePatientInput(array $input): array {
         }
     }
 
+    $address = trim($input['address'] ?? '');
+    if ($address !== '' && strlen($address) > 255) {
+        $errors['address'] = 'Address cannot exceed 255 characters.';
+    }
+
     return $errors;
 }

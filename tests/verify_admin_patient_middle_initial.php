@@ -99,38 +99,46 @@ $adminCsrf = get_csrf_token($adminCookie);
 $recCsrf = get_csrf_token($recCookie);
 
 // Test 1: Role Permissions on api/patient_controller.php
-echo "- Test 1: Receptionist & Doctor forbidden on api/patient_controller.php (403)...\n";
-$recAccess = call_api('GET', 'api/patient_controller.php', $recCookie);
-if ($recAccess['status'] !== 403) {
-    die("FAILED: Expected 403 for Receptionist on patient_controller, got {$recAccess['status']}\n");
-}
-
+echo "- Test 1: Role Permissions on api/patient_controller.php...\n";
 $docAccess = call_api('GET', 'api/patient_controller.php', $docCookie);
 if ($docAccess['status'] !== 403) {
     die("FAILED: Expected 403 for Doctor on patient_controller, got {$docAccess['status']}\n");
+}
+
+$recAccess = call_api('GET', 'api/patient_controller.php', $recCookie);
+if ($recAccess['status'] !== 200) {
+    die("FAILED: Expected 200 for Receptionist on patient_controller, got {$recAccess['status']}\n");
 }
 
 $adminAccess = call_api('GET', 'api/patient_controller.php', $adminCookie);
 if ($adminAccess['status'] !== 200) {
     die("FAILED: Expected 200 for Admin on patient_controller, got {$adminAccess['status']}\n");
 }
+
+// Verify Admin direct patient creation is blocked (Priority 1)
+$adminCreateRes = call_api('POST', 'api/patient_controller.php', $adminCookie, [
+    'first_name' => 'Admin', 'last_name' => 'Denied', 'gender' => 'Male', 'date_of_birth' => '1990-01-01', 'csrf_token' => $adminCsrf
+]);
+if ($adminCreateRes['status'] !== 403) {
+    die("FAILED: Expected 403 for Admin patient creation, got {$adminCreateRes['status']}\n");
+}
 echo "  [PASS] Role permissions verified.\n";
 
-// Test 2: Administrator Patient Creation - Middle Initial Rules
-echo "- Test 2: Administrator patient creation middle initial rules...\n";
+// Test 2: Patient Creation - Middle Initial Rules (Front desk / Receptionist)
+echo "- Test 2: Patient creation middle initial rules...\n";
 
 // 2a. Empty middle initial accepted
 $pEmpty = [
-    'first_name' => 'AdminTest',
+    'first_name' => 'PatTest',
     'middle_initial' => '',
     'last_name' => 'EmptyMI_' . uniqid(),
     'gender' => 'Male',
     'date_of_birth' => '1990-05-15',
     'contact_no' => '09171112233',
     'address' => '123 Test St',
-    'csrf_token' => $adminCsrf
+    'csrf_token' => $recCsrf
 ];
-$resEmpty = call_api('POST', 'api/patient_controller.php', $adminCookie, $pEmpty);
+$resEmpty = call_api('POST', 'api/patient_controller.php', $recCookie, $pEmpty);
 if ($resEmpty['status'] !== 201 || empty($resEmpty['body']['data']['patient_id'])) {
     die("FAILED: Expected 201 for empty middle initial, got {$resEmpty['status']} - " . json_encode($resEmpty['body']) . "\n");
 }
@@ -140,16 +148,16 @@ echo "  [PASS] Empty middle initial accepted (created ID {$testPatId}).\n";
 
 // 2b. One letter middle initial accepted
 $pOne = [
-    'first_name' => 'AdminTest',
+    'first_name' => 'PatTest',
     'middle_initial' => 'K',
     'last_name' => 'OneMI_' . uniqid(),
     'gender' => 'Female',
     'date_of_birth' => '1992-08-20',
     'contact_no' => '09182223344',
     'address' => '456 Test Ave',
-    'csrf_token' => $adminCsrf
+    'csrf_token' => $recCsrf
 ];
-$resOne = call_api('POST', 'api/patient_controller.php', $adminCookie, $pOne);
+$resOne = call_api('POST', 'api/patient_controller.php', $recCookie, $pOne);
 if ($resOne['status'] !== 201 || empty($resOne['body']['data']['patient_id'])) {
     die("FAILED: Expected 201 for one-letter middle initial, got {$resOne['status']} - " . json_encode($resOne['body']) . "\n");
 }
@@ -158,16 +166,16 @@ echo "  [PASS] One-letter middle initial accepted.\n";
 
 // 2c. Multi-letter middle initial rejected
 $pMulti = [
-    'first_name' => 'AdminTest',
+    'first_name' => 'PatTest',
     'middle_initial' => 'ABC',
     'last_name' => 'MultiMI_' . uniqid(),
     'gender' => 'Male',
     'date_of_birth' => '1995-01-01',
     'contact_no' => '09193334455',
     'address' => '789 Test Rd',
-    'csrf_token' => $adminCsrf
+    'csrf_token' => $recCsrf
 ];
-$resMulti = call_api('POST', 'api/patient_controller.php', $adminCookie, $pMulti);
+$resMulti = call_api('POST', 'api/patient_controller.php', $recCookie, $pMulti);
 if ($resMulti['status'] !== 422 || empty($resMulti['body']['errors']['middle_initial'])) {
     die("FAILED: Expected 422 with middle_initial error for multi-letter, got {$resMulti['status']} - " . json_encode($resMulti['body']) . "\n");
 }
@@ -175,36 +183,36 @@ echo "  [PASS] Multi-letter middle initial rejected (422: {$resMulti['body']['er
 
 // 2d. Non-letter middle initial rejected
 $pNonLetter = [
-    'first_name' => 'AdminTest',
+    'first_name' => 'PatTest',
     'middle_initial' => '5',
     'last_name' => 'NumMI_' . uniqid(),
     'gender' => 'Female',
     'date_of_birth' => '1998-03-12',
     'contact_no' => '09204445566',
     'address' => '321 Test Blvd',
-    'csrf_token' => $adminCsrf
+    'csrf_token' => $recCsrf
 ];
-$resNonLetter = call_api('POST', 'api/patient_controller.php', $adminCookie, $pNonLetter);
+$resNonLetter = call_api('POST', 'api/patient_controller.php', $recCookie, $pNonLetter);
 if ($resNonLetter['status'] !== 422 || empty($resNonLetter['body']['errors']['middle_initial'])) {
     die("FAILED: Expected 422 with middle_initial error for non-letter, got {$resNonLetter['status']} - " . json_encode($resNonLetter['body']) . "\n");
 }
 echo "  [PASS] Non-letter middle initial rejected (422: {$resNonLetter['body']['errors']['middle_initial']}).\n";
 
-// Test 3: Administrator Patient Update - Middle Initial Rules
-echo "- Test 3: Administrator patient update middle initial rules...\n";
+// Test 3: Patient Update - Middle Initial Rules (Front desk / Receptionist)
+echo "- Test 3: Patient update middle initial rules...\n";
 
 // 3a. Update to one letter accepted
 $updateData = [
-    'first_name' => 'AdminTest',
+    'first_name' => 'PatTest',
     'middle_initial' => 'M',
     'last_name' => 'UpdatedMI',
     'gender' => 'Male',
     'date_of_birth' => '1990-05-15',
     'contact_no' => '09171112233',
     'address' => '123 Test St',
-    'csrf_token' => $adminCsrf
+    'csrf_token' => $recCsrf
 ];
-$resUpOne = call_api('PUT', "api/patient_controller.php?id={$testPatId}", $adminCookie, $updateData);
+$resUpOne = call_api('PUT', "api/patient_controller.php?id={$testPatId}", $recCookie, $updateData);
 if ($resUpOne['status'] !== 200) {
     die("FAILED: Expected 200 for update to one-letter MI, got {$resUpOne['status']} - " . json_encode($resUpOne['body']) . "\n");
 }
@@ -216,7 +224,7 @@ echo "  [PASS] Update to one-letter middle initial succeeded and verified in DB.
 
 // 3b. Update to empty middle initial accepted
 $updateData['middle_initial'] = '';
-$resUpEmpty = call_api('PUT', "api/patient_controller.php?id={$testPatId}", $adminCookie, $updateData);
+$resUpEmpty = call_api('PUT', "api/patient_controller.php?id={$testPatId}", $recCookie, $updateData);
 if ($resUpEmpty['status'] !== 200) {
     die("FAILED: Expected 200 for update to empty MI, got {$resUpEmpty['status']} - " . json_encode($resUpEmpty['body']) . "\n");
 }
@@ -228,7 +236,7 @@ echo "  [PASS] Update to empty middle initial succeeded and verified in DB.\n";
 
 // 3c. Update to multi-letter rejected
 $updateData['middle_initial'] = 'XYZ';
-$resUpMulti = call_api('PUT', "api/patient_controller.php?id={$testPatId}", $adminCookie, $updateData);
+$resUpMulti = call_api('PUT', "api/patient_controller.php?id={$testPatId}", $recCookie, $updateData);
 if ($resUpMulti['status'] !== 422 || empty($resUpMulti['body']['errors']['middle_initial'])) {
     die("FAILED: Expected 422 with middle_initial error for multi-letter update, got {$resUpMulti['status']} - " . json_encode($resUpMulti['body']) . "\n");
 }
@@ -236,7 +244,7 @@ echo "  [PASS] Update to multi-letter middle initial rejected (422).\n";
 
 // 3d. Update to non-letter rejected
 $updateData['middle_initial'] = '#';
-$resUpNonLetter = call_api('PUT', "api/patient_controller.php?id={$testPatId}", $adminCookie, $updateData);
+$resUpNonLetter = call_api('PUT', "api/patient_controller.php?id={$testPatId}", $recCookie, $updateData);
 if ($resUpNonLetter['status'] !== 422 || empty($resUpNonLetter['body']['errors']['middle_initial'])) {
     die("FAILED: Expected 422 with middle_initial error for non-letter update, got {$resUpNonLetter['status']} - " . json_encode($resUpNonLetter['body']) . "\n");
 }

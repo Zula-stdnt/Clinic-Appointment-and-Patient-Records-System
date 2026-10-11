@@ -6,6 +6,7 @@
 require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';
 require_once __DIR__ . '/../includes/auth.php';
+require_once __DIR__ . '/../includes/audit.php';
 
 require_login();
 require_role(['Administrator', 'Receptionist', 'Doctor']);
@@ -31,10 +32,16 @@ try {
             listAppointments($pdo);
         }
     } elseif ($method === 'POST') {
-        createAppointment($pdo);
+        if ($action === 'request_cancel') {
+            requestCancelAppointment($pdo);
+        } else {
+            createAppointment($pdo);
+        }
     } elseif ($method === 'PUT') {
         if ($action === 'cancel') {
             cancelAppointment($pdo);
+        } elseif ($action === 'request_cancel') {
+            requestCancelAppointment($pdo);
         } elseif (isset($_GET['id'])) {
             updateAppointment($pdo, (int)$_GET['id']);
         } else {
@@ -45,7 +52,7 @@ try {
     }
 } catch (PDOException $e) {
     error_log("Database Error in appointment_controller.php: " . $e->getMessage());
-    send_error('A database error occurred.', ['details' => $e->getMessage()], 500);
+    send_error('A database error occurred. Please try again.', [], 500);
 } catch (Exception $e) {
     error_log("General Error in appointment_controller.php: " . $e->getMessage());
     send_error($e->getMessage(), [], 400);
@@ -84,6 +91,20 @@ function listAppointments(PDO $pdo) {
         $params[':status'] = $status;
     }
 
+    $dateFilter = trim($_GET['date_filter'] ?? '');
+    $manilaTz = new DateTimeZone('Asia/Manila');
+    $nowManila = new DateTime('now', $manilaTz);
+    if ($dateFilter === 'today') {
+        $where[] = "a.appointment_date = :filter_today";
+        $params[':filter_today'] = $nowManila->format('Y-m-d');
+    } elseif ($dateFilter === 'upcoming') {
+        $where[] = "CONCAT(a.appointment_date, ' ', a.appointment_time) >= :filter_upcoming";
+        $params[':filter_upcoming'] = $nowManila->format('Y-m-d H:i:s');
+    } elseif ($dateFilter === 'past') {
+        $where[] = "CONCAT(a.appointment_date, ' ', a.appointment_time) < :filter_past";
+        $params[':filter_past'] = $nowManila->format('Y-m-d H:i:s');
+    }
+
     $search = trim($_GET['search'] ?? '');
     if ($search !== '') {
         $where[] = "(p.first_name LIKE :search1 OR p.last_name LIKE :search2 OR u_doc.first_name LIKE :search3 OR u_doc.last_name LIKE :search4 OR a.chief_complaint LIKE :search5)";
@@ -117,31 +138,46 @@ function listAppointments(PDO $pdo) {
         $total = (int)$countStmt->fetchColumn();
         $pages = $total > 0 ? (int)ceil($total / $pageSize) : 1;
 
+        $sortBy = trim($_GET['sort_by'] ?? '');
+        $sortOrder = strtoupper(trim($_GET['sort_order'] ?? 'ASC')) === 'DESC' ? 'DESC' : 'ASC';
+        $allowedSortCols = [
+            'appointment_date' => 'a.appointment_date %s, a.appointment_time %s, a.appointment_id DESC',
+            'patient_name'     => 'p.last_name %s, p.first_name %s, a.appointment_date DESC',
+            'doctor_name'      => 'u_doc.last_name %s, u_doc.first_name %s, a.appointment_date DESC',
+            'chief_complaint'  => 'a.chief_complaint %s, a.appointment_date DESC',
+            'status'           => 'a.status %s, a.appointment_date DESC'
+        ];
+
         $sort = trim($_GET['sort'] ?? '');
-        $useUpcomingSort = ($sort === 'upcoming') || ($authUser['role_name'] === 'Doctor' && $sort !== 'desc');
-        
         $dataParams = $params;
-        if ($useUpcomingSort) {
-            $clinicNow = (new DateTime('now', new DateTimeZone('Asia/Manila')))->format('Y-m-d H:i:s');
-            $dataParams[':clinic_now1'] = $clinicNow;
-            $dataParams[':clinic_now2'] = $clinicNow;
-            $orderSql = "ORDER BY 
-                CASE 
-                    WHEN a.status IN ('scheduled', 'confirmed') AND CONCAT(a.appointment_date, ' ', a.appointment_time) >= :clinic_now1 THEN 0
-                    ELSE 1
-                END ASC,
-                CASE 
-                    WHEN a.status IN ('scheduled', 'confirmed') AND CONCAT(a.appointment_date, ' ', a.appointment_time) >= :clinic_now2 
-                        THEN CONCAT(a.appointment_date, ' ', a.appointment_time)
-                END ASC,
-                a.appointment_date DESC, a.appointment_time DESC, a.appointment_id DESC";
+
+        if (isset($allowedSortCols[$sortBy])) {
+            $orderSql = "ORDER BY " . sprintf($allowedSortCols[$sortBy], $sortOrder, $sortOrder);
         } else {
-            $orderSql = "ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.appointment_id DESC";
+            $useUpcomingSort = ($sort === 'upcoming') || ($authUser['role_name'] === 'Doctor' && $sort !== 'desc');
+            if ($useUpcomingSort) {
+                $clinicNow = $nowManila->format('Y-m-d H:i:s');
+                $dataParams[':clinic_now1'] = $clinicNow;
+                $dataParams[':clinic_now2'] = $clinicNow;
+                $orderSql = "ORDER BY 
+                    CASE 
+                        WHEN a.status IN ('scheduled', 'confirmed') AND CONCAT(a.appointment_date, ' ', a.appointment_time) >= :clinic_now1 THEN 0
+                        ELSE 1
+                    END ASC,
+                    CASE 
+                        WHEN a.status IN ('scheduled', 'confirmed') AND CONCAT(a.appointment_date, ' ', a.appointment_time) >= :clinic_now2 
+                            THEN CONCAT(a.appointment_date, ' ', a.appointment_time)
+                    END ASC,
+                    a.appointment_date DESC, a.appointment_time DESC, a.appointment_id DESC";
+            } else {
+                $orderSql = "ORDER BY a.appointment_date DESC, a.appointment_time DESC, a.appointment_id DESC";
+            }
         }
 
         // Paginated query
         $dataSql = "SELECT a.appointment_id, a.appointment_date, a.appointment_time, 
                            a.chief_complaint, a.status, 
+                           a.cancel_requested, a.cancel_request_reason, a.cancel_requested_at,
                            p.patient_id, p.first_name as patient_first, p.last_name as patient_last,
                            (p.deleted_at IS NOT NULL) as patient_archived,
                            u_doc.first_name as doctor_first, u_doc.last_name as doctor_last, d.doctor_id,
@@ -165,6 +201,23 @@ function listAppointments(PDO $pdo) {
         $stmt->execute();
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+        $now = new DateTime('now', new DateTimeZone('Asia/Manila'));
+        foreach ($results as &$appt) {
+            $appt['is_overdue'] = false;
+            $appt['minutes_overdue'] = 0;
+            if (in_array($appt['status'], ['scheduled', 'confirmed'], true)) {
+                $scheduledTime = new DateTime($appt['appointment_date'] . ' ' . $appt['appointment_time'], new DateTimeZone('Asia/Manila'));
+                $graceTime = clone $scheduledTime;
+                $graceTime->modify('+15 minutes');
+                if ($now > $graceTime) {
+                    $appt['is_overdue'] = true;
+                    $diffSeconds = $now->getTimestamp() - $scheduledTime->getTimestamp();
+                    $appt['minutes_overdue'] = (int)round($diffSeconds / 60);
+                }
+            }
+        }
+        unset($appt);
+
         send_success('Appointments retrieved', [
             'items' => $results,
             'total' => $total,
@@ -176,6 +229,7 @@ function listAppointments(PDO $pdo) {
         // Non-paginated fallback for backward-compatible consumers
         $dataSql = "SELECT a.appointment_id, a.appointment_date, a.appointment_time, 
                            a.chief_complaint, a.status, 
+                           a.cancel_requested, a.cancel_request_reason, a.cancel_requested_at,
                            p.patient_id, p.first_name as patient_first, p.last_name as patient_last,
                            (p.deleted_at IS NOT NULL) as patient_archived,
                            u_doc.first_name as doctor_first, u_doc.last_name as doctor_last, d.doctor_id,
@@ -195,6 +249,23 @@ function listAppointments(PDO $pdo) {
         }
         $stmt->execute();
         $results = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $now = new DateTime('now', new DateTimeZone('Asia/Manila'));
+        foreach ($results as &$appt) {
+            $appt['is_overdue'] = false;
+            $appt['minutes_overdue'] = 0;
+            if (in_array($appt['status'], ['scheduled', 'confirmed'], true)) {
+                $scheduledTime = new DateTime($appt['appointment_date'] . ' ' . $appt['appointment_time'], new DateTimeZone('Asia/Manila'));
+                $graceTime = clone $scheduledTime;
+                $graceTime->modify('+15 minutes');
+                if ($now > $graceTime) {
+                    $appt['is_overdue'] = true;
+                    $diffSeconds = $now->getTimestamp() - $scheduledTime->getTimestamp();
+                    $appt['minutes_overdue'] = (int)round($diffSeconds / 60);
+                }
+            }
+        }
+        unset($appt);
         $total = count($results);
 
         send_success('Appointments retrieved', [
@@ -215,6 +286,7 @@ function getAppointmentById(PDO $pdo, int $id) {
                    a.appointment_date, a.appointment_time, a.chief_complaint, a.status, a.created_at,
                    p.first_name as patient_first, p.last_name as patient_last, p.middle_initial as patient_middle,
                    p.gender as patient_gender, p.date_of_birth, p.contact_no, p.address, p.created_at as patient_created_at,
+                   p.allergies_alerts, p.allergies_confirmed_by_doctor,
                    u_doc.first_name as doctor_first, u_doc.last_name as doctor_last, u_doc.middle_initial as doctor_middle,
                    (SELECT GROUP_CONCAT(DISTINCT s.specialty_name ORDER BY s.specialty_name SEPARATOR ', ')
                       FROM doctor_specialty ds
@@ -252,7 +324,8 @@ function getAppointmentById(PDO $pdo, int $id) {
 // Supports ?search= so the picker never has to load/scroll the full table.
 function listPatientOptions(PDO $pdo): void {
     $search = trim($_GET['search'] ?? '');
-    $sql = "SELECT patient_id, first_name, last_name, middle_initial, date_of_birth
+    $sql = "SELECT patient_id, first_name, last_name, middle_initial, date_of_birth,
+                   allergies_alerts, allergies_confirmed_by_doctor
             FROM patients
             WHERE deleted_at IS NULL";
     $params = [];
@@ -357,8 +430,10 @@ function createAppointment(PDO $pdo): void {
         }
     }
 
-    if ($bloodPressure !== '' && mb_strlen($bloodPressure) > 20) {
-        $errors['blood_pressure'] = 'Blood pressure must be 20 characters or fewer.';
+    if ($bloodPressure !== '') {
+        if (mb_strlen($bloodPressure) > 20 || !preg_match('/^([6-9]\d|1\d\d|2[0-5]\d)\/([4-9]\d|1[0-4]\d)$/', $bloodPressure)) {
+            $errors['blood_pressure'] = 'Blood pressure must be in SYS/DIA format (e.g., 120/80) with systolic 60-259 and diastolic 40-149.';
+        }
     }
     if ($temperature !== '' && (!is_numeric($temperature) || (float)$temperature < 30 || (float)$temperature > 45)) {
         $errors['temperature'] = 'Temperature must be a number between 30 and 45 °C.';
@@ -401,7 +476,7 @@ function createAppointment(PDO $pdo): void {
         $dupStmt->execute([$doctorId, $appointmentDate, $normalizedTime]);
         if ($dupStmt->fetch()) {
             $pdo->rollBack();
-            send_error('The doctor already has an active appointment at that date and time.', [], 409);
+            send_error('The doctor already has an active appointment at that date and time.', ['appointment_time' => 'Time slot is already occupied.'], 409);
         }
 
         // Daily clinic capacity check (max 10 active appointments clinic-wide per date)
@@ -422,14 +497,22 @@ function createAppointment(PDO $pdo): void {
             "INSERT INTO appointments (patient_id, doctor_id, created_by, appointment_date, appointment_time, chief_complaint, status)
              VALUES (?, ?, ?, ?, ?, ?, 'scheduled')"
         );
-        $stmt->execute([
-            $patientId,
-            $doctorId,
-            $authUser['user_id'],
-            $appointmentDate,
-            $normalizedTime,
-            $chiefComplaint !== '' ? $chiefComplaint : null
-        ]);
+        try {
+            $stmt->execute([
+                $patientId,
+                $doctorId,
+                $authUser['user_id'],
+                $appointmentDate,
+                $normalizedTime,
+                $chiefComplaint !== '' ? $chiefComplaint : null
+            ]);
+        } catch (PDOException $pe) {
+            if ($pe->getCode() == 23000 || (isset($pe->errorInfo[1]) && $pe->errorInfo[1] == 1062)) {
+                $pdo->rollBack();
+                send_error('The doctor already has an active appointment at that date and time.', ['appointment_time' => 'Time slot is already occupied.'], 409);
+            }
+            throw $pe;
+        }
         $appointmentId = (int)$pdo->lastInsertId();
 
         $newCount = $currentCount + 1;
@@ -452,11 +535,38 @@ function createAppointment(PDO $pdo): void {
             ]);
         }
 
+        // Patient-reported intake allergy note update if provided
+        if (array_key_exists('allergies_alerts', $input)) {
+            $newAllergies = trim((string)$input['allergies_alerts']) ?: null;
+            $curPatStmt = $pdo->prepare("SELECT allergies_alerts FROM patients WHERE patient_id = ?");
+            $curPatStmt->execute([$patientId]);
+            $curAllergies = $curPatStmt->fetchColumn();
+
+            if ($newAllergies !== $curAllergies) {
+                $updAllergy = $pdo->prepare("UPDATE patients SET allergies_alerts = ?, allergies_confirmed_by_doctor = 0 WHERE patient_id = ?");
+                $updAllergy->execute([$newAllergies, $patientId]);
+
+                log_audit($pdo, (int)$authUser['user_id'], 'UPDATE_ALLERGIES_AT_INTAKE', 'patient', $patientId, [
+                    'allergies_alerts' => $curAllergies
+                ], [
+                    'allergies_alerts' => $newAllergies,
+                    'allergies_confirmed_by_doctor' => 0,
+                    'appointment_id' => $appointmentId
+                ]);
+            }
+        }
+
         $pdo->commit();
         $resData = ['appointment_id' => $appointmentId];
         if ($warning !== null) {
             $resData['warning'] = $warning;
         }
+        log_audit($pdo, (int)$authUser['user_id'], 'CREATE_APPOINTMENT', 'appointment', $appointmentId, null, [
+            'patient_id' => $patientId,
+            'doctor_id' => $doctorId,
+            'appointment_date' => $appointmentDate,
+            'appointment_time' => $normalizedTime
+        ]);
         send_success('Appointment scheduled successfully.', $resData, 201);
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -467,6 +577,7 @@ function createAppointment(PDO $pdo): void {
 // Cancel a booked visit (patient changed their mind / no longer waiting).
 // Only scheduled or confirmed appointments can be cancelled; cancelling frees
 // the doctor's slot because the duplicate-slot check ignores cancelled rows.
+// NOTE (Priority 4): Doctors cannot cancel directly; only Receptionists cancel.
 function cancelAppointment(PDO $pdo): void {
     $authUser = get_auth_user();
     $input = get_json_input();
@@ -476,7 +587,7 @@ function cancelAppointment(PDO $pdo): void {
         send_error('appointment_id is required.', [], 400);
     }
 
-    $stmt = $pdo->prepare("SELECT appointment_id, doctor_id, status FROM appointments WHERE appointment_id = ? LIMIT 1");
+    $stmt = $pdo->prepare("SELECT appointment_id, doctor_id, patient_id, status FROM appointments WHERE appointment_id = ? LIMIT 1");
     $stmt->execute([$appointmentId]);
     $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -484,14 +595,9 @@ function cancelAppointment(PDO $pdo): void {
         send_error('Appointment not found.', [], 404);
     }
 
-    // Doctors may only cancel their own appointments; staff may cancel any.
+    // DOCTORS CANNOT DIRECTLY CANCEL (Priority 4)
     if ($authUser['role_name'] === 'Doctor') {
-        $docStmt = $pdo->prepare("SELECT doctor_id FROM doctors WHERE user_id = ? LIMIT 1");
-        $docStmt->execute([$authUser['user_id']]);
-        $doc = $docStmt->fetch(PDO::FETCH_ASSOC);
-        if (!$doc || $appointment['doctor_id'] != $doc['doctor_id']) {
-            send_error('Unauthorized access to this appointment.', [], 403);
-        }
+        send_error('Doctors cannot directly cancel appointments. Please submit a cancellation request with a reason instead.', [], 403);
     }
 
     if ($appointment['status'] === 'completed') {
@@ -501,17 +607,72 @@ function cancelAppointment(PDO $pdo): void {
         send_error('This appointment is already cancelled.', [], 409);
     }
     if (!in_array($appointment['status'], ['scheduled', 'confirmed'], true)) {
-        send_error('Only scheduled appointments can be cancelled.', [], 409);
+        send_error('Only scheduled or confirmed appointments can be cancelled.', [], 409);
     }
 
-    $upd = $pdo->prepare("UPDATE appointments SET status = 'cancelled' WHERE appointment_id = ? AND status IN ('scheduled', 'confirmed')");
+    $reason = trim($input['reason'] ?? '') ?: 'Cancelled by front desk';
+
+    $upd = $pdo->prepare("UPDATE appointments SET status = 'cancelled', cancel_requested = 0, cancel_request_reason = NULL, cancel_requested_at = NULL, cancel_requested_by = NULL WHERE appointment_id = ? AND status IN ('scheduled', 'confirmed')");
     $upd->execute([$appointmentId]);
 
     if ($upd->rowCount() === 0) {
         send_error('This appointment can no longer be cancelled.', [], 409);
     }
 
+    log_audit($pdo, (int)$authUser['user_id'], 'CANCEL_APPOINTMENT', 'appointment', $appointmentId, ['status' => $appointment['status']], ['status' => 'cancelled'], $reason);
+
     send_success('Appointment cancelled. The time slot is now available for rebooking.');
+}
+
+function requestCancelAppointment(PDO $pdo): void {
+    $authUser = get_auth_user();
+    if ($authUser['role_name'] !== 'Doctor') {
+        send_error('Only doctors can submit a cancellation request.', [], 403);
+    }
+
+    $input = get_json_input();
+    $appointmentId = (int)($input['appointment_id'] ?? ($_GET['id'] ?? 0));
+    $reason = trim($input['reason'] ?? '');
+
+    if ($appointmentId <= 0) {
+        send_error('appointment_id is required.', [], 400);
+    }
+    if (mb_strlen($reason) < 5) {
+        send_error('A cancellation reason of at least 5 characters is required.', ['reason' => 'Please provide a reason for the cancellation request.'], 422);
+    }
+
+    $docStmt = $pdo->prepare("SELECT doctor_id FROM doctors WHERE user_id = ? LIMIT 1");
+    $docStmt->execute([$authUser['user_id']]);
+    $doc = $docStmt->fetch(PDO::FETCH_ASSOC);
+    if (!$doc) {
+        send_error('Doctor profile not found.', [], 404);
+    }
+
+    $stmt = $pdo->prepare("SELECT appointment_id, doctor_id, patient_id, status FROM appointments WHERE appointment_id = ? LIMIT 1");
+    $stmt->execute([$appointmentId]);
+    $appointment = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$appointment || $appointment['doctor_id'] != $doc['doctor_id']) {
+        send_error('Unauthorized access to this appointment.', [], 403);
+    }
+
+    if ($appointment['status'] === 'completed') {
+        send_error('Completed visits cannot be cancelled.', [], 409);
+    }
+    if ($appointment['status'] === 'cancelled') {
+        send_error('This appointment is already cancelled.', [], 409);
+    }
+
+    $upd = $pdo->prepare(
+        "UPDATE appointments 
+         SET cancel_requested = 1, cancel_request_reason = ?, cancel_requested_at = NOW(), cancel_requested_by = ?
+         WHERE appointment_id = ?"
+    );
+    $upd->execute([$reason, $authUser['user_id'], $appointmentId]);
+
+    log_audit($pdo, (int)$authUser['user_id'], 'CANCEL_REQUEST', 'appointment', $appointmentId, null, ['cancel_request_reason' => $reason], $reason);
+
+    send_success('Cancellation request submitted. Receptionist will contact the patient to reschedule or cancel.');
 }
 
 function updateAppointment(PDO $pdo, int $appointmentId): void {
@@ -610,8 +771,10 @@ function updateAppointment(PDO $pdo, int $appointmentId): void {
         }
 
         if ($updateVitals) {
-            if ($bloodPressure !== '' && mb_strlen($bloodPressure) > 20) {
-                $errors['blood_pressure'] = 'Blood pressure must be 20 characters or fewer.';
+            if ($bloodPressure !== '') {
+                if (mb_strlen($bloodPressure) > 20 || !preg_match('/^([6-9]\d|1\d\d|2[0-5]\d)\/([4-9]\d|1[0-4]\d)$/', $bloodPressure)) {
+                    $errors['blood_pressure'] = 'Blood pressure must be in SYS/DIA format (e.g., 120/80) with systolic 60-259 and diastolic 40-149.';
+                }
             }
             if ($temperature !== '' && (!is_numeric($temperature) || (float)$temperature < 30 || (float)$temperature > 45)) {
                 $errors['temperature'] = 'Temperature must be a number between 30 and 45 °C.';
@@ -654,7 +817,7 @@ function updateAppointment(PDO $pdo, int $appointmentId): void {
             $dupStmt->execute([$doctorId, $appointmentDate, $normalizedTime, $appointmentId]);
             if ($dupStmt->fetch()) {
                 $pdo->rollBack();
-                send_error('The doctor already has an active appointment at that date and time.', [], 409);
+                send_error('The doctor already has an active appointment at that date and time.', ['appointment_time' => 'Time slot is already occupied.'], 409);
             }
 
             // Daily clinic capacity check (max 10 active appointments clinic-wide per date)
@@ -679,17 +842,28 @@ function updateAppointment(PDO $pdo, int $appointmentId): void {
         }
 
         $stmtUpdate = $pdo->prepare(
-            "UPDATE appointments SET patient_id = ?, doctor_id = ?, appointment_date = ?, appointment_time = ?, chief_complaint = ?, status = ? WHERE appointment_id = ?"
+            "UPDATE appointments 
+             SET patient_id = ?, doctor_id = ?, appointment_date = ?, appointment_time = ?, chief_complaint = ?, status = ?,
+                 cancel_requested = 0, cancel_request_reason = NULL, cancel_requested_at = NULL, cancel_requested_by = NULL
+             WHERE appointment_id = ?"
         );
-        $stmtUpdate->execute([
-            $patientId,
-            $doctorId,
-            $appointmentDate,
-            $normalizedTime,
-            $chiefComplaint !== '' ? $chiefComplaint : null,
-            $status,
-            $appointmentId
-        ]);
+        try {
+            $stmtUpdate->execute([
+                $patientId,
+                $doctorId,
+                $appointmentDate,
+                $normalizedTime,
+                $chiefComplaint !== '' ? $chiefComplaint : null,
+                $status,
+                $appointmentId
+            ]);
+        } catch (PDOException $pe) {
+            if ($pe->getCode() == 23000 || (isset($pe->errorInfo[1]) && $pe->errorInfo[1] == 1062)) {
+                $pdo->rollBack();
+                send_error('The doctor already has an active appointment at that date and time.', ['appointment_time' => 'Time slot is already occupied.'], 409);
+            }
+            throw $pe;
+        }
 
         if ($updateVitals) {
             if ($bloodPressure === '' && $temperature === '' && $oxygenSat === '') {
@@ -714,6 +888,42 @@ function updateAppointment(PDO $pdo, int $appointmentId): void {
                         $oxygenSat !== '' ? (float)$oxygenSat : null
                     ]);
                 }
+            }
+        }
+
+        $statusChanged = ($oldStatus !== $status);
+        $scheduleChanged = ($lockedAppt['appointment_date'] !== $appointmentDate || $lockedAppt['appointment_time'] !== $normalizedTime);
+        if ($statusChanged || $scheduleChanged) {
+            $actionName = $statusChanged ? 'STATUS_CHANGE' : 'RESCHEDULE_APPOINTMENT';
+            log_audit($pdo, (int)$authUser['user_id'], $actionName, 'appointment', $appointmentId, [
+                'status' => $oldStatus,
+                'date' => $lockedAppt['appointment_date'],
+                'time' => $lockedAppt['appointment_time']
+            ], [
+                'status' => $status,
+                'date' => $appointmentDate,
+                'time' => $normalizedTime
+            ]);
+        }
+
+        // Patient-reported intake allergy note update if provided
+        if (array_key_exists('allergies_alerts', $input)) {
+            $newAllergies = trim((string)$input['allergies_alerts']) ?: null;
+            $curPatStmt = $pdo->prepare("SELECT allergies_alerts FROM patients WHERE patient_id = ?");
+            $curPatStmt->execute([$patientId]);
+            $curAllergies = $curPatStmt->fetchColumn();
+
+            if ($newAllergies !== $curAllergies) {
+                $updAllergy = $pdo->prepare("UPDATE patients SET allergies_alerts = ?, allergies_confirmed_by_doctor = 0 WHERE patient_id = ?");
+                $updAllergy->execute([$newAllergies, $patientId]);
+
+                log_audit($pdo, (int)$authUser['user_id'], 'UPDATE_ALLERGIES_AT_INTAKE', 'patient', $patientId, [
+                    'allergies_alerts' => $curAllergies
+                ], [
+                    'allergies_alerts' => $newAllergies,
+                    'allergies_confirmed_by_doctor' => 0,
+                    'appointment_id' => $appointmentId
+                ]);
             }
         }
 

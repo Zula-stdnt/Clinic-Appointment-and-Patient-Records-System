@@ -4,12 +4,12 @@
 
 import { requireSession } from './session-guard.js?v=24';
 import { hideAllModals, closeSidebar } from './ui.js?v=24';
-import doctorOverview from './modules/doctor_overview.js?v=26';
-import doctorAppointments from './modules/doctor_appointments.js?v=26';
-import doctorPatients from './modules/doctor_patients.js?v=29';
-import doctorConsultation from './modules/doctor_consultation.js?v=29';
+import doctorOverview from './modules/doctor_overview.js?v=28';
+import doctorAppointments from './modules/doctor_appointments.js?v=31';
+import doctorPatients from './modules/doctor_patients.js?v=34';
+import doctorConsultation from './modules/doctor_consultation.js?v=32';
 import settingsModule from './modules/account_settings.js?v=24';
-import profileModule from './modules/my_profile.js?v=24';
+import doctorProfile from './modules/doctor_profile.js?v=31';
 
 const modules = {
     'doctor_overview': {
@@ -34,7 +34,7 @@ const modules = {
     },
     'profile': {
         title: 'My Profile',
-        instance: profileModule
+        instance: doctorProfile
     }
 };
 

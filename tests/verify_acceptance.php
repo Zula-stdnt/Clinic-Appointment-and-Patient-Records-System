@@ -192,7 +192,7 @@ run_test("1.6: API endpoint returns 401 when logged out", function() use ($baseU
 run_test("1.7: API endpoint returns 403 when logged in as non-Administrator", function() use ($baseUrl, $cookieDoctor) {
     // Log in as doctor
     $login = http_request('POST', "$baseUrl/api/auth_controller.php?action=login", [
-        'username' => 'dr.smith',
+        'username' => 'dr.house',
         'password' => 'DoctorPass123!'
     ], $cookieDoctor);
     if ($login['status'] !== 200) return "Doctor login failed";
@@ -448,15 +448,26 @@ run_test("3.3: Hard-deleting an unreferenced record permanently removes it", fun
 echo "\n--- Group 4: Security and Quality ---\n";
 
 run_test("4.1: Patient XSS payload is stored safely and rendered escaped", function() use ($baseUrl, $cookieAdmin, $adminCsrf) {
+    // Front-desk registration requires Receptionist role
+    $cookieRecep = tempnam(sys_get_temp_dir(), 'ck_rec_');
+    $recLogin = http_request('POST', "$baseUrl/api/auth_controller.php?action=login", [
+        'username' => 'recep.jane',
+        'password' => 'RecepPass123!'
+    ], $cookieRecep);
+    $recMe = http_request('GET', "$baseUrl/api/auth_controller.php?action=me", null, $cookieRecep);
+    $recCsrf = $recMe['json']['data']['csrf_token'] ?? '';
+
     $xssName = "<script>alert(1)</script>";
     $create = http_request('POST', "$baseUrl/api/patient_controller.php", [
         'first_name' => $xssName,
-        'last_name' => 'Tester',
-        'gender' => 'other',
+        'last_name' => 'TesterXSS',
+        'gender' => 'Other',
         'date_of_birth' => '1995-05-15'
-    ], $cookieAdmin, ["X-CSRF-Token: $adminCsrf"]);
+    ], $cookieRecep, ["X-CSRF-Token: $recCsrf"]);
 
-    if ($create['status'] !== 201) return "Failed to create patient with special chars";
+    @unlink($cookieRecep);
+
+    if ($create['status'] !== 201) return "Failed to create patient with special chars: " . json_encode($create['json']);
     $id = $create['json']['data']['patient_id'];
 
     $get = http_request('GET', "$baseUrl/api/patient_controller.php?id=$id", null, $cookieAdmin);

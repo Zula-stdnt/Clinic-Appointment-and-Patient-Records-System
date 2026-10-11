@@ -32,6 +32,107 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
+### 2026-10-11 — Universal Gender Filtering & "Other" Option Resolution (`pending`)
+**Type:** fix
+**Database / migrations:** none
+**Files changed:**
+- `api/patient_controller.php` — updated query for `gender=other` to match non-binary and custom entries: `(LOWER(TRIM(COALESCE(gender, ''))) NOT IN ('male', 'female', 'unknown') AND LOWER(TRIM(COALESCE(gender, ''))) != '')`.
+- `api/doctor_controller.php` — applied identical `other` filter query logic.
+- `api/doctor_patients_controller.php` — applied identical `other` filter query logic and added `gender` filtering parameter support.
+- `api/user_controller.php` — applied identical `other` filter query logic.
+- `assets/js/modules/doctor_patients.js` — added `#patients-gender-filter` selector (`All Genders`, `Male`, `Female`, `Other`, `Unknown`) to toolbar for full portal parity.
+- `assets/js/modules/doctors.js` — aligned frontend gender filter dropdown options.
+- `admin_dashboard.html`, `doctor_dashboard.html`, `receptionist_dashboard.html` — incremented cache-busting script version tags.
+**New IDs introduced:** none
+**How to verify:**
+- Run `php tests/verify_gender_filters.php` (6/6 tests pass).
+- In Admin → Manage Patients, Receptionist → Patient Directory, and Doctor → Patient Records, choose "Other": custom entries like "Transgender" and "Non-Binary" are correctly listed without empty tables.
+
+### 2026-10-11 — Break-Glass Modal Direct Opening & Event Delegation Fix (`pending`)
+**Type:** fix
+**Database / migrations:** none
+**Files changed:**
+- `assets/js/modules/doctor_patients.js` — added `data-assigned="0"` to unassigned patient action buttons; clicking immediately opens `#break-glass-modal` without making a premature chart request that triggered a 403 error; replaced row-level listeners with container-level event delegation (`e.target.closest('.btn-break-glass')`) to stop event listeners from multiplying across table re-renders.
+**New IDs introduced:** none
+**How to verify:**
+- Log in as Doctor → Patient Records → locate an Unassigned patient → click "Break-Glass": modal opens smoothly with zero console errors or screen flickers.
+
+### 2026-10-11 — Two-Stage Patient Allergy Intake & Doctor Confirmation Workflow (`pending`)
+**Type:** feat
+**Database / migrations:** none (columns `allergies_alerts` and `allergies_confirmed_by_doctor` pre-created in `setup/schema.sql`)
+**Files changed:**
+- `api/appointment_controller.php` — added `allergies_alerts` and `allergies_confirmed_by_doctor` to `meta=patients` and `getAppointmentById`; records allergy intake note and logs `UPDATE_ALLERGIES_AT_INTAKE` in audit logs.
+- `api/appointment_patient_controller.php` — demographic updates reset `allergies_confirmed_by_doctor = 0`.
+- `api/consultation_controller.php` — completing an encounter automatically elevates `allergies_confirmed_by_doctor = 1`.
+- `assets/js/components/patient-register.js` — added allergy alert notes field to walk-in registration.
+- `assets/js/modules/receptionist_appointments.js` — added allergy notes textarea with dynamic confirmation status badge to booking modal.
+- `assets/js/modules/doctor_consultation.js` — added amber allergy alert banner and NKDA button to patient header.
+- `assets/js/components/print-appointment-form.js` — formatted intake slip with allergy alert block and confirmation badge.
+**New IDs introduced:** none
+**How to verify:**
+- Run `php tests/verify_allergy_workflow.php` (6/6 tests pass).
+- Receptionist schedules patient with allergy → status shows amber "Unconfirmed Intake Note". Doctor completes consultation → status elevates to green "Doctor Confirmed".
+
+### 2026-10-11 — Receptionist Dashboard Direct Landing & Doctor Controller Read Permission (`pending`)
+**Type:** feat / fix
+**Database / migrations:** none
+**Files changed:**
+- `api/auth_controller.php` — login redirect response for Receptionists defaults to `#receptionist_overview`.
+- `assets/js/receptionist_main.js` — router default route set to `receptionist_overview`.
+- `api/doctor_controller.php` — granted Receptionists read-only (`GET`) access to doctor lists and specialties to populate dashboard metrics without 403 Forbidden errors.
+**New IDs introduced:** none
+**How to verify:**
+- Log in as Receptionist: browser routes directly to Dashboard. Clicking "Refresh" loads data with 0 console errors.
+
+### 2026-10-11 — Permanent Status Badge Design Tokens & Feather/Lucide SVG Icons (`pending`)
+**Type:** chore / style
+**Database / migrations:** none
+**Files changed:**
+- `assets/css/style.css` — centralized semantic status badge tokens (`.badge-status-scheduled`, `.badge-status-confirmed`, `.badge-status-completed`, `.badge-status-cancelled`, `.badge-status-noshow`, `.badge-status-breakglass`). Standardized `.table-page-size` padding.
+- All HTML dashboard shells & modules — removed all informal emojis and replaced with clean inline SVG vector graphics.
+**New IDs introduced:** CSS classes `.badge-status-*`
+**How to verify:**
+- Inspect status badges across Admin, Doctor, and Receptionist portals: all colors and icon sizes are consistent and professional.
+
+### 2026-10-11 — Universal Interactive Column Sorting & Filter Parity Across All Tables (`pending`)
+**Type:** feat
+**Database / migrations:** none
+**Files changed:**
+- All frontend module files (`patients.js`, `doctors.js`, `users.js`, `services.js`, `specialties.js`, `medications.js`, `archive.js`, `audit_logs.js`, `doctor_appointments.js`, `doctor_patients.js`, `receptionist_appointments.js`, `receptionist_patients.js`).
+- All API controllers — added safe column sorting allow-lists (`sort_by`, `sort_order`).
+**New IDs introduced:** `data-sort` attributes on table header cells
+**How to verify:**
+- Click column headers on any table: rows sort A-Z on first click and Z-A on second click with visible caret indicators.
+
+### 2026-10-11 — Clinical Privacy Separation, Universal Directory & Break-Glass Protocol (`pending`)
+**Type:** feat
+**Database / migrations:** `migrations/011_create_audit_logs.sql`, `migrations/012_clinical_safety_and_constraints.sql`
+**Files changed:**
+- `assets/js/components/patient-record-view.js` — added `isReceptionist` guard to display demographic-only card and completely block clinical encounter history.
+- `api/patient_record_controller.php` — blocks encounter history from Receptionists and enforces ownership gating on Doctors.
+- `api/doctor_patients_controller.php` — lists all hospital patients with "Assigned" / "Unassigned" badges; implements `action=break_glass`.
+- `includes/audit.php` & `api/audit_log_controller.php` — permanent audit logging for break-glass emergency access, demographic changes, and appointment cancellations.
+- `assets/js/modules/audit_logs.js` — Administrator audit log viewer with multi-filter controls.
+- All frontend modules — universal ID masking (removed `PAT-XXXX`, `APT-XXXX` from all visible labels).
+**New IDs introduced:** `audit_logs` table, `consultation_addenda` table
+**How to verify:**
+- Run `php tests/verify_todo_improvements.php` (8/8 tests pass).
+- Run `php tests/verify_improvements.php` (10/10 tests pass).
+
+### 2026-10-11 — Foundational Bug Fixes & Session Check Probe (`pending`)
+**Type:** fix
+**Database / migrations:** `migrations/008_icd10_catalog.sql`, `migrations/009_prescriptions_time_to_take.sql`
+**Files changed:**
+- `api/auth_controller.php` — added `action=check` probe returning 200 OK `{ logged_in: false }` to eliminate red 401 console errors on `login.html`.
+- `assets/js/login.js` — uses probe check on page load.
+- `api/patient_record_controller.php` — handles `time_to_take` and `icd10_codes` cleanly with schema fallbacks to prevent 500 crashes.
+- `assets/js/modules/doctor_appointments.js` — replaced `display: flex` on `<td>` with standard `.actions-cell` to fix row distortion.
+- `assets/js/modules/receptionist_appointments.js` — fixed walk-in registration modal structure and converted action buttons to compact icon buttons.
+**New IDs introduced:** `api/auth_controller.php?action=check`
+**How to verify:**
+- Open `login.html`: console displays zero red network errors.
+- Doctor appointments table rows render evenly aligned.
+
 ### 2026-10-05 — Compact appointment row actions (`ad7657d`)
 **Type:** fix
 **Database / migrations:** none

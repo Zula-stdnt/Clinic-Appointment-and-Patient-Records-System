@@ -3,6 +3,7 @@
 // Authentication, Session Security, Role-Based Access Control, and CSRF Protection
 
 require_once __DIR__ . '/response.php';
+require_once __DIR__ . '/audit.php';
 
 function init_session(): void {
     if (session_status() === PHP_SESSION_NONE) {

@@ -181,19 +181,19 @@ run_test("Doctor forbidden from receptionist API", function() use ($pdo, $baseUr
 });
 
 run_test("Receptionist edits active appointment and clears vitals", function() use ($pdo, $baseUrl1, $cookieRecep, $csrfRecep, $patId, $docId, $recepId) {
-    $pdo->exec("INSERT INTO appointments (patient_id, doctor_id, created_by, appointment_date, appointment_time, status) VALUES ($patId, $docId, $recepId, '2050-01-01', '09:00:00', 'scheduled')");
+    $pdo->exec("INSERT INTO appointments (patient_id, doctor_id, created_by, appointment_date, appointment_time, status) VALUES ($patId, $docId, $recepId, '2050-01-03', '09:00:00', 'scheduled')");
     $apptId = track_fixture('appointments', $pdo->lastInsertId());
     $pdo->exec("INSERT INTO vital_signs (appointment_id, blood_pressure, temperature) VALUES ($apptId, '120/80', 37.0)");
 
     $res = http_request('PUT', "$baseUrl1/api/appointment_controller.php?id=$apptId", [
-        'patient_id' => $patId, 'doctor_id' => $docId, 'appointment_date' => '2050-01-02', 'appointment_time' => '10:00:00', 'status' => 'confirmed',
+        'patient_id' => $patId, 'doctor_id' => $docId, 'appointment_date' => '2050-01-04', 'appointment_time' => '10:00:00', 'status' => 'confirmed',
         'blood_pressure' => '', 'temperature' => '', 'oxygen_saturation' => ''
     ], $cookieRecep, ["X-CSRF-Token: $csrfRecep"]);
 
     if ($res['status'] !== 200) return "Expected 200, got {$res['status']} " . json_encode($res['json']);
     
     $appt = $pdo->query("SELECT appointment_date, appointment_time, status FROM appointments WHERE appointment_id = $apptId")->fetch();
-    if ($appt['appointment_date'] !== '2050-01-02' || $appt['appointment_time'] !== '10:00:00' || $appt['status'] !== 'confirmed') return "DB not updated properly";
+    if ($appt['appointment_date'] !== '2050-01-04' || $appt['appointment_time'] !== '10:00:00' || $appt['status'] !== 'confirmed') return "DB not updated properly";
 
     $vCheck = $pdo->query("SELECT COUNT(*) FROM vital_signs WHERE appointment_id = $apptId")->fetchColumn();
     if ($vCheck > 0) return "Vitals not cleared from DB";
@@ -214,11 +214,11 @@ run_test("Terminal status rejection", function() use ($pdo, $baseUrl1, $cookieRe
 });
 
 run_test("Stale status transition prevention (confirmed -> scheduled)", function() use ($pdo, $baseUrl1, $cookieRecep, $csrfRecep, $patId, $docId, $recepId) {
-    $pdo->exec("INSERT INTO appointments (patient_id, doctor_id, created_by, appointment_date, appointment_time, status) VALUES ($patId, $docId, $recepId, '2050-01-03', '09:00:00', 'confirmed')");
+    $pdo->exec("INSERT INTO appointments (patient_id, doctor_id, created_by, appointment_date, appointment_time, status) VALUES ($patId, $docId, $recepId, '2050-01-03', '11:00:00', 'confirmed')");
     $apptId = track_fixture('appointments', $pdo->lastInsertId());
 
     $res = http_request('PUT', "$baseUrl1/api/appointment_controller.php?id=$apptId", [
-        'patient_id' => $patId, 'doctor_id' => $docId, 'appointment_date' => '2050-01-03', 'appointment_time' => '10:00:00', 'status' => 'scheduled'
+        'patient_id' => $patId, 'doctor_id' => $docId, 'appointment_date' => '2050-01-03', 'appointment_time' => '12:00:00', 'status' => 'scheduled'
     ], $cookieRecep, ["X-CSRF-Token: $csrfRecep"]);
 
     if ($res['status'] !== 422) return "Expected 422, got {$res['status']}";
@@ -320,30 +320,32 @@ run_test("ITE 387 Required: Complete multiple encounters and verify patient hist
     ], $cookieRecep, ["X-CSRF-Token: $csrfRecep"]);
     if ($resA1['status'] !== 201) return "Appointment 1 creation failed: {$resA1['status']} " . json_encode($resA1['json']);
     $appt1Id = track_fixture('appointments', $resA1['json']['data']['appointment_id']);
+    $pdo->exec("UPDATE appointments SET status = 'confirmed' WHERE appointment_id = $appt1Id");
     
     // 2. Doctor saves consultation 1 with Diagnosis A
     $res1 = http_request('POST', "$baseUrl1/api/consultation_controller.php", [
         'appointment_id' => $appt1Id,
         'notes' => 'Visit 1',
-        'diagnoses' => [['icd10_code' => 'A00', 'diagnosis_name' => 'Diag 1']]
+        'diagnoses' => [['icd10_code' => 'A09', 'diagnosis_name' => 'Diag 1']]
     ], $cookieDoc, ["X-CSRF-Token: $csrfDoc"]);
     if ($res1['status'] !== 200) return "Consultation 1 failed: {$res1['status']}";
     $cid1 = $res1['json']['data']['consultation_id'];
     track_fixture('consultation', $cid1);
     foreach ($pdo->query("SELECT diagnosis_id FROM diagnosis WHERE consultation_id = $cid1")->fetchAll(PDO::FETCH_COLUMN) as $d) track_fixture('diagnosis', $d);
 
-    // 3. Create second appointment via API
+    // 3. Create second appointment via API (Monday)
     $resA2 = http_request('POST', "$baseUrl1/api/appointment_controller.php", [
-        'patient_id' => $hPatId, 'doctor_id' => $docId, 'appointment_date' => '2026-02-01', 'appointment_time' => '09:00:00'
+        'patient_id' => $hPatId, 'doctor_id' => $docId, 'appointment_date' => '2026-02-02', 'appointment_time' => '09:00:00'
     ], $cookieRecep, ["X-CSRF-Token: $csrfRecep"]);
     if ($resA2['status'] !== 201) return "Appointment 2 creation failed: {$resA2['status']} " . json_encode($resA2['json']);
     $appt2Id = track_fixture('appointments', $resA2['json']['data']['appointment_id']);
+    $pdo->exec("UPDATE appointments SET status = 'confirmed' WHERE appointment_id = $appt2Id");
 
     // 4. Doctor saves consultation 2 with Diagnosis B
     $res2 = http_request('POST', "$baseUrl1/api/consultation_controller.php", [
         'appointment_id' => $appt2Id,
         'notes' => 'Visit 2',
-        'diagnoses' => [['icd10_code' => 'B00', 'diagnosis_name' => 'Diag 2']]
+        'diagnoses' => [['icd10_code' => 'B01.9', 'diagnosis_name' => 'Diag 2']]
     ], $cookieDoc, ["X-CSRF-Token: $csrfDoc"]);
     if ($res2['status'] !== 200) return "Consultation 2 failed: {$res2['status']}";
     $cid2 = $res2['json']['data']['consultation_id'];

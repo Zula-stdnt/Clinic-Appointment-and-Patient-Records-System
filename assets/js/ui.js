@@ -114,6 +114,7 @@ export function openModal(modalId) {
 
     previousActiveElement = document.activeElement;
     modal.classList.add('show');
+    modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('modal-open');
     activeModal = modal;

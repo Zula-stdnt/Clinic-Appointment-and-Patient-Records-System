@@ -55,7 +55,6 @@ export default {
     renderUI() {
         const p = this.state.profile;
         const initial = p.first_name ? p.first_name.charAt(0).toUpperCase() : '?';
-        const docId = `DOC-${p.doctor_id.toString().padStart(4, '0')}`;
         
         let specialtiesHtml = '<span class="badge" style="background: var(--bg-alt); color: var(--text-muted);">None Assigned</span>';
         if (p.specialty_names) {
@@ -70,11 +69,6 @@ export default {
             contactFormatted = p.contact_no || '';
         }
 
-        const isStandardGender = ['Male', 'Female', 'Unknown'].includes(p.gender);
-        const genderSelectVal = isStandardGender ? p.gender : 'Other';
-        const customGenderVal = isStandardGender ? '' : p.gender;
-        const customGenderDisplay = isStandardGender ? 'none' : 'block';
-
         this.container.innerHTML = `
             <!-- Profile Banner -->
             <div class="card" style="margin-bottom: 1.5rem; padding: 2rem; background: var(--surface); display: flex; gap: 2rem; align-items: center; flex-wrap: wrap;">
@@ -84,7 +78,7 @@ export default {
                 <div style="flex: 1; min-width: 250px;">
                     <h2 style="margin: 0 0 0.5rem 0; font-size: 1.75rem; color: var(--text);">Dr. ${escapeHtml(p.first_name)} ${escapeHtml(p.middle_initial ? p.middle_initial + '. ' : '')}${escapeHtml(p.last_name)}</h2>
                     <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; margin-bottom: 0.75rem;">
-                        <span class="badge" style="background: var(--primary); color: white;">${docId}</span>
+                        <span class="badge" style="background: var(--primary); color: white;">Licensed Physician</span>
                         <span class="badge" style="background: var(--secondary); color: white;">${escapeHtml(p.role_name)}</span>
                         <span style="color: var(--text-muted); font-size: 0.9rem;">Member since ${new Date(p.created_at).toLocaleDateString()}</span>
                     </div>
@@ -103,42 +97,30 @@ export default {
                     
                     <!-- Personal Info Card -->
                     <div class="card" style="padding: 1.5rem;">
-                        <h3 style="margin-top: 0; margin-bottom: 1.5rem; font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">Personal Information</h3>
+                        <h3 style="margin-top: 0; margin-bottom: 1rem; font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">Personal Information</h3>
                         
-                        <div class="form-group">
-                            <label for="prof-first-name">First Name <span class="required-star">*</span></label>
-                            <input type="text" id="prof-first-name" class="form-control" value="${escapeHtml(p.first_name)}" required>
-                            <div class="invalid-feedback" id="prof-first-name-error"></div>
+                        <div style="font-size: 0.85rem; padding: 0.65rem 0.85rem; margin-bottom: 1.25rem; background: var(--bg-alt); border-left: 3px solid var(--info, #3b82f6); border-radius: 4px; color: var(--text-muted);">
+                            <strong>Notice:</strong> Legal identity and gender are managed by hospital administration.
                         </div>
 
                         <div class="form-group">
-                            <label for="prof-last-name">Last Name <span class="required-star">*</span></label>
-                            <input type="text" id="prof-last-name" class="form-control" value="${escapeHtml(p.last_name)}" required>
-                            <div class="invalid-feedback" id="prof-last-name-error"></div>
+                            <label for="prof-first-name">First Name <small class="text-muted">(Admin-managed)</small></label>
+                            <input type="text" id="prof-first-name" class="form-control" value="${escapeHtml(p.first_name)}" disabled readonly style="background: var(--bg-alt); cursor: not-allowed; opacity: 0.85;">
                         </div>
 
                         <div class="form-group">
-                            <label for="prof-middle-initial">Middle Initial <span class="text-muted" style="font-weight: normal; font-size: 0.85em;">(Optional)</span></label>
-                            <input type="text" id="prof-middle-initial" class="form-control" maxlength="10" value="${escapeHtml(p.middle_initial || '')}">
-                            <div class="invalid-feedback" id="prof-middle-initial-error"></div>
+                            <label for="prof-last-name">Last Name <small class="text-muted">(Admin-managed)</small></label>
+                            <input type="text" id="prof-last-name" class="form-control" value="${escapeHtml(p.last_name)}" disabled readonly style="background: var(--bg-alt); cursor: not-allowed; opacity: 0.85;">
                         </div>
 
                         <div class="form-group">
-                            <label for="prof-gender">Gender <span class="required-star">*</span></label>
-                            <select id="prof-gender" class="form-control" required>
-                                <option value="" disabled>Select Gender</option>
-                                <option value="Male" ${genderSelectVal === 'Male' ? 'selected' : ''}>Male</option>
-                                <option value="Female" ${genderSelectVal === 'Female' ? 'selected' : ''}>Female</option>
-                                <option value="Unknown" ${genderSelectVal === 'Unknown' ? 'selected' : ''}>Unknown</option>
-                                <option value="Other" ${genderSelectVal === 'Other' ? 'selected' : ''}>Other</option>
-                            </select>
-                            <div class="invalid-feedback" id="prof-gender-error"></div>
+                            <label for="prof-middle-initial">Middle Initial <small class="text-muted">(Admin-managed)</small></label>
+                            <input type="text" id="prof-middle-initial" class="form-control" value="${escapeHtml(p.middle_initial || '')}" disabled readonly style="background: var(--bg-alt); cursor: not-allowed; opacity: 0.85;">
                         </div>
 
-                        <div class="form-group" id="prof-custom-gender-group" style="display: ${customGenderDisplay};">
-                            <label for="prof-custom-gender">Specify Gender <span class="required-star">*</span></label>
-                            <input type="text" id="prof-custom-gender" class="form-control" placeholder="Please specify your gender" value="${escapeHtml(customGenderVal)}">
-                            <div class="invalid-feedback" id="prof-custom-gender-error"></div>
+                        <div class="form-group">
+                            <label for="prof-gender">Gender <small class="text-muted">(Admin-managed)</small></label>
+                            <input type="text" id="prof-gender" class="form-control" value="${escapeHtml(p.gender || 'Unknown')}" disabled readonly style="background: var(--bg-alt); cursor: not-allowed; opacity: 0.85;">
                         </div>
 
                         <div class="form-group" style="margin-bottom: 0;">
@@ -211,19 +193,6 @@ export default {
     attachEventListeners() {
         const c = this.container;
 
-        // Custom gender toggle
-        const genderSelect = c.querySelector('#prof-gender');
-        const customGenderGroup = c.querySelector('#prof-custom-gender-group');
-        if (genderSelect && customGenderGroup) {
-            genderSelect.addEventListener('change', (e) => {
-                if (e.target.value === 'Other') {
-                    customGenderGroup.style.display = 'block';
-                } else {
-                    customGenderGroup.style.display = 'none';
-                    c.querySelector('#prof-custom-gender').value = '';
-                }
-            });
-        }
 
         // Contact Number format (09XX XXX XXXX)
         const contactInput = c.querySelector('#prof-contact-no');
@@ -293,16 +262,7 @@ export default {
                 btn.disabled = true;
                 btn.textContent = 'Saving...';
 
-                let genderVal = genderSelect.value;
-                if (genderVal === 'Other') {
-                    genderVal = c.querySelector('#prof-custom-gender').value.trim();
-                }
-
                 const payload = {
-                    first_name: c.querySelector('#prof-first-name').value.trim(),
-                    last_name: c.querySelector('#prof-last-name').value.trim(),
-                    middle_initial: c.querySelector('#prof-middle-initial').value.trim(),
-                    gender: genderVal,
                     contact_no: c.querySelector('#prof-contact-no').value.trim(),
                     username: c.querySelector('#prof-username').value.trim(),
                     current_password: c.querySelector('#prof-current-password').value,
@@ -321,29 +281,14 @@ export default {
                         c.querySelector('#prof-new-password').value = '';
                         c.querySelector('#prof-confirm-password').value = '';
 
-                        // Update sidebar UI with new names
-                        if (res.data && res.data.full_name) {
-                            const sideName = document.getElementById('user-name');
-                            if (sideName) sideName.textContent = res.data.full_name;
-                            
-                            const initial = payload.first_name ? payload.first_name.charAt(0).toUpperCase() : '?';
-                            const sideAvatar = document.getElementById('user-avatar-initial');
-                            if (sideAvatar) sideAvatar.textContent = initial;
-                        }
-
                         // Reload profile to refresh banner
                         await this.loadProfile();
 
                     } else {
                         if (res.errors) {
-                            // Map generic error keys to our specific profile field IDs
                             const mappedErrors = {};
                             for (const [key, msg] of Object.entries(res.errors)) {
-                                if (key === 'gender' && genderSelect.value === 'Other') {
-                                    mappedErrors['prof-custom-gender'] = msg;
-                                } else {
-                                    mappedErrors[`prof-${key.replace(/_/g, '-')}`] = msg;
-                                }
+                                mappedErrors[`prof-${key.replace(/_/g, '-')}`] = msg;
                             }
                             showValidationErrors(mappedErrors, c);
                             showToast('Please correct the highlighted errors.', 'error');
@@ -356,11 +301,7 @@ export default {
                     if (err.response?.status === 422 && err.response?.data?.errors) {
                         const mappedErrors = {};
                         for (const [key, msg] of Object.entries(err.response.data.errors)) {
-                            if (key === 'gender' && genderSelect.value === 'Other') {
-                                mappedErrors['prof-custom-gender'] = msg;
-                            } else {
-                                mappedErrors[`prof-${key.replace(/_/g, '-')}`] = msg;
-                            }
+                            mappedErrors[`prof-${key.replace(/_/g, '-')}`] = msg;
                         }
                         showValidationErrors(mappedErrors, c);
                         showToast('Please correct the highlighted errors.', 'error');

@@ -91,6 +91,12 @@ export class PatientRegisterForm {
                                     <div class="invalid-feedback" id="${this.id('contact')}-error"></div>
                                 </div>
 
+                                <div class="form-group">
+                                    <label for="${this.id('allergies')}">Allergies &amp; Clinical Alerts <span class="text-muted" style="font-weight: normal; font-size: 0.85em;">(Optional)</span></label>
+                                    <input type="text" id="${this.id('allergies')}" class="form-control" placeholder="e.g. Penicillin, Sulfa drugs, Peanuts, or leave blank">
+                                    <div class="invalid-feedback" id="${this.id('allergies')}-error"></div>
+                                </div>
+
                                 <div class="form-group" style="margin-bottom: 0;">
                                     <label for="${this.id('address')}">Address</label>
                                     <textarea id="${this.id('address')}" class="form-control" rows="3" placeholder="Residential / Street Address"></textarea>
@@ -249,6 +255,7 @@ export class PatientRegisterForm {
             gender: gender,
             date_of_birth: dob,
             contact_no: this.contactInput.value.replace(/\s+/g, ''),
+            allergies_alerts: this.root.querySelector(`#${this.id('allergies')}`)?.value.trim() || null,
             address: this.root.querySelector(`#${this.id('address')}`).value.trim()
         };
 

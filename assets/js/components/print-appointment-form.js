@@ -214,6 +214,22 @@ export function buildPrintableForm(appt) {
                 <td class="label">Address</td>
                 <td colspan="3">${escapeHtml(orDash(appt.address))}</td>
             </tr>
+            <tr>
+                <td class="label">Allergies / Alerts</td>
+                <td colspan="3">
+                    ${appt.allergies_alerts && appt.allergies_alerts.trim() !== '' ? `
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                            <span style="font-weight: 700; color: #991b1b; display: inline-flex; align-items: center; gap: 5px;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -2px;"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                                ALLERGY ALERT: ${escapeHtml(appt.allergies_alerts)}
+                            </span>
+                            <span style="display: inline-block; padding: 2px 6px; font-size: 8pt; font-weight: 700; border-radius: 3px; background: ${appt.allergies_confirmed_by_doctor ? '#dcfce7' : '#fef3c7'}; color: ${appt.allergies_confirmed_by_doctor ? '#15803d' : '#b45309'}; border: 1px solid ${appt.allergies_confirmed_by_doctor ? '#bbf7d0' : '#fde68a'}; text-transform: uppercase;">
+                                ${appt.allergies_confirmed_by_doctor ? 'Doctor Confirmed' : 'Unconfirmed Intake Note'}
+                            </span>
+                        </div>
+                    ` : '<span style="color: #4b5563;">No known allergies reported at front-desk intake.</span>'}
+                </td>
+            </tr>
         </table>
     </div>
 
@@ -331,7 +347,11 @@ export function buildBlankForm() {
             </tr>
             <tr>
                 <td class="label">Address</td>
-                <td colspan="3" class="value" style="height: 48px;">${blank}</td>
+                <td colspan="3" class="value" style="height: 36px;">${blank}</td>
+            </tr>
+            <tr>
+                <td class="label">Allergies / Alerts</td>
+                <td colspan="3" class="value"><span class="hint">Known drug, food, latex allergies or &quot;None Known&quot;</span></td>
             </tr>
         </table>
     </div>

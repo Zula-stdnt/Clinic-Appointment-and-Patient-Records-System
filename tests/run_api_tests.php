@@ -359,7 +359,7 @@ run_test("API: Successful consultation creation saves clinical details atomicall
     $medId = track_fixture('medications', $pdo->lastInsertId());
 
     // Appointment
-    $pdo->exec("INSERT INTO appointments (patient_id, doctor_id, created_by, appointment_date, appointment_time, status) VALUES ($patId, $docId, $adminUserId, '2026-10-03', '10:00:00', 'scheduled')");
+    $pdo->exec("INSERT INTO appointments (patient_id, doctor_id, created_by, appointment_date, appointment_time, status) VALUES ($patId, $docId, $adminUserId, '2026-10-03', '10:00:00', 'confirmed')");
     $apptId = track_fixture('appointments', $pdo->lastInsertId());
 
     $cookieDoc = tempnam(sys_get_temp_dir(), 'ck_doc3_');
@@ -433,7 +433,7 @@ run_test("API: Detail write failure triggers atomic rollback", function() use ($
     $patId = track_fixture('patients', $pdo->lastInsertId());
 
     // Appointment
-    $pdo->exec("INSERT INTO appointments (patient_id, doctor_id, created_by, appointment_date, appointment_time, status) VALUES ($patId, $docId, $adminUserId, '2026-10-03', '10:00:00', 'scheduled')");
+    $pdo->exec("INSERT INTO appointments (patient_id, doctor_id, created_by, appointment_date, appointment_time, status) VALUES ($patId, $docId, $adminUserId, '2026-10-03', '10:00:00', 'confirmed')");
     $apptId = track_fixture('appointments', $pdo->lastInsertId());
 
     $cookieDoc = tempnam(sys_get_temp_dir(), 'ck_docfail_');
@@ -463,7 +463,7 @@ run_test("API: Detail write failure triggers atomic rollback", function() use ($
 
     // Verify DB rollback
     $apptStatus = $pdo->query("SELECT status FROM appointments WHERE appointment_id = $apptId")->fetchColumn();
-    if ($apptStatus !== 'scheduled') return "Appointment status changed despite rollback.";
+    if ($apptStatus !== 'confirmed') return "Appointment status changed despite rollback.";
 
     $consCount = $pdo->query("SELECT COUNT(*) FROM consultation WHERE appointment_id = $apptId")->fetchColumn();
     if ($consCount > 0) return "Consultation row created despite rollback.";

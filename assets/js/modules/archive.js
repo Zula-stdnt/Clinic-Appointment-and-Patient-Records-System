@@ -10,54 +10,88 @@ const CONFIG = {
         endpoint: 'api/user_controller.php',
         idField: 'user_id',
         nameField: 'full_name',
-        columns: ['Full Name', 'Username', 'Role', 'Archived At'],
+        columns: [
+            { label: 'Full Name', sortKey: 'full_name' },
+            { label: 'Username', sortKey: 'username' },
+            { label: 'Role', sortKey: 'role_name' },
+            { label: 'Archived At', sortKey: 'deleted_at' }
+        ],
         renderRow: (item) => `
             <td>${escapeHtml(item.full_name)}</td>
             <td><code>${escapeHtml(item.username)}</code></td>
-            <td><span class="badge badge-role">${escapeHtml(item.role_name)}</span></td>
-            <td style="color: var(--danger);">${escapeHtml(item.deleted_at)}</td>
+            <td><span class="badge badge-status-scheduled">${escapeHtml(item.role_name)}</span></td>
+            <td><span class="badge badge-status-deleted">${escapeHtml(item.deleted_at)}</span></td>
         `
     },
     'patients': {
         endpoint: 'api/patient_controller.php',
         idField: 'patient_id',
         nameField: (item) => `${item.last_name}, ${item.first_name}`,
-        columns: ['Name', 'Gender', 'Archived At'],
+        columns: [
+            { label: 'Name', sortKey: 'last_name' },
+            { label: 'Gender', sortKey: 'gender' },
+            { label: 'Archived At', sortKey: 'deleted_at' }
+        ],
         renderRow: (item) => `
             <td><strong>${escapeHtml(item.last_name)}, ${escapeHtml(item.first_name)}</strong></td>
             <td>${escapeHtml(item.gender ? item.gender.charAt(0).toUpperCase() + item.gender.slice(1) : 'Unknown')}</td>
-            <td style="color: var(--danger);">${escapeHtml(item.deleted_at)}</td>
+            <td><span class="badge badge-status-deleted">${escapeHtml(item.deleted_at)}</span></td>
         `
     },
     'doctors': {
         endpoint: 'api/doctor_controller.php',
         idField: 'doctor_id',
         nameField: (item) => `${item.last_name}, ${item.first_name}`,
-        columns: ['Name', 'Specialty', 'Archived At'],
+        columns: [
+            { label: 'Name', sortKey: 'last_name' },
+            { label: 'Specialty', sortKey: 'specialty_name' },
+            { label: 'Archived At', sortKey: 'deleted_at' }
+        ],
         renderRow: (item) => `
             <td><strong>${escapeHtml(item.last_name)}, ${escapeHtml(item.first_name)}</strong></td>
-            <td><span class="badge badge-role">${escapeHtml(item.specialty_names || 'General Medicine')}</span></td>
-            <td style="color: var(--danger);">${escapeHtml(item.deleted_at)}</td>
+            <td><span class="badge badge-status-scheduled">${escapeHtml(item.specialty_names || 'General Medicine')}</span></td>
+            <td><span class="badge badge-status-deleted">${escapeHtml(item.deleted_at)}</span></td>
         `
     },
     'specialties': {
         endpoint: 'api/specialty_controller.php',
         idField: 'specialty_id',
         nameField: 'specialty_name',
-        columns: ['Specialty Name', 'Archived At'],
+        columns: [
+            { label: 'Specialty Name', sortKey: 'specialty_name' },
+            { label: 'Archived At', sortKey: 'deleted_at' }
+        ],
         renderRow: (item) => `
             <td><strong>${escapeHtml(item.specialty_name)}</strong></td>
-            <td style="color: var(--danger);">${escapeHtml(item.deleted_at)}</td>
+            <td><span class="badge badge-status-deleted">${escapeHtml(item.deleted_at)}</span></td>
         `
     },
     'services': {
         endpoint: 'api/service_controller.php',
         idField: 'service_id',
         nameField: 'service_name',
-        columns: ['Service Name', 'Archived At'],
+        columns: [
+            { label: 'Service Name', sortKey: 'service_name' },
+            { label: 'Archived At', sortKey: 'deleted_at' }
+        ],
         renderRow: (item) => `
             <td><strong>${escapeHtml(item.service_name)}</strong></td>
-            <td style="color: var(--danger);">${escapeHtml(item.deleted_at)}</td>
+            <td><span class="badge badge-status-deleted">${escapeHtml(item.deleted_at)}</span></td>
+        `
+    },
+    'medications': {
+        endpoint: 'api/medication_controller.php',
+        idField: 'medication_id',
+        nameField: 'name',
+        columns: [
+            { label: 'Medication Name', sortKey: 'name' },
+            { label: 'Generic Name', sortKey: 'generic_name' },
+            { label: 'Archived At', sortKey: 'deleted_at' }
+        ],
+        renderRow: (item) => `
+            <td><strong>${escapeHtml(item.name)}</strong></td>
+            <td>${escapeHtml(item.generic_name || '—')}</td>
+            <td><span class="badge badge-status-deleted">${escapeHtml(item.deleted_at)}</span></td>
         `
     }
 };
@@ -68,6 +102,8 @@ export default {
         page: 1,
         pageSize: 10,
         search: '',
+        sortBy: 'deleted_at',
+        sortOrder: 'DESC',
         total: 0
     },
 
@@ -96,6 +132,7 @@ export default {
                             <option value="doctors">Doctors</option>
                             <option value="specialties">Specialties</option>
                             <option value="services">Services</option>
+                            <option value="medications">Medications</option>
                         </select>
 
                         <div class="search-input-wrapper">
@@ -145,6 +182,8 @@ export default {
         this.container.querySelector('#archive-entity-filter').addEventListener('change', (e) => {
             this.state.currentEntity = e.target.value;
             this.state.search = '';
+            this.state.sortBy = 'deleted_at';
+            this.state.sortOrder = 'DESC';
             searchInput.value = '';
             this.state.page = 1;
             this.loadData();
@@ -157,27 +196,54 @@ export default {
         });
     },
 
+    updateSortHeaders() {
+        this.container.querySelectorAll('#archive-table-head th[data-sort]').forEach(th => {
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (th.getAttribute('data-sort') === this.state.sortBy) {
+                th.classList.add(this.state.sortOrder === 'ASC' ? 'sort-asc' : 'sort-desc');
+            }
+        });
+    },
+
     async loadData() {
         const thead = this.container.querySelector('#archive-table-head');
         const tbody = this.container.querySelector('#archive-table-body');
         const entityConfig = CONFIG[this.state.currentEntity];
 
-        // Setup headers dynamically
-        thead.innerHTML = `<tr>${entityConfig.columns.map(c => `<th>${c}</th>`).join('')}<th style="text-align: right;">Actions</th></tr>`;
+        // Setup headers dynamically with data-sort attributes
+        thead.innerHTML = `<tr>${entityConfig.columns.map(c => `<th data-sort="${c.sortKey}">${c.label}</th>`).join('')}<th style="text-align: right;">Actions</th></tr>`;
         tbody.innerHTML = `<tr><td colspan="${entityConfig.columns.length + 1}" class="text-center" style="padding: 2rem;">Loading ${this.state.currentEntity}...</td></tr>`;
+
+        // Attach sort click handlers to the newly rendered thead headers
+        thead.querySelectorAll('th[data-sort]').forEach(th => {
+            th.addEventListener('click', () => {
+                const sortField = th.getAttribute('data-sort');
+                if (this.state.sortBy === sortField) {
+                    this.state.sortOrder = this.state.sortOrder === 'ASC' ? 'DESC' : 'ASC';
+                } else {
+                    this.state.sortBy = sortField;
+                    this.state.sortOrder = 'ASC';
+                }
+                this.state.page = 1;
+                this.loadData();
+            });
+        });
 
         try {
             const res = await api.get(entityConfig.endpoint, {
                 page: this.state.page,
                 page_size: this.state.pageSize,
                 search: this.state.search,
-                status: 'deleted'
+                status: 'deleted',
+                sort_by: this.state.sortBy,
+                sort_order: this.state.sortOrder
             });
 
             if (res.success) {
                 this.state.total = res.data.total;
                 this.renderTable(res.data.items, entityConfig);
                 this.renderPagination(res.data);
+                this.updateSortHeaders();
             } else {
                 throw new Error(res.message);
             }

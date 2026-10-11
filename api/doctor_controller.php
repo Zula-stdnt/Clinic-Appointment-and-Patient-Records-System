@@ -79,6 +79,14 @@ function listDoctors(PDO $pdo): void {
         $params[':specialty_id'] = $specialtyId;
     }
 
+    $gender = strtolower(trim($_GET['gender'] ?? ''));
+    if ($gender === 'male' || $gender === 'female' || $gender === 'unknown') {
+        $where[] = 'LOWER(TRIM(u.gender)) = :gender';
+        $params[':gender'] = $gender;
+    } elseif ($gender === 'other') {
+        $where[] = "(LOWER(TRIM(COALESCE(u.gender, ''))) NOT IN ('male', 'female', 'unknown') AND LOWER(TRIM(COALESCE(u.gender, ''))) != '')";
+    }
+
     if ($search !== '') {
         $where[] = '(u.first_name LIKE :search1 OR u.last_name LIKE :search2 OR d.contact_no LIKE :search3 OR s.specialty_name LIKE :search4)';
         $params[':search1'] = '%' . $search . '%';
@@ -89,7 +97,7 @@ function listDoctors(PDO $pdo): void {
 
     $whereSql = implode(' AND ', $where);
 
-    $allowedSort = ['doctor_id', 'first_name', 'last_name', 'specialty_name', 'created_at', 'deleted_at'];
+    $allowedSort = ['doctor_id', 'first_name', 'last_name', 'gender', 'contact_no', 'specialty_name', 'created_at', 'deleted_at'];
     $sortBy = in_array($_GET['sort_by'] ?? '', $allowedSort, true) ? $_GET['sort_by'] : 'doctor_id';
     if ($sortBy === 'specialty_name') {
         $sortBy = 's.specialty_name';
@@ -97,6 +105,10 @@ function listDoctors(PDO $pdo): void {
         $sortBy = 'u.first_name';
     } elseif ($sortBy === 'last_name') {
         $sortBy = 'u.last_name';
+    } elseif ($sortBy === 'gender') {
+        $sortBy = 'u.gender';
+    } elseif ($sortBy === 'contact_no') {
+        $sortBy = 'd.contact_no';
     } else {
         $sortBy = 'd.' . $sortBy;
     }
@@ -283,6 +295,11 @@ function createDoctor(PDO $pdo): void {
         }
 
         $pdo->commit();
+        log_audit($pdo, (int)$_SESSION['user_id'], 'CREATE_DOCTOR', 'doctor', $newDoctorId, null, [
+            'username' => trim($input['username']),
+            'full_name' => trim($input['first_name']) . ' ' . trim($input['last_name']),
+            'contact_no' => trim($input['contact_no'] ?? '') ?: null
+        ]);
         send_success('Doctor record created successfully.', ['doctor_id' => $newDoctorId], 201);
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -344,6 +361,11 @@ function updateDoctor(PDO $pdo): void {
         }
 
         $pdo->commit();
+        log_audit($pdo, (int)$_SESSION['user_id'], 'UPDATE_DOCTOR', 'doctor', $id, null, [
+            'username' => trim($input['username']),
+            'full_name' => trim($input['first_name']) . ' ' . trim($input['last_name']),
+            'contact_no' => trim($input['contact_no'] ?? '') ?: null
+        ]);
         send_success('Doctor record updated successfully.');
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -369,6 +391,7 @@ function softDeleteDoctor(PDO $pdo): void {
         $stmt2->execute([$id]);
 
         $pdo->commit();
+        log_audit($pdo, (int)$_SESSION['user_id'], 'ARCHIVE_DOCTOR', 'doctor', $id);
         send_success('Doctor and user account deactivated (soft-deleted) successfully.');
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -394,6 +417,7 @@ function restoreDoctor(PDO $pdo): void {
         $stmt2->execute([$id]);
 
         $pdo->commit();
+        log_audit($pdo, (int)$_SESSION['user_id'], 'RESTORE_DOCTOR', 'doctor', $id);
         send_success('Doctor and user account restored successfully.');
     } catch (Exception $e) {
         $pdo->rollBack();
@@ -426,6 +450,7 @@ function hardDeleteDoctor(PDO $pdo): void {
         }
 
         $pdo->commit();
+        log_audit($pdo, (int)$_SESSION['user_id'], 'PURGE_DOCTOR', 'doctor', $id);
         send_success('Doctor and user account permanently deleted.');
     } catch (Exception $e) {
         $pdo->rollBack();

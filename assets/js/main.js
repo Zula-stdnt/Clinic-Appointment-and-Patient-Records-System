@@ -7,11 +7,12 @@ import { hideAllModals, closeSidebar } from './ui.js?v=24';
 import overviewModule from './modules/overview.js?v=24';
 import usersModule from './modules/users.js?v=24';
 import patientsModule from './modules/patients.js?v=29';
-import doctorsModule from './modules/doctors.js?v=24';
+import doctorsModule from './modules/doctors.js?v=25';
 import servicesModule from './modules/services.js?v=25';
 import medicationsModule from './modules/medications.js?v=1';
 import specialtiesModule from './modules/specialties.js?v=24';
 import archiveModule from './modules/archive.js?v=24';
+import auditLogsModule from './modules/audit_logs.js?v=1';
 import settingsModule from './modules/account_settings.js?v=24';
 import profileModule from './modules/my_profile.js?v=24';
 
@@ -47,6 +48,10 @@ const modules = {
     'archive': {
         title: 'Manage Archive',
         instance: archiveModule
+    },
+    'audit_logs': {
+        title: 'Compliance & Audit Logs',
+        instance: auditLogsModule
     },
     'settings': {
         title: 'Settings',

@@ -76,6 +76,12 @@ export default {
                             <option value="Doctor">Doctor</option>
                             <option value="Receptionist">Receptionist</option>
                         </select>
+
+                        <select id="users-status-filter" class="form-control" style="width: auto; min-width: 130px;">
+                            <option value="active">Active</option>
+                            <option value="deleted">Archived</option>
+                            <option value="all">All Statuses</option>
+                        </select>
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -95,7 +101,7 @@ export default {
                                 <th data-sort="full_name">Full Name</th>
                                 <th data-sort="username">Username</th>
                                 <th data-sort="role_name">Role</th>
-                                <th>Status</th>
+                                <th data-sort="deleted_at">Status</th>
                                 <th style="text-align: right;">Actions</th>
                             </tr>
                         </thead>
@@ -248,6 +254,12 @@ export default {
             this.loadData();
         });
 
+        this.container.querySelector('#users-status-filter').addEventListener('change', (e) => {
+            this.state.status = e.target.value;
+            this.state.page = 1;
+            this.loadData();
+        });
+
         this.container.querySelector('#users-page-size').addEventListener('change', (e) => {
             this.state.pageSize = parseInt(e.target.value, 10);
             this.state.page = 1;
@@ -264,6 +276,7 @@ export default {
                     this.state.sortBy = sortField;
                     this.state.sortOrder = 'ASC';
                 }
+                this.state.page = 1;
                 this.loadData();
             });
         });
@@ -395,6 +408,15 @@ export default {
         }
     },
 
+    updateSortHeaders() {
+        this.container.querySelectorAll('th[data-sort]').forEach(th => {
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (th.getAttribute('data-sort') === this.state.sortBy) {
+                th.classList.add(this.state.sortOrder === 'ASC' ? 'sort-asc' : 'sort-desc');
+            }
+        });
+    },
+
     async loadData() {
         const tbody = this.container.querySelector('#users-table-body');
         tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding: 2rem;">Loading users...</td></tr>';
@@ -414,6 +436,7 @@ export default {
                 this.state.total = res.data.total;
                 this.renderTable(res.data.items);
                 this.renderPagination(res.data);
+                this.updateSortHeaders();
             } else {
                 throw new Error(res.message);
             }
@@ -439,20 +462,28 @@ export default {
         }
 
         tbody.innerHTML = items.map(user => {
+            const statusBadge = user.deleted_at
+                ? '<span class="badge badge-status-deleted">Archived</span>'
+                : '<span class="badge badge-status-active">Active</span>';
+
+            const archiveBtn = !user.deleted_at ? `
+                <button class="btn btn-warning btn-sm btn-archive" data-id="${user.user_id}" data-name="${escapeHtml(user.full_name)}" title="Archive">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                    Archive
+                </button>
+            ` : '';
+
             return `
                 <tr>
                     <td>${escapeHtml(user.full_name)}</td>
                     <td><code>${escapeHtml(user.username)}</code></td>
-                    <td><span class="badge badge-role">${escapeHtml(user.role_name)}</span></td>
-                    <td><span class="badge badge-active">Active</span></td>
+                    <td><span class="badge badge-status-scheduled">${escapeHtml(user.role_name)}</span></td>
+                    <td>${statusBadge}</td>
                     <td>
                         <div class="actions-cell">
                             <button class="btn btn-secondary btn-sm btn-view" data-id="${user.user_id}" title="View Details">View</button>
                             <button class="btn btn-secondary btn-sm btn-edit" data-id="${user.user_id}" title="Edit User">Edit</button>
-                            <button class="btn btn-warning btn-sm btn-archive" data-id="${user.user_id}" data-name="${escapeHtml(user.full_name)}" title="Archive">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
-                                Archive
-                            </button>
+                            ${archiveBtn}
                         </div>
                     </td>
                 </tr>

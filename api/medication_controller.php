@@ -55,7 +55,7 @@ try {
     if ($e->getCode() == 23000 || (isset($e->errorInfo[1]) && $e->errorInfo[1] == 1451)) {
         send_error('Cannot delete medication: related prescription records exist. Use Soft Delete instead.', [], 409);
     }
-    send_error('A database error occurred.', ['details' => $e->getMessage()], 500);
+    send_error('A database error occurred. Please try again.', [], 500);
 } catch (Exception $e) {
     error_log("General Error in medication_controller.php: " . $e->getMessage());
     send_error($e->getMessage(), [], 400);

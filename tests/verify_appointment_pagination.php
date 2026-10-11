@@ -90,9 +90,11 @@ if ($currentCount < 12) {
 
     for ($i = $currentCount + 1; $i <= 12; $i++) {
         $ins = $pdo->prepare("INSERT INTO appointments (patient_id, doctor_id, created_by, appointment_date, appointment_time, chief_complaint, status)
-                             VALUES (?, ?, ?, '2026-11-15', '10:00:00', ?, ?)");
+                             VALUES (?, ?, ?, ?, ?, ?, ?)");
         $status = ($i % 2 === 0) ? 'confirmed' : 'scheduled';
-        $ins->execute([$patId, $docId, $userId, "Pagination complaint {$i}", $status]);
+        $apptDate = sprintf('2026-11-%02d', ($i % 20) + 1);
+        $apptTime = sprintf('%02d:00:00', ($i % 4) + 8);
+        $ins->execute([$patId, $docId, $userId, $apptDate, $apptTime, "Pagination complaint {$i}", $status]);
         $createdAppointmentIds[] = (int)$pdo->lastInsertId();
     }
 }

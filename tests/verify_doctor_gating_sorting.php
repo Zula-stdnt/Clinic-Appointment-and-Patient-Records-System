@@ -217,7 +217,7 @@ $postCompRes = call_api('POST', 'api/consultation_controller.php', $docAuth, [
     'notes' => 'Attempting to overwrite completed consultation'
 ]);
 assert_true($postCompRes['status'] === 409, "POST on completed appointment returns 409 Conflict (got {$postCompRes['status']})");
-assert_true(strpos($postCompRes['body']['message'], 'completed') !== false, "Error message states appointment is completed");
+assert_true(stripos($postCompRes['body']['message'], 'completed') !== false, "Error message states appointment is completed");
 
 // --------------------------------------------------------------------------
 // 4. Doctor Ownership Security: 403 on other doctor's appointment

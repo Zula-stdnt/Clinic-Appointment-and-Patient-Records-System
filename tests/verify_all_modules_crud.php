@@ -43,6 +43,40 @@ if ($login['status'] !== 200) {
 $csrf = $login['json']['data']['csrf_token'] ?? '';
 $csrfHeader = ["X-CSRF-Token: $csrf"];
 
+// 2. Set up receptionist session for clinical/patient creation workflows
+$cookieRecep = tempnam(sys_get_temp_dir(), 'crud_rec_');
+function req_recep(string $method, string $url, $data = null, array $headers = []): array {
+    global $cookieRecep;
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+    curl_setopt($ch, CURLOPT_COOKIEFILE, $cookieRecep);
+    curl_setopt($ch, CURLOPT_COOKIEJAR, $cookieRecep);
+
+    $reqHeaders = $headers;
+    if ($data !== null) {
+        $reqHeaders[] = 'Content-Type: application/json';
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+    }
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $reqHeaders);
+
+    $body = curl_exec($ch);
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    return ['status' => $status, 'json' => json_decode($body, true), 'body' => $body];
+}
+
+$db->exec("INSERT IGNORE INTO users (role_id, first_name, last_name, username, password_hash) VALUES (2, 'Jane', 'Receptionist', 'recep.jane', '" . password_hash('RecepPass123!', PASSWORD_DEFAULT) . "')");
+$loginRec = req_recep('POST', "$baseUrl/api/auth_controller.php?action=login", [
+    'username' => 'recep.jane',
+    'password' => 'RecepPass123!'
+]);
+$csrfRec = $loginRec['json']['data']['csrf_token'] ?? '';
+$csrfHeaderRec = ["X-CSRF-Token: $csrfRec"];
+
 echo "=======================================================\n";
 echo "MASTER FILE CRUD END-TO-END VERIFICATION (6 MODULES)\n";
 echo "=======================================================\n\n";
@@ -137,8 +171,11 @@ $allPassed = true;
 foreach ($modules as $name => $cfg) {
     echo "Testing Module: " . strtoupper($name) . "\n";
 
-    // 1. Create
-    $cRes = req('POST', $cfg['url'], $cfg['create'], $csrfHeader);
+    // 1. Create (Patients managed by Receptionist, other modules by Admin)
+    $createFn = ($name === 'patients') ? 'req_recep' : 'req';
+    $createCsrf = ($name === 'patients') ? $csrfHeaderRec : $csrfHeader;
+
+    $cRes = $createFn('POST', $cfg['url'], $cfg['create'], $createCsrf);
     if ($cRes['status'] !== 201) {
         echo "  [FAIL] Create: status {$cRes['status']}, error: " . json_encode($cRes['json']) . "\n";
         $allPassed = false;
@@ -156,8 +193,8 @@ foreach ($modules as $name => $cfg) {
         echo "  [PASS] View Details\n";
     }
 
-    // 3. Update
-    $uRes = req('PUT', "{$cfg['url']}?id=$id", $cfg['update'], $csrfHeader);
+    // 3. Update (Patients edited by Receptionist, other modules by Admin)
+    $uRes = $createFn('PUT', "{$cfg['url']}?id=$id", $cfg['update'], $createCsrf);
     if ($uRes['status'] !== 200) {
         echo "  [FAIL] Update: status {$uRes['status']}, error: " . json_encode($uRes['json']) . "\n";
         $allPassed = false;
@@ -196,6 +233,7 @@ foreach ($modules as $name => $cfg) {
 }
 
 @unlink($cookieFile);
+@unlink($cookieRecep);
 
 if ($allPassed) {
     echo "=======================================================\n";

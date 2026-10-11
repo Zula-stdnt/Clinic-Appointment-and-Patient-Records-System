@@ -12,7 +12,13 @@ export default {
         page: 1,
         pageSize: 10,
         total: 0,
-        pages: 1
+        pages: 1,
+        search: '',
+        status: '',
+        dateFilter: 'upcoming',
+        sortBy: 'appointment_date',
+        sortOrder: 'DESC',
+        targetCancelAppointmentId: null
     },
 
     async init(container) {
@@ -33,7 +39,7 @@ export default {
                     <div style="display: flex; align-items: center; gap: 0.75rem;">
                         <div style="display: flex; align-items: center; gap: 0.5rem;">
                             <span class="text-muted" style="font-size: 0.85rem;">Rows:</span>
-                            <select id="doctor-page-size" class="form-control" style="width: auto; padding: 0.35rem 0.65rem;">
+                            <select id="doctor-page-size" class="form-control table-page-size">
                                 <option value="5">5</option>
                                 <option value="10" selected>10</option>
                                 <option value="25">25</option>
@@ -45,14 +51,37 @@ export default {
                     </div>
                 </div>
 
+                <div class="toolbar" style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; flex: 1;">
+                        <div class="search-input-wrapper" style="min-width: 240px;">
+                            <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                            <input type="text" id="doctor-search" class="form-control" placeholder="Search patient or chief complaint...">
+                        </div>
+                        <select id="doctor-date-filter" class="form-control" style="width: auto;">
+                            <option value="">All Dates</option>
+                            <option value="today">Today</option>
+                            <option value="upcoming" selected>Upcoming</option>
+                            <option value="past">Past</option>
+                        </select>
+                        <select id="doctor-status-filter" class="form-control" style="width: auto;">
+                            <option value="">All Statuses</option>
+                            <option value="scheduled">Scheduled</option>
+                            <option value="confirmed">Confirmed</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                            <option value="no_show">No Show</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div class="table-responsive">
                     <table class="data-table" id="appointments-table">
                         <thead>
                             <tr>
-                                <th>Date &amp; Time</th>
-                                <th>Patient Name</th>
-                                <th>Chief Complaint</th>
-                                <th>Status</th>
+                                <th data-sort="appointment_date">Date &amp; Time</th>
+                                <th data-sort="patient_name">Patient Name</th>
+                                <th data-sort="chief_complaint">Chief Complaint</th>
+                                <th data-sort="status">Status</th>
                                 <th style="text-align: right;">Actions</th>
                             </tr>
                         </thead>
@@ -62,6 +91,30 @@ export default {
                     </table>
                 </div>
                 <div class="pagination-wrapper" id="doctor-appointments-pagination"></div>
+            </div>
+
+            <div class="modal" id="doctor-cancel-request-modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="doc-cancel-title" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title" id="doc-cancel-title">Request Appointment Cancellation</h3>
+                            <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p style="margin-top: 0; font-size: 0.875rem; color: var(--text-muted);">
+                                Front desk receptionists manage patient rescheduling and cancellations. Please submit a reason for this cancellation request.
+                            </p>
+                            <div class="form-group">
+                                <label for="doc-cancel-reason" style="font-weight: 500;">Clinical Reason for Cancellation *</label>
+                                <textarea id="doc-cancel-reason" class="form-control" rows="3" placeholder="e.g. Physician emergency call, Patient referred to specialist, etc."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-danger" id="btn-submit-cancel-request">Submit Request</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         `;
     },
@@ -82,6 +135,104 @@ export default {
                 this.loadData();
             });
         }
+
+        let timer = null;
+        const searchInput = this.container.querySelector('#doctor-search');
+        if (searchInput) {
+            searchInput.addEventListener('input', () => {
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    this.state.search = searchInput.value.trim();
+                    this.state.page = 1;
+                    this.loadData();
+                }, 300);
+            });
+        }
+
+        const dateFilter = this.container.querySelector('#doctor-date-filter');
+        if (dateFilter) {
+            dateFilter.addEventListener('change', (e) => {
+                this.state.dateFilter = e.target.value;
+                this.state.page = 1;
+                this.loadData();
+            });
+        }
+
+        const statusFilter = this.container.querySelector('#doctor-status-filter');
+        if (statusFilter) {
+            statusFilter.addEventListener('change', (e) => {
+                this.state.status = e.target.value;
+                this.state.page = 1;
+                this.loadData();
+            });
+        }
+
+        this.container.querySelectorAll('th[data-sort]').forEach(th => {
+            th.addEventListener('click', () => {
+                const sortField = th.getAttribute('data-sort');
+                if (this.state.sortBy === sortField) {
+                    this.state.sortOrder = this.state.sortOrder === 'ASC' ? 'DESC' : 'ASC';
+                } else {
+                    this.state.sortBy = sortField;
+                    this.state.sortOrder = 'ASC';
+                }
+                this.state.page = 1;
+                this.loadData();
+            });
+        });
+
+        const btnSubmitCancel = this.container.querySelector('#btn-submit-cancel-request');
+        if (btnSubmitCancel) {
+            btnSubmitCancel.addEventListener('click', async () => {
+                const reasonInput = this.container.querySelector('#doc-cancel-reason');
+                const reason = reasonInput ? reasonInput.value.trim() : '';
+
+                if (!reason || reason.length < 5) {
+                    showToast('Please provide a reason with at least 5 characters.', 'warning');
+                    return;
+                }
+
+                if (!this.state.targetCancelAppointmentId) {
+                    showToast('No appointment selected.', 'error');
+                    return;
+                }
+
+                btnSubmitCancel.disabled = true;
+                btnSubmitCancel.textContent = 'Submitting...';
+
+                try {
+                    const res = await api.post('api/appointment_controller.php?action=request_cancel', {
+                        appointment_id: this.state.targetCancelAppointmentId,
+                        reason: reason
+                    });
+
+                    if (res.success) {
+                        showToast('Cancellation request submitted to Reception.', 'success');
+                        closeModal('doctor-cancel-request-modal');
+                        if (reasonInput) reasonInput.value = '';
+                        this.state.targetCancelAppointmentId = null;
+                        await this.loadData();
+                    } else {
+                        showToast(res.message || 'Failed to submit cancellation request.', 'error');
+                    }
+                } catch (err) {
+                    console.error('Error requesting cancellation', err);
+                    showToast(err.response?.data?.message || err.message || 'Failed to submit cancellation request.', 'error');
+                } finally {
+                    btnSubmitCancel.disabled = false;
+                    btnSubmitCancel.textContent = 'Submit Request';
+                }
+            });
+        }
+    },
+
+    updateSortHeaders() {
+        this.container.querySelectorAll('th[data-sort]').forEach(th => {
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (th.getAttribute('data-sort') === this.state.sortBy) {
+                th.classList.add(this.state.sortOrder === 'ASC' ? 'sort-asc' : 'sort-desc');
+            }
+        });
     },
 
     async loadData() {
@@ -92,7 +243,11 @@ export default {
             const params = {
                 page: this.state.page,
                 page_size: this.state.pageSize,
-                sort: 'upcoming'
+                search: this.state.search,
+                status: this.state.status,
+                date_filter: this.state.dateFilter,
+                sort_by: this.state.sortBy,
+                sort_order: this.state.sortOrder
             };
 
             const res = await api.get('api/appointment_controller.php', params);
@@ -104,6 +259,7 @@ export default {
                 this.state.pages = res.data.pages ?? 1;
                 this.renderTable();
                 this.renderPagination(res.data);
+                this.updateSortHeaders();
             } else {
                 showToast(res.message || 'Failed to load appointments.', 'error');
                 tbody.innerHTML = `<tr><td colspan="5" class="text-center text-danger" style="padding: 2rem;">${escapeHtml(res.message || 'Error loading data.')}</td></tr>`;
@@ -146,7 +302,7 @@ export default {
             const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
-            const statusColor = this.getStatusColor(appt.status);
+            const badgeClass = this.getStatusBadgeClass(appt.status);
 
             let actionContent = '';
             if (appt.status === 'confirmed') {
@@ -157,7 +313,7 @@ export default {
                 `;
             } else if (appt.status === 'scheduled') {
                 actionContent = `
-                    <span class="badge" style="background-color: #fef3c7; color: #92400e; font-size: 0.8rem; font-weight: 500;">Awaiting Confirmation</span>
+                    <span class="badge badge-status-scheduled" style="font-size: 0.72rem;">Check-in Pending</span>
                 `;
             } else if (appt.status === 'completed') {
                 actionContent = `
@@ -170,29 +326,43 @@ export default {
             }
 
             tr.innerHTML = `
-                <td>
+                <td style="vertical-align: middle;">
                     <div style="font-weight: 500;">${escapeHtml(dateStr)}</div>
                     <div class="text-muted" style="font-size: 0.85rem;">${escapeHtml(timeStr)}</div>
                 </td>
-                <td>
+                <td style="vertical-align: middle;">
                     <div style="font-weight: 500;">${escapeHtml(appt.patient_first)} ${escapeHtml(appt.patient_last)}</div>
                 </td>
-                <td>
+                <td style="vertical-align: middle;">
                     <span style="display: block; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(appt.chief_complaint || 'None')}">
                         ${escapeHtml(appt.chief_complaint || 'None')}
                     </span>
                 </td>
-                <td>
-                    <span class="badge" style="background-color: ${statusColor.bg}; color: ${statusColor.text};">
+                <td style="vertical-align: middle;">
+                    <span class="badge ${badgeClass}">
                         ${escapeHtml((appt.status || '').toUpperCase())}
                     </span>
+                    ${appt.cancel_requested ? `
+                    <div style="margin-top: 0.3rem;">
+                        <span class="badge badge-status-critical" style="font-size: 0.72rem; font-weight: 600;" title="${escapeHtml(appt.cancel_request_reason || 'Cancellation requested')}">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg> Cancel Requested
+                        </span>
+                    </div>` : ''}
                 </td>
-                <td class="actions-cell">
-                    ${actionContent}
-                    ${(appt.status === 'scheduled' || appt.status === 'confirmed') ? `
-                    <button class="btn btn-danger btn-sm btn-icon btn-cancel-appointment" data-id="${appt.appointment_id}" title="Cancel Appointment" aria-label="Cancel appointment">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </button>` : ''}
+                <td style="text-align: right; vertical-align: middle;">
+                    <div class="actions-cell" style="display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center;">
+                        ${actionContent}
+                        ${(appt.status === 'scheduled' || appt.status === 'confirmed') ? (
+                            appt.cancel_requested ? `
+                            <span class="text-muted" style="font-size: 0.8rem; font-style: italic;">Request Pending</span>
+                            ` : `
+                            <button class="btn btn-outline-danger btn-sm btn-request-cancel" data-id="${appt.appointment_id}" title="Request Cancellation" style="display: inline-flex; align-items: center; gap: 0.3rem;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                                Request Cancel
+                            </button>
+                            `
+                        ) : ''}
+                    </div>
                 </td>
             `;
 
@@ -203,10 +373,13 @@ export default {
                 });
             }
 
-            const cancelBtn = tr.querySelector('.btn-cancel-appointment');
-            if (cancelBtn) {
-                cancelBtn.addEventListener('click', () => {
-                    this.cancelAppointment(appt.appointment_id, `${appt.patient_first} ${appt.patient_last}`);
+            const requestCancelBtn = tr.querySelector('.btn-request-cancel');
+            if (requestCancelBtn) {
+                requestCancelBtn.addEventListener('click', () => {
+                    this.state.targetCancelAppointmentId = appt.appointment_id;
+                    const reasonInput = this.container.querySelector('#doc-cancel-reason');
+                    if (reasonInput) reasonInput.value = '';
+                    openModal('doctor-cancel-request-modal');
                 });
             }
 
@@ -214,25 +387,6 @@ export default {
         });
 
         tbody.appendChild(frag);
-    },
-
-    cancelAppointment(appointmentId, patientName) {
-        confirmDialog({
-            title: 'Cancel Appointment',
-            message: `Cancel the appointment for "${patientName || 'this patient'}"? The time slot becomes available for rebooking.`,
-            btnText: 'Cancel Appointment',
-            btnClass: 'btn btn-danger',
-            cancelText: 'Keep Appointment',
-            onConfirm: async () => {
-                try {
-                    const res = await api.put(`api/appointment_controller.php?action=cancel&id=${appointmentId}`);
-                    showToast(res.message, 'warning');
-                    await this.loadData();
-                } catch (err) {
-                    showToast(err.response?.data?.message || err.message || 'Failed to cancel the appointment.', 'error');
-                }
-            }
-        });
     },
 
     renderPagination(data) {
@@ -274,14 +428,14 @@ export default {
         });
     },
 
-    getStatusColor(status) {
+    getStatusBadgeClass(status) {
         switch (status) {
-            case 'scheduled': return { bg: '#eef2ff', text: '#4f46e5' }; // Indigo
-            case 'confirmed': return { bg: '#dcfce7', text: '#16a34a' }; // Green
-            case 'completed': return { bg: '#f1f5f9', text: '#475569' }; // Slate
-            case 'cancelled': return { bg: '#fee2e2', text: '#ef4444' }; // Red
-            case 'no_show':   return { bg: '#ffedd5', text: '#ea580c' }; // Orange
-            default:          return { bg: '#f3f4f6', text: '#374151' }; // Gray
+            case 'scheduled': return 'badge-status-scheduled';
+            case 'confirmed': return 'badge-status-confirmed';
+            case 'completed': return 'badge-status-completed';
+            case 'cancelled': return 'badge-status-cancelled';
+            case 'no_show':   return 'badge-status-noshow';
+            default:          return 'badge-status-secondary';
         }
     }
 };

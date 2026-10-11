@@ -12,12 +12,16 @@ import { confirmDialog } from '../components/confirm-dialog.js?v=1';
 export default {
     state: {
         appointments: [],
+        patients: [],
+        doctors: [],
         search: '',
         status: '',
         page: 1,
         pageSize: 10,
         total: 0,
         pages: 1,
+        sortBy: 'appointment_date',
+        sortOrder: 'DESC',
         activeEditId: null,
         activeEditStatus: null,
         isDirty: false,
@@ -35,7 +39,10 @@ export default {
         this.setupPickers();
         this.setupRegisterForm();
         this.attachEventListeners();
-        await this.loadData();
+        await Promise.all([
+            this.loadData(),
+            this.loadOptions()
+        ]);
     },
 
     renderStructure() {
@@ -82,7 +89,7 @@ export default {
 
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
                         <span class="text-muted" style="font-size: 0.85rem;">Rows:</span>
-                        <select id="appointments-page-size" class="form-control" style="width: auto;">
+                        <select id="appointments-page-size" class="form-control table-page-size">
                             <option value="5">5</option>
                             <option value="10" selected>10</option>
                             <option value="25">25</option>
@@ -95,13 +102,13 @@ export default {
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>Date &amp; Time</th>
-                                <th>Patient</th>
-                                <th>Doctor</th>
-                                <th>Chief Complaint</th>
+                                <th data-sort="appointment_date">Date &amp; Time</th>
+                                <th data-sort="patient_name">Patient</th>
+                                <th data-sort="doctor_name">Doctor</th>
+                                <th data-sort="chief_complaint">Chief Complaint</th>
                                 <th>Triage Vitals</th>
-                                <th>Status</th>
-                                <th style="text-align: right;">Actions</th>
+                                <th data-sort="status">Status</th>
+                                <th style="text-align: right; white-space: nowrap;">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="appointments-tbody">
@@ -182,6 +189,16 @@ export default {
                                 <textarea id="appt-complaint" class="form-control" rows="2" placeholder="Reason for the visit (e.g. persistent cough and fever)"></textarea>
                             </div>
 
+                            <div class="form-group">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+                                    <label for="appt-allergies" style="margin-bottom: 0;">Allergies &amp; Clinical Alerts <span class="text-muted" style="font-weight: normal; font-size: 0.85em;">(Optional)</span></label>
+                                    <span id="appt-allergies-status-badge"></span>
+                                </div>
+                                <input type="text" id="appt-allergies" class="form-control" placeholder="e.g. Penicillin (anaphylaxis), Sulfa drugs, Peanuts, or leave blank">
+                                <small class="text-muted" style="display: block; margin-top: 0.25rem; font-size: 0.78rem;">Patient-reported intake note. Flags as unconfirmed until verified by physician.</small>
+                                <div class="invalid-feedback" id="appt-allergies-error"></div>
+                            </div>
+
                             <div class="form-group" style="margin-bottom: 0;">
                                 <label style="display: block; margin-bottom: 0.5rem;">Triage Vital Signs <span class="text-muted" style="font-weight: normal; font-size: 0.85em;">(Optional)</span></label>
                                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
@@ -237,67 +254,74 @@ export default {
                 </div>
             </div>
 
-            <div class="modal-backdrop" id="walkin-form-modal" role="dialog" aria-modal="true" aria-labelledby="walkin-modal-title">
+            <div class="modal" id="walkin-form-modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="walkin-modal-title" aria-hidden="true">
                 <div class="modal-dialog">
-                    <div class="modal-header">
-                        <h3 class="modal-title" id="walkin-modal-title">Register Walk-in Patient</h3>
-                        <button type="button" class="btn-close" data-close-modal aria-label="Back to appointment form">&times;</button>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 class="modal-title" id="walkin-modal-title">Register Walk-in Patient</h3>
+                            <button type="button" class="btn-close" data-dismiss="modal" data-close-modal aria-label="Back to appointment form"></button>
+                        </div>
+                        <form id="walkin-form" novalidate>
+                            <div class="modal-body">
+                                <div class="alert alert-warning" id="walkin-status" role="status" style="display: none; margin-bottom: 1rem;"></div>
+                                <div class="form-group">
+                                    <label for="walkin-first">First Name <span class="required-star">*</span></label>
+                                    <input type="text" id="walkin-first" class="form-control" maxlength="80">
+                                    <div class="invalid-feedback" id="walkin-first-error"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="walkin-middle">Middle Initial</label>
+                                    <input type="text" id="walkin-middle" class="form-control" maxlength="10">
+                                    <div class="invalid-feedback" id="walkin-middle-error"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="walkin-last">Last Name <span class="required-star">*</span></label>
+                                    <input type="text" id="walkin-last" class="form-control" maxlength="80">
+                                    <div class="invalid-feedback" id="walkin-last-error"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="walkin-gender">Gender <span class="required-star">*</span></label>
+                                    <select id="walkin-gender" class="form-control">
+                                        <option value="" disabled selected>Select Gender</option>
+                                        <option value="Male">Male</option>
+                                        <option value="Female">Female</option>
+                                        <option value="Other">Other</option>
+                                        <option value="Unknown">Unknown</option>
+                                    </select>
+                                    <div class="invalid-feedback" id="walkin-gender-error"></div>
+                                </div>
+                                <div class="form-group" id="walkin-custom-gender-group" style="display: none;">
+                                    <label for="walkin-custom-gender">Specify Gender <span class="required-star">*</span></label>
+                                    <input type="text" id="walkin-custom-gender" class="form-control" placeholder="Please specify your gender" maxlength="50">
+                                    <div class="invalid-feedback" id="walkin-custom-gender-error"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="walkin-dob">Date of Birth <span class="required-star">*</span></label>
+                                    <input type="date" id="walkin-dob" class="form-control">
+                                    <div class="invalid-feedback" id="walkin-dob-error"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="walkin-contact">Contact No. <span class="required-star">*</span></label>
+                                    <input type="text" id="walkin-contact" class="form-control" inputmode="numeric" maxlength="11" placeholder="e.g. 09171234567">
+                                    <div class="invalid-feedback" id="walkin-contact-error"></div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="walkin-address">Address</label>
+                                    <textarea id="walkin-address" class="form-control" rows="2" maxlength="255"></textarea>
+                                    <div class="invalid-feedback" id="walkin-address-error"></div>
+                                </div>
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label for="walkin-allergies">Allergies &amp; Clinical Alerts <span class="text-muted" style="font-weight: normal; font-size: 0.85em;">(Optional)</span></label>
+                                    <input type="text" id="walkin-allergies" class="form-control" placeholder="e.g. Penicillin, Sulfa drugs, Peanuts, or leave blank">
+                                    <div class="invalid-feedback" id="walkin-allergies-error"></div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" id="btn-cancel-walkin" data-dismiss="modal" data-close-modal>Back to Appointment</button>
+                                <button type="submit" id="btn-save-walkin" class="btn btn-primary">Register & Select</button>
+                            </div>
+                        </form>
                     </div>
-                    <form id="walkin-form" novalidate>
-                        <div class="modal-body">
-                            <div class="alert alert-warning" id="walkin-status" role="status" style="display: none; margin-bottom: 1rem;"></div>
-                            <div class="form-group">
-                                <label for="walkin-first">First Name <span class="required-star">*</span></label>
-                                <input type="text" id="walkin-first" class="form-control" maxlength="80">
-                                <div class="invalid-feedback" id="walkin-first-error"></div>
-                            </div>
-                            <div class="form-group">
-                                <label for="walkin-middle">Middle Initial</label>
-                                <input type="text" id="walkin-middle" class="form-control" maxlength="10">
-                                <div class="invalid-feedback" id="walkin-middle-error"></div>
-                            </div>
-                            <div class="form-group">
-                                <label for="walkin-last">Last Name <span class="required-star">*</span></label>
-                                <input type="text" id="walkin-last" class="form-control" maxlength="80">
-                                <div class="invalid-feedback" id="walkin-last-error"></div>
-                            </div>
-                            <div class="form-group">
-                                <label for="walkin-gender">Gender <span class="required-star">*</span></label>
-                                <select id="walkin-gender" class="form-control">
-                                    <option value="" disabled selected>Select Gender</option>
-                                    <option value="Male">Male</option>
-                                    <option value="Female">Female</option>
-                                    <option value="Other">Other</option>
-                                    <option value="Unknown">Unknown</option>
-                                </select>
-                                <div class="invalid-feedback" id="walkin-gender-error"></div>
-                            </div>
-                            <div class="form-group" id="walkin-custom-gender-group" style="display: none;">
-                                <label for="walkin-custom-gender">Specify Gender <span class="required-star">*</span></label>
-                                <input type="text" id="walkin-custom-gender" class="form-control" placeholder="Please specify your gender" maxlength="50">
-                                <div class="invalid-feedback" id="walkin-custom-gender-error"></div>
-                            </div>
-                            <div class="form-group">
-                                <label for="walkin-dob">Date of Birth <span class="required-star">*</span></label>
-                                <input type="date" id="walkin-dob" class="form-control">
-                                <div class="invalid-feedback" id="walkin-dob-error"></div>
-                            </div>
-                            <div class="form-group">
-                                <label for="walkin-contact">Contact No. <span class="required-star">*</span></label>
-                                <input type="text" id="walkin-contact" class="form-control" inputmode="numeric" maxlength="11" placeholder="e.g. 09171234567">
-                                <div class="invalid-feedback" id="walkin-contact-error"></div>
-                            </div>
-                            <div class="form-group">
-                                <label for="walkin-address">Address</label>
-                                <textarea id="walkin-address" class="form-control" rows="2" maxlength="255"></textarea>
-                                <div class="invalid-feedback" id="walkin-address-error"></div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" id="btn-cancel-walkin" data-close-modal>Back to Appointment</button>
-                            <button type="submit" id="btn-save-walkin" class="btn btn-primary">Register & Select</button>
-                        </div>
-                    </form>
                 </div>
             </div>
         `;
@@ -316,10 +340,47 @@ export default {
                 return items.map(p => ({
                     value: p.patient_id,
                     label: this.formatPatientName(p),
-                    meta: `PAT-${String(p.patient_id).padStart(4, '0')}`
+                    meta: p.contact_no ? p.contact_no : (p.date_of_birth ? `DOB: ${p.date_of_birth}` : ''),
+                    allergies_alerts: p.allergies_alerts || '',
+                    allergies_confirmed_by_doctor: p.allergies_confirmed_by_doctor ? 1 : 0
                 }));
+            },
+            onChange: (item) => {
+                const patSelect = this.container.querySelector('#appt-patient');
+                if (patSelect && item) {
+                    if (!Array.from(patSelect.options).some(o => o.value == item.value)) {
+                        const opt = create('option');
+                        opt.value = item.value;
+                        opt.textContent = item.label;
+                        patSelect.appendChild(opt);
+                    }
+                    patSelect.value = item.value;
+                    patSelect.classList.remove('is-invalid');
+                }
+                this.updateAllergyFromSelectedPatient(item);
             }
         }).mount(this.container.querySelector('#appt-patient-picker'));
+
+        // Listen for direct selection changes on native select
+        const patSelect = this.container.querySelector('#appt-patient');
+        if (patSelect) {
+            patSelect.addEventListener('change', () => {
+                const selectedId = patSelect.value;
+                const found = Array.isArray(this.state.patients)
+                    ? this.state.patients.find(p => String(p.patient_id) === String(selectedId))
+                    : null;
+                this.updateAllergyFromSelectedPatient(found);
+            });
+        }
+
+        // Live status feedback when receptionist modifies the intake note
+        const allergiesInput = this.container.querySelector('#appt-allergies');
+        if (allergiesInput) {
+            allergiesInput.addEventListener('input', () => {
+                const val = allergiesInput.value.trim();
+                this.renderAllergyBadge(val, 0);
+            });
+        }
 
         this.doctorPicker = new SearchSelect({
             inputId: 'appt-doctor-input',
@@ -337,6 +398,50 @@ export default {
         }).mount(this.container.querySelector('#appt-doctor-picker'));
     },
 
+    renderAllergyBadge(allergies, isConfirmed) {
+        const badgeEl = this.container.querySelector('#appt-allergies-status-badge');
+        if (!badgeEl) return;
+        const text = (allergies || '').trim();
+        if (text) {
+            if (isConfirmed) {
+                badgeEl.innerHTML = `
+                    <span class="badge badge-status-completed" style="font-size: 0.75rem; padding: 2px 8px; display: inline-flex; align-items: center; gap: 4px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        Doctor Confirmed
+                    </span>
+                `;
+            } else {
+                badgeEl.innerHTML = `
+                    <span class="badge badge-status-confirmed" style="font-size: 0.75rem; padding: 2px 8px; display: inline-flex; align-items: center; gap: 4px;">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                        Unconfirmed Intake Note
+                    </span>
+                `;
+            }
+        } else {
+            badgeEl.innerHTML = `
+                <span class="badge badge-status-scheduled" style="font-size: 0.75rem; padding: 2px 8px; display: inline-flex; align-items: center; gap: 4px;">
+                    No Allergy Recorded
+                </span>
+            `;
+        }
+    },
+
+    updateAllergyFromSelectedPatient(patient) {
+        const allergiesInput = this.container.querySelector('#appt-allergies');
+        if (!patient) {
+            if (allergiesInput) allergiesInput.value = '';
+            this.renderAllergyBadge('', 0);
+            return;
+        }
+        const allergies = patient.allergies_alerts || '';
+        const isConfirmed = !!patient.allergies_confirmed_by_doctor;
+        if (allergiesInput) {
+            allergiesInput.value = allergies;
+        }
+        this.renderAllergyBadge(allergies, isConfirmed);
+    },
+
     setupRegisterForm() {
         this.registerForm = new PatientRegisterForm({
             container: this.container,
@@ -344,10 +449,25 @@ export default {
             successMessage: 'Patient registered and selected for this appointment.',
             onRegistered: (patient) => {
                 const label = this.formatPatientName(patient);
-                this.patientPicker.reload();
-                this.patientPicker.setValue(patient.patient_id, label);
-                this.patientPicker.setInvalid(false);
-                this.container.querySelector('#appt-patient-error').textContent = '';
+                if (this.patientPicker) {
+                    this.patientPicker.reload();
+                    this.patientPicker.setValue(patient.patient_id, label);
+                    this.patientPicker.setInvalid(false);
+                }
+                const patSelect = this.container.querySelector('#appt-patient');
+                if (patSelect) {
+                    if (!Array.from(patSelect.options).some(o => o.value == patient.patient_id)) {
+                        const opt = create('option');
+                        opt.value = patient.patient_id;
+                        opt.textContent = label;
+                        patSelect.appendChild(opt);
+                    }
+                    patSelect.value = patient.patient_id;
+                    patSelect.classList.remove('is-invalid');
+                }
+                const errEl = this.container.querySelector('#appt-patient-error');
+                if (errEl) errEl.textContent = '';
+                this.updateAllergyFromSelectedPatient(patient);
             }
         });
     },
@@ -379,6 +499,20 @@ export default {
             this.state.pageSize = parseInt(e.target.value, 10);
             this.state.page = 1;
             this.loadData();
+        });
+
+        this.container.querySelectorAll('th[data-sort]').forEach(th => {
+            th.addEventListener('click', () => {
+                const sortField = th.getAttribute('data-sort');
+                if (this.state.sortBy === sortField) {
+                    this.state.sortOrder = this.state.sortOrder === 'ASC' ? 'DESC' : 'ASC';
+                } else {
+                    this.state.sortBy = sortField;
+                    this.state.sortOrder = 'ASC';
+                }
+                this.state.page = 1;
+                this.loadData();
+            });
         });
 
         this.container.querySelector('#btn-new-appointment').addEventListener('click', () => {
@@ -876,6 +1010,15 @@ export default {
         });
     },
 
+    updateSortHeaders() {
+        this.container.querySelectorAll('th[data-sort]').forEach(th => {
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (th.getAttribute('data-sort') === this.state.sortBy) {
+                th.classList.add(this.state.sortOrder === 'ASC' ? 'sort-asc' : 'sort-desc');
+            }
+        });
+    },
+
     async loadData() {
         const tbody = this.container.querySelector('#appointments-tbody');
         tbody.innerHTML = '<tr><td colspan="7" class="text-center" style="padding: 2rem;">Loading appointments...</td></tr>';
@@ -884,7 +1027,8 @@ export default {
             const params = {
                 page: this.state.page,
                 page_size: this.state.pageSize,
-                sort: 'upcoming'
+                sort_by: this.state.sortBy,
+                sort_order: this.state.sortOrder
             };
             if (this.state.search) params.search = this.state.search;
             if (this.state.status) params.status = this.state.status;
@@ -898,6 +1042,7 @@ export default {
                 this.state.pages = res.data.pages ?? 1;
                 this.renderTable();
                 this.renderPagination(res.data);
+                this.updateSortHeaders();
             } else {
                 throw new Error(res.message || 'Failed to load appointments.');
             }
@@ -973,7 +1118,7 @@ export default {
             const dateStr = d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
             const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
-            const statusColor = this.getStatusColor(appt.status);
+            const badgeClass = this.getStatusBadgeClass(appt.status);
             const vitals = this.formatVitals(appt);
 
             const isTerminal = ['completed', 'cancelled', 'no_show'].includes(appt.status);
@@ -987,37 +1132,58 @@ export default {
                 actionButtons = `
                     <div class="actions-cell">
                         ${printBtnHtml}
-                        <button type="button" class="btn btn-sm btn-outline-primary" data-action="edit" data-id="${appt.appointment_id}">Edit</button>
-                        ${appt.status === 'scheduled' ? `<button type="button" class="btn btn-sm btn-outline-success" data-action="confirm" data-id="${appt.appointment_id}">Confirm</button>` : ''}
-                        <button type="button" class="btn btn-sm btn-outline-danger" data-action="cancel" data-id="${appt.appointment_id}" data-patient="${escapeHtml(appt.patient_last + ', ' + appt.patient_first)}">Cancel</button>
-                        <button type="button" class="btn btn-sm btn-outline-warning" data-action="noshow" data-id="${appt.appointment_id}">No Show</button>
+                        <button type="button" class="btn btn-sm btn-icon btn-outline-primary" data-action="edit" data-id="${appt.appointment_id}" title="Edit Appointment" aria-label="Edit appointment">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                        ${appt.status === 'scheduled' ? `
+                        <button type="button" class="btn btn-sm btn-icon btn-outline-success" data-action="confirm" data-id="${appt.appointment_id}" title="Confirm Appointment" aria-label="Confirm appointment">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </button>` : ''}
+                        <button type="button" class="btn btn-sm btn-icon btn-outline-danger" data-action="cancel" data-id="${appt.appointment_id}" data-patient="${escapeHtml(appt.patient_last + ', ' + appt.patient_first)}" title="Cancel Appointment" aria-label="Cancel appointment">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                        <button type="button" class="btn btn-sm btn-icon btn-outline-warning" data-action="noshow" data-id="${appt.appointment_id}" title="Mark as No Show" aria-label="Mark as no show">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
+                        </button>
                     </div>
                 `;
             }
 
             tr.innerHTML = `
-                <td>
+                <td style="vertical-align: middle;">
                     <div style="font-weight: 500;">${escapeHtml(dateStr)}</div>
                     <div class="text-muted" style="font-size: 0.85rem;">${escapeHtml(timeStr)}</div>
                 </td>
-                <td>
+                <td style="vertical-align: middle;">
                     <div style="font-weight: 500;">${escapeHtml(appt.patient_last + ', ' + appt.patient_first)}</div>
                 </td>
-                <td>
+                <td style="vertical-align: middle;">
                     <div style="font-weight: 500;">Dr. ${escapeHtml(appt.doctor_last + ', ' + appt.doctor_first)}</div>
                 </td>
-                <td>
+                <td style="vertical-align: middle;">
                     <span style="display: block; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(appt.chief_complaint || 'None')}">
                         ${escapeHtml(appt.chief_complaint || 'None')}
                     </span>
                 </td>
-                <td style="font-size: 0.85rem;">${vitals}</td>
-                <td>
-                    <span class="badge" style="background-color: ${statusColor.bg}; color: ${statusColor.text};">
+                <td style="font-size: 0.85rem; vertical-align: middle;">${vitals}</td>
+                <td style="vertical-align: middle;">
+                    <span class="badge ${badgeClass}">
                         ${escapeHtml((appt.status || '').toUpperCase())}
                     </span>
+                    ${appt.cancel_requested ? `
+                    <div style="margin-top: 0.35rem;">
+                        <span class="badge badge-status-critical" style="font-size: 0.72rem; font-weight: 600; cursor: help;" title="Doctor Cancel Requested: ${escapeHtml(appt.cancel_request_reason || 'Doctor requested cancellation')}">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"></path><line x1="4" y1="22" x2="4" y2="15"></line></svg> Cancel Requested
+                        </span>
+                    </div>` : ''}
+                    ${appt.is_overdue && !isTerminal ? `
+                    <div style="margin-top: 0.35rem;">
+                        <span class="badge badge-status-overdue" style="font-size: 0.72rem; font-weight: 600; cursor: help;" title="${appt.minutes_overdue ? appt.minutes_overdue + ' mins past schedule (+15m grace)' : 'Past scheduled appointment time'}">
+                            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg> Overdue (${appt.minutes_overdue || ''}m)
+                        </span>
+                    </div>` : ''}
                 </td>
-                <td style="text-align: right;">${actionButtons}</td>
+                <td style="text-align: right; white-space: nowrap; vertical-align: middle;">${actionButtons}</td>
             `;
 
             frag.appendChild(tr);
@@ -1040,14 +1206,14 @@ export default {
         return parts.length ? parts.join(' &middot; ') : '<span class="text-muted">Not recorded</span>';
     },
 
-    getStatusColor(status) {
+    getStatusBadgeClass(status) {
         switch (status) {
-            case 'scheduled': return { bg: '#eef2ff', text: '#4f46e5' };
-            case 'confirmed': return { bg: '#dcfce7', text: '#16a34a' };
-            case 'completed': return { bg: '#f1f5f9', text: '#475569' };
-            case 'cancelled': return { bg: '#fee2e2', text: '#ef4444' };
-            case 'no_show':   return { bg: '#ffedd5', text: '#ea580c' };
-            default:          return { bg: '#f3f4f6', text: '#374151' };
+            case 'scheduled': return 'badge-status-scheduled';
+            case 'confirmed': return 'badge-status-confirmed';
+            case 'completed': return 'badge-status-completed';
+            case 'cancelled': return 'badge-status-cancelled';
+            case 'no_show':   return 'badge-status-noshow';
+            default:          return 'badge-status-secondary';
         }
     },
 
@@ -1070,7 +1236,7 @@ export default {
         });
     },
 
-    openBookModal(appt = null) {
+    async openBookModal(appt = null) {
         this.state.isDirty = false;
         this.bypassingDirtyCheck = false;
         this.bypassingWalkinDirtyCheck = false;
@@ -1082,16 +1248,18 @@ export default {
 
         const title = this.container.querySelector('#appointment-form-modal .modal-title');
         
+        // Ensure patients and doctors options are loaded
+        if (!Array.isArray(this.state.patients) || !Array.isArray(this.state.doctors) || this.state.patients.length === 0 || this.state.doctors.length === 0) {
+            await this.loadOptions();
+        }
+
         if (appt) {
             this.state.activeEditId = appt.appointment_id;
             this.state.activeEditStatus = appt.status;
             title.textContent = 'Edit Patient Appointment';
             
-            const ensureOptions = async () => {
-                if (this.state.patients.length === 0 || this.state.doctors.length === 0) {
-                    await this.loadOptions();
-                }
-                const patSelect = this.container.querySelector('#appt-patient');
+            const patSelect = this.container.querySelector('#appt-patient');
+            if (patSelect) {
                 if (!Array.from(patSelect.options).some(o => o.value == appt.patient_id)) {
                     const opt = create('option');
                     opt.value = appt.patient_id;
@@ -1100,8 +1268,10 @@ export default {
                     patSelect.appendChild(opt);
                 }
                 patSelect.value = appt.patient_id;
-                
-                const docSelect = this.container.querySelector('#appt-doctor');
+            }
+            
+            const docSelect = this.container.querySelector('#appt-doctor');
+            if (docSelect) {
                 if (!Array.from(docSelect.options).some(o => o.value == appt.doctor_id)) {
                     const opt = create('option');
                     opt.value = appt.doctor_id;
@@ -1110,44 +1280,61 @@ export default {
                     docSelect.appendChild(opt);
                 }
                 docSelect.value = appt.doctor_id;
-                this.syncDoctorComboboxFromSelect();
-            };
-            ensureOptions();
+            }
+            this.syncDoctorComboboxFromSelect();
             
             this.container.querySelector('#appt-date').value = appt.appointment_date;
             this.container.querySelector('#appt-time').value = appt.appointment_time;
             this.container.querySelector('#appt-complaint').value = appt.chief_complaint || '';
+            const allergiesInput = this.container.querySelector('#appt-allergies');
+            if (allergiesInput) allergiesInput.value = appt.allergies_alerts || '';
+            this.renderAllergyBadge(appt.allergies_alerts || '', appt.allergies_confirmed_by_doctor);
             this.container.querySelector('#appt-bp').value = appt.blood_pressure || '';
             this.container.querySelector('#appt-temp').value = appt.temperature || '';
             this.container.querySelector('#appt-o2').value = appt.oxygen_saturation || '';
+            
+            if (this.patientPicker) {
+                this.patientPicker.setValue(appt.patient_id, `${appt.patient_last}, ${appt.patient_first}`);
+            }
+            if (this.doctorPicker) {
+                this.doctorPicker.setValue(appt.doctor_id, `Dr. ${appt.doctor_last}, ${appt.doctor_first}`);
+            }
             
             const submitBtn = this.container.querySelector('#btn-save-appointment');
             submitBtn.textContent = 'Update Appointment';
             
             const walkinBtn = this.container.querySelector('#btn-open-walkin');
-            walkinBtn.innerHTML = '<i class="bi bi-pencil"></i> Edit Patient Details';
-            walkinBtn.classList.replace('btn-outline-primary', 'btn-outline-secondary');
+            if (walkinBtn) {
+                walkinBtn.style.display = 'none';
+            }
         } else {
             this.state.activeEditId = null;
             this.state.activeEditStatus = null;
             title.textContent = 'New Patient Appointment';
             
+            const allergiesInput = this.container.querySelector('#appt-allergies');
+            if (allergiesInput) allergiesInput.value = '';
+            this.renderAllergyBadge('', 0);
+
             const walkinBtn = this.container.querySelector('#btn-open-walkin');
-            walkinBtn.innerHTML = '<i class="bi bi-person-plus"></i> Register Walk-in';
-            walkinBtn.classList.replace('btn-outline-secondary', 'btn-outline-primary');
+            if (walkinBtn) {
+                walkinBtn.style.display = '';
+                walkinBtn.textContent = '+ Register Walk-in';
+            }
             
             const dateInput = this.container.querySelector('#appt-date');
             const now = new Date();
             const localToday = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
             dateInput.min = localToday.toISOString().slice(0, 10);
 
-            if (this.state.patients && this.state.doctors && (this.state.patients.length === 0 || this.state.doctors.length === 0)) {
-                this.loadOptions();
-            } else {
-                const docSelect = this.container.querySelector('#appt-doctor');
-                if (docSelect) docSelect.value = '';
-                this.syncDoctorComboboxFromSelect();
-            }
+            const patSelect = this.container.querySelector('#appt-patient');
+            if (patSelect) patSelect.value = '';
+            if (this.patientPicker) this.patientPicker.clear();
+
+            const docSelect = this.container.querySelector('#appt-doctor');
+            if (docSelect) docSelect.value = '';
+            if (this.doctorPicker) this.doctorPicker.clear();
+            this.syncDoctorComboboxFromSelect();
             
             const submitBtn = this.container.querySelector('#btn-save-appointment');
             submitBtn.textContent = 'Schedule Appointment';
@@ -1167,24 +1354,35 @@ export default {
         if (this.doctorPicker) this.doctorPicker.setInvalid(false);
         const docBtn = this.container.querySelector('#doctor-select-btn') || this.container.querySelector('#doctor-search-input');
         if (docBtn) docBtn.classList.remove('is-invalid');
+        const patErr = this.container.querySelector('#appt-patient-error');
+        if (patErr) patErr.textContent = '';
+        const docErr = this.container.querySelector('#appt-doctor-error');
+        if (docErr) docErr.textContent = '';
     },
 
     showFormErrors(errors) {
         const patientFeedback = this.container.querySelector('#appt-patient-error');
         if (errors.patient_id) {
-            this.patientPicker.setInvalid(true);
-            patientFeedback.textContent = errors.patient_id;
+            if (this.patientPicker) this.patientPicker.setInvalid(true);
+            const patSelect = this.container.querySelector('#appt-patient');
+            if (patSelect) patSelect.classList.add('is-invalid');
+            if (patientFeedback) patientFeedback.textContent = errors.patient_id;
         }
 
         const doctorFeedback = this.container.querySelector('#appt-doctor-error');
         if (errors.doctor_id) {
-            this.doctorPicker.setInvalid(true);
-            doctorFeedback.textContent = errors.doctor_id;
+            if (this.doctorPicker) this.doctorPicker.setInvalid(true);
+            const docBtn = this.container.querySelector('#doctor-select-btn') || this.container.querySelector('#doctor-search-input');
+            if (docBtn) docBtn.classList.add('is-invalid');
+            const docSelect = this.container.querySelector('#appt-doctor');
+            if (docSelect) docSelect.classList.add('is-invalid');
+            if (doctorFeedback) doctorFeedback.textContent = errors.doctor_id;
         }
 
         const fieldMap = {
             appointment_date: ['#appt-date', '#appt-date-error'],
             appointment_time: ['#appt-time', '#appt-time-error'],
+            allergies_alerts: ['#appt-allergies', '#appt-allergies-error'],
             blood_pressure: ['#appt-bp', '#appt-bp-error'],
             temperature: ['#appt-temp', '#appt-temp-error'],
             oxygen_saturation: ['#appt-o2', '#appt-o2-error']
@@ -1244,12 +1442,19 @@ export default {
     },
 
     async saveAppointment() {
+        const patSelect = this.container.querySelector('#appt-patient');
+        const docSelect = this.container.querySelector('#appt-doctor');
+        const patientVal = (patSelect && patSelect.value) || (this.patientPicker && this.patientPicker.getValue()) || '0';
+        const doctorVal = (docSelect && docSelect.value) || (this.doctorPicker && this.doctorPicker.getValue()) || '0';
+        const allergiesInput = this.container.querySelector('#appt-allergies');
+
         const payload = {
-            patient_id: parseInt(this.patientPicker.getValue() || '0', 10),
-            doctor_id: parseInt(this.doctorPicker.getValue() || '0', 10),
+            patient_id: parseInt(patientVal, 10),
+            doctor_id: parseInt(doctorVal, 10),
             appointment_date: this.container.querySelector('#appt-date').value,
             appointment_time: this.container.querySelector('#appt-time').value,
             chief_complaint: this.container.querySelector('#appt-complaint').value.trim(),
+            allergies_alerts: allergiesInput ? allergiesInput.value.trim() : null,
             blood_pressure: this.container.querySelector('#appt-bp').value.trim(),
             temperature: this.container.querySelector('#appt-temp').value.trim(),
             oxygen_saturation: this.container.querySelector('#appt-o2').value.trim()
@@ -1274,7 +1479,12 @@ export default {
             
             if (res.success) {
                 const newAppointmentId = res.data ? res.data.appointment_id : null;
-                const patientLabel = this.patientPicker ? this.patientPicker.getLabel() : '';
+                let patientLabel = '';
+                if (patSelect && patSelect.selectedIndex >= 0 && patSelect.value) {
+                    patientLabel = patSelect.options[patSelect.selectedIndex]?.textContent || '';
+                } else if (this.patientPicker) {
+                    patientLabel = this.patientPicker.getLabel() || '';
+                }
                 this.state.isDirty = false;
                 showToast(this.state.activeEditId ? 'Appointment updated successfully.' : 'Appointment scheduled successfully.', 'success');
                 
@@ -1399,6 +1609,8 @@ export default {
                     this.container.querySelector('#walkin-dob').value = res.data.date_of_birth || '';
                     this.container.querySelector('#walkin-contact').value = res.data.contact_no || '';
                     this.container.querySelector('#walkin-address').value = res.data.address || '';
+                    const walkinAllergies = this.container.querySelector('#walkin-allergies');
+                    if (walkinAllergies) walkinAllergies.value = res.data.allergies_alerts || '';
                 }
             } catch (err) {
                 this.setWalkinStatus('Failed to load patient details. You may not have permission.');
@@ -1410,6 +1622,8 @@ export default {
         } else {
             title.textContent = 'Register Walk-in Patient';
             saveBtn.textContent = 'Register & Select';
+            const walkinAllergies = this.container.querySelector('#walkin-allergies');
+            if (walkinAllergies) walkinAllergies.value = '';
         }
 
         // Swap modals instead of nesting them. closeModal() only removes .active, so every
@@ -1438,6 +1652,8 @@ export default {
         this.walkinUncertain = false;
         this.container.querySelector('#walkin-custom-gender-group').style.display = 'none';
         this.container.querySelector('#walkin-custom-gender').value = '';
+        const walkinAllergies = this.container.querySelector('#walkin-allergies');
+        if (walkinAllergies) walkinAllergies.value = '';
         this.container.querySelector('#btn-save-walkin').textContent = 'Register & Select';
     },
 
@@ -1455,7 +1671,8 @@ export default {
     showWalkinErrors(errors) {
         const idMap = {
             first_name: 'first', middle_initial: 'middle', last_name: 'last', gender: 'gender',
-            date_of_birth: 'dob', contact_no: 'contact', address: 'address', custom_gender: 'custom-gender'
+            date_of_birth: 'dob', contact_no: 'contact', address: 'address', custom_gender: 'custom-gender',
+            allergies_alerts: 'allergies'
         };
         let firstInvalid = null;
         Object.entries(errors || {}).forEach(([key, msg]) => {
@@ -1498,6 +1715,7 @@ export default {
             gender = customGender;
         }
 
+        const allergiesInput = form.querySelector('#walkin-allergies');
         const payload = {
             first_name: form.querySelector('#walkin-first').value.trim(),
             middle_initial: form.querySelector('#walkin-middle').value.trim(),
@@ -1505,7 +1723,8 @@ export default {
             gender: gender,
             date_of_birth: form.querySelector('#walkin-dob').value,
             contact_no: form.querySelector('#walkin-contact').value.trim(),
-            address: form.querySelector('#walkin-address').value.trim()
+            address: form.querySelector('#walkin-address').value.trim(),
+            allergies_alerts: allergiesInput ? allergiesInput.value.trim() : null
         };
 
         this.clearWalkinErrors();
@@ -1526,11 +1745,17 @@ export default {
                         this.state.patients[pIndex].first_name = payload.first_name;
                         this.state.patients[pIndex].middle_initial = payload.middle_initial;
                         this.state.patients[pIndex].last_name = payload.last_name;
+                        this.state.patients[pIndex].allergies_alerts = payload.allergies_alerts;
+                        this.state.patients[pIndex].allergies_confirmed_by_doctor = 0;
                     }
                     
                     const patSelect = this.container.querySelector('#appt-patient');
                     this.renderSelect(patSelect, this.state.patients, (p) => this.patientOption(p), 'Select Patient');
                     patSelect.value = String(updatedId);
+
+                    const apptAllergiesInput = this.container.querySelector('#appt-allergies');
+                    if (apptAllergiesInput) apptAllergiesInput.value = payload.allergies_alerts || '';
+                    this.renderAllergyBadge(payload.allergies_alerts || '', 0);
                     
                     showToast(`Patient details updated successfully.`, 'success');
                     this.state.isWalkinDirty = false;
@@ -1550,15 +1775,25 @@ export default {
                             patient_id: newId,
                             first_name: payload.first_name,
                             middle_initial: payload.middle_initial,
-                            last_name: payload.last_name
+                            last_name: payload.last_name,
+                            allergies_alerts: payload.allergies_alerts,
+                            allergies_confirmed_by_doctor: 0
                         });
                     }
                     const patSelect = this.container.querySelector('#appt-patient');
                     this.renderSelect(patSelect, this.state.patients, (p) => this.patientOption(p), 'Select Patient');
                     patSelect.value = String(newId);
                     patSelect.classList.remove('is-invalid');
+                    if (this.patientPicker) {
+                        this.patientPicker.setValue(newId, `${payload.last_name}, ${payload.first_name}`);
+                        this.patientPicker.setInvalid(false);
+                    }
                     const patErr = this.container.querySelector('#appt-patient-error');
                     if (patErr) patErr.textContent = '';
+
+                    const apptAllergiesInput = this.container.querySelector('#appt-allergies');
+                    if (apptAllergiesInput) apptAllergiesInput.value = payload.allergies_alerts || '';
+                    this.renderAllergyBadge(payload.allergies_alerts || '', 0);
 
                     showToast('Walk-in patient registered and selected. Review the appointment, then schedule it.', 'success');
                     this.state.isWalkinDirty = false;

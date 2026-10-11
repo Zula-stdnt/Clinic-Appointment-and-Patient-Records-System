@@ -10,12 +10,19 @@ CREATE TABLE `appointments` (
   `appointment_time` time NOT NULL,
   `chief_complaint` text DEFAULT NULL,
   `status` enum('scheduled','confirmed','completed','cancelled','no_show') NOT NULL DEFAULT 'scheduled',
+  `cancel_requested` tinyint(1) NOT NULL DEFAULT 0,
+  `cancel_request_reason` text DEFAULT NULL,
+  `cancel_requested_at` datetime DEFAULT NULL,
+  `cancel_requested_by` int(10) unsigned DEFAULT NULL,
+  `active_slot` varchar(50) GENERATED ALWAYS AS (if(`status` in ('cancelled','no_show'),NULL,concat(`appointment_date`,' ',`appointment_time`))) STORED,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`appointment_id`),
   KEY `fk_appointments_patient` (`patient_id`),
   KEY `fk_appointments_creator` (`created_by`),
   KEY `idx_appointment_schedule` (`doctor_id`,`appointment_date`,`appointment_time`),
+  UNIQUE KEY `uq_doctor_active_slot` (`doctor_id`,`active_slot`),
+  CONSTRAINT `fk_appointments_cancel_req_by` FOREIGN KEY (`cancel_requested_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL ON UPDATE CASCADE,
   CONSTRAINT `fk_appointments_creator` FOREIGN KEY (`created_by`) REFERENCES `users` (`user_id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_appointments_doctor` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`doctor_id`) ON UPDATE CASCADE,
   CONSTRAINT `fk_appointments_patient` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`patient_id`) ON UPDATE CASCADE
@@ -101,6 +108,8 @@ CREATE TABLE `patients` (
   `date_of_birth` date NOT NULL,
   `contact_no` varchar(30) DEFAULT NULL,
   `address` varchar(255) DEFAULT NULL,
+  `allergies_alerts` text DEFAULT NULL,
+  `allergies_confirmed_by_doctor` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -182,6 +191,38 @@ CREATE TABLE `vital_signs` (
   PRIMARY KEY (`vital_sign_id`),
   UNIQUE KEY `unique_appointment_vitals` (`appointment_id`),
   CONSTRAINT `fk_vitals_appointment` FOREIGN KEY (`appointment_id`) REFERENCES `appointments` (`appointment_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `consultation_addenda` (
+  `addendum_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `consultation_id` int(10) unsigned NOT NULL,
+  `doctor_id` int(10) unsigned NOT NULL,
+  `notes` text NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`addendum_id`),
+  KEY `idx_addenda_consultation` (`consultation_id`),
+  KEY `idx_addenda_doctor` (`doctor_id`),
+  CONSTRAINT `fk_addenda_consultation` FOREIGN KEY (`consultation_id`) REFERENCES `consultation` (`consultation_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_addenda_doctor` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`doctor_id`) ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `audit_logs` (
+  `log_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `user_id` int(10) unsigned NOT NULL,
+  `action` varchar(50) NOT NULL,
+  `entity_type` varchar(50) DEFAULT NULL,
+  `entity_id` int(10) unsigned DEFAULT NULL,
+  `old_values` longtext DEFAULT NULL,
+  `new_values` longtext DEFAULT NULL,
+  `reason` text DEFAULT NULL,
+  `ip_address` varchar(45) DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`log_id`),
+  KEY `idx_audit_user` (`user_id`),
+  KEY `idx_audit_action` (`action`),
+  KEY `idx_audit_entity` (`entity_type`,`entity_id`),
+  KEY `idx_audit_created_at` (`created_at`),
+  CONSTRAINT `fk_audit_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;

@@ -32,12 +32,8 @@ export default {
                 <div class="card-header">
                     <div>
                         <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text);">Manage Patients</h2>
-                        <p class="text-muted" style="font-size: 0.85rem;">Manage patient records and personal medical profile directory</p>
+                        <p class="text-muted" style="font-size: 0.85rem;">Patient directory and account governance</p>
                     </div>
-                    <button id="btn-add-patient" class="btn btn-primary">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                        Add New Patient
-                    </button>
                 </div>
 
                 <div class="toolbar">
@@ -55,7 +51,11 @@ export default {
                             <option value="unknown">Unknown</option>
                         </select>
 
-                        
+                        <select id="patients-status-filter" class="form-control" style="width: auto; min-width: 130px;">
+                            <option value="active">Active</option>
+                            <option value="deleted">Archived</option>
+                            <option value="all">All Statuses</option>
+                        </select>
                     </div>
 
                     <div style="display: flex; align-items: center; gap: 0.5rem;">
@@ -75,8 +75,8 @@ export default {
                                 <th data-sort="last_name">Patient Name</th>
                                 <th data-sort="gender">Gender</th>
                                 <th data-sort="date_of_birth">Date of Birth</th>
-                                <th>Contact No</th>
-                                <th>Status</th>
+                                <th data-sort="contact_no">Contact No</th>
+                                <th data-sort="deleted_at">Status</th>
                                 <th style="text-align: right;">Actions</th>
                             </tr>
                         </thead>
@@ -90,81 +90,6 @@ export default {
             </div>
 
             <div id="patient-record-container" style="display: none;"></div>
-
-            <!-- Add/Edit Patient Modal -->
-            <div class="modal" id="patient-form-modal" tabindex="-1" aria-labelledby="patient-form-title" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <form id="patient-form" novalidate>
-                            <div class="modal-header">
-                                <h3 class="modal-title" id="patient-form-title">Add New Patient</h3>
-                                <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
-                            </div>
-                        <div class="modal-body">
-                            <input type="hidden" id="patient-id">
-                            <div style="display: grid; grid-template-columns: 1fr 120px 1fr; gap: 1rem;">
-                                <div class="form-group">
-                                    <label for="patient-first-name">First Name <span class="required-star">*</span></label>
-                                    <input type="text" id="patient-first-name" class="form-control" required placeholder="First name">
-                                    <div class="invalid-feedback" id="patient-first-name-error"></div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="patient-middle-initial">M.I. <span class="text-muted" style="font-weight: normal; font-size: 0.85em;">(Optional)</span></label>
-                                    <input type="text" id="patient-middle-initial" class="form-control" maxlength="1" placeholder="e.g. A">
-                                    <div class="invalid-feedback" id="patient-middle-initial-error"></div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="patient-last-name">Last Name <span class="required-star">*</span></label>
-                                    <input type="text" id="patient-last-name" class="form-control" required placeholder="Last name">
-                                    <div class="invalid-feedback" id="patient-last-name-error"></div>
-                                </div>
-                            </div>
-
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                <div class="form-group">
-                                    <label for="patient-gender">Gender <span class="required-star">*</span></label>
-                                    <select id="patient-gender" class="form-control" required>
-                                        <option value="" disabled selected>Select Gender</option>
-                                        <option value="Male">Male</option>
-                                        <option value="Female">Female</option>
-                                        <option value="Other">Other</option>
-                                        <option value="Unknown">Unknown</option>
-                                    </select>
-                                    <div class="invalid-feedback" id="patient-gender-error"></div>
-                                </div>
-                                <div class="form-group">
-                                    <label for="patient-dob">Date of Birth <span class="required-star">*</span></label>
-                                    <input type="date" id="patient-dob" class="form-control" required>
-                                    <div class="invalid-feedback" id="patient-dob-error"></div>
-                                </div>
-                            </div>
-
-                            <div class="form-group" id="patient-custom-gender-group" style="display: none;">
-                                <label for="patient-custom-gender">Specify Gender <span class="required-star">*</span></label>
-                                <input type="text" id="patient-custom-gender" class="form-control" placeholder="Please specify your gender">
-                                <div class="invalid-feedback" id="patient-custom-gender-error"></div>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="patient-contact">Contact Number</label>
-                                <input type="text" id="patient-contact" class="form-control" placeholder="e.g. 09171234567">
-                                <div class="invalid-feedback" id="patient-contact-error"></div>
-                            </div>
-
-                            <div class="form-group">
-                                <label for="patient-address">Address</label>
-                                <textarea id="patient-address" class="form-control" rows="3" placeholder="Residential / Street Address"></textarea>
-                                <div class="invalid-feedback" id="patient-address-error"></div>
-                            </div>
-                        </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                                <button type="submit" id="btn-save-patient" class="btn btn-primary">Save Patient</button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
         `;
     },
 
@@ -180,72 +105,6 @@ export default {
             }, 300);
         });
 
-        // Custom gender toggle
-        const genderSelect = this.container.querySelector('#patient-gender');
-        const customGenderGroup = this.container.querySelector('#patient-custom-gender-group');
-        if (genderSelect && customGenderGroup) {
-            genderSelect.addEventListener('change', (e) => {
-                if (e.target.value === 'Other') {
-                    customGenderGroup.style.display = 'block';
-                } else {
-                    customGenderGroup.style.display = 'none';
-                    this.container.querySelector('#patient-custom-gender').value = '';
-                }
-            });
-        }
-
-        // Contact Number format (09XX XXX XXXX)
-        const contactInput = this.container.querySelector('#patient-contact');
-        if (contactInput) {
-            contactInput.addEventListener('input', (e) => {
-                const input = e.target;
-                const oldSelectionStart = input.selectionStart;
-                const oldVal = input.value;
-                
-                let val = oldVal.replace(/\D/g, ''); // strip non-numeric
-                if (val.length > 11) val = val.slice(0, 11);
-                
-                let formatted = '';
-                for (let i = 0; i < val.length; i++) {
-                    if (i === 4 || i === 7) {
-                        formatted += ' ';
-                    }
-                    formatted += val[i];
-                }
-                
-                input.value = formatted;
-
-                let newCursor = 0;
-                let digitsFound = 0;
-                const digitsBeforeCursor = oldVal.slice(0, oldSelectionStart).replace(/\D/g, '').length;
-                
-                for (let i = 0; i < formatted.length; i++) {
-                    if (digitsFound === digitsBeforeCursor) break;
-                    if (/\d/.test(formatted[i])) digitsFound++;
-                    newCursor++;
-                }
-                
-                if (document.activeElement === input) {
-                    input.setSelectionRange(newCursor, newCursor);
-                }
-            });
-        }
-
-        // Middle Initial real-time validation and feedback
-        const miInput = this.container.querySelector('#patient-middle-initial');
-        if (miInput) {
-            miInput.addEventListener('input', (e) => {
-                const val = e.target.value.trim();
-                const errEl = this.container.querySelector('#patient-middle-initial-error');
-                if (val !== '' && !/^[A-Za-z]$/.test(val)) {
-                    miInput.classList.add('is-invalid');
-                    if (errEl) errEl.textContent = 'Middle initial must be a single letter (A-Z).';
-                } else {
-                    miInput.classList.remove('is-invalid');
-                    if (errEl) errEl.textContent = '';
-                }
-            });
-        }
 
         this.container.querySelector('#patients-gender-filter').addEventListener('change', (e) => {
             this.state.gender = e.target.value;
@@ -254,6 +113,12 @@ export default {
         });
 
         
+
+        this.container.querySelector('#patients-status-filter').addEventListener('change', (e) => {
+            this.state.status = e.target.value;
+            this.state.page = 1;
+            this.loadData();
+        });
 
         this.container.querySelector('#patients-page-size').addEventListener('change', (e) => {
             this.state.pageSize = parseInt(e.target.value, 10);
@@ -270,18 +135,18 @@ export default {
                     this.state.sortBy = sortField;
                     this.state.sortOrder = 'ASC';
                 }
+                this.state.page = 1;
                 this.loadData();
             });
         });
+    },
 
-        this.container.querySelector('#btn-add-patient').addEventListener('click', () => {
-            this.openAddModal();
-        });
-
-        const form = this.container.querySelector('#patient-form');
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            this.savePatient();
+    updateSortHeaders() {
+        this.container.querySelectorAll('th[data-sort]').forEach(th => {
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (th.getAttribute('data-sort') === this.state.sortBy) {
+                th.classList.add(this.state.sortOrder === 'ASC' ? 'sort-asc' : 'sort-desc');
+            }
         });
     },
 
@@ -304,6 +169,7 @@ export default {
                 this.state.total = res.data.total;
                 this.renderTable(res.data.items);
                 this.renderPagination(res.data);
+                this.updateSortHeaders();
             } else {
                 throw new Error(res.message);
             }
@@ -331,22 +197,28 @@ export default {
         tbody.innerHTML = items.map(p => {
             const fullName = `${p.last_name}, ${p.first_name}${p.middle_initial ? ' ' + p.middle_initial + '.' : ''}`;
             const genderFormatted = p.gender ? p.gender.charAt(0).toUpperCase() + p.gender.slice(1) : 'Unknown';
+            const statusBadge = p.deleted_at
+                ? '<span class="badge badge-status-deleted">Archived</span>'
+                : '<span class="badge badge-status-active">Active</span>';
+
+            const archiveBtn = !p.deleted_at ? `
+                <button class="btn btn-warning btn-sm btn-archive" data-id="${p.patient_id}" data-name="${escapeHtml(fullName)}" title="Archive">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
+                    Archive
+                </button>
+            ` : '';
 
             return `
                 <tr>
-                    <td><strong>${escapeHtml(fullName)}</strong></td>
-                    <td>${escapeHtml(genderFormatted)}</td>
-                    <td>${escapeHtml(p.date_of_birth)}</td>
-                    <td>${escapeHtml(p.contact_no || '-')}</td>
-                    <td><span class="badge badge-active">Active</span></td>
-                    <td>
-                        <div class="actions-cell">
+                    <td style="vertical-align: middle;"><strong>${escapeHtml(fullName)}</strong></td>
+                    <td style="vertical-align: middle;">${escapeHtml(genderFormatted)}</td>
+                    <td style="vertical-align: middle;">${escapeHtml(p.date_of_birth)}</td>
+                    <td style="vertical-align: middle;">${escapeHtml(p.contact_no || '-')}</td>
+                    <td style="vertical-align: middle;">${statusBadge}</td>
+                    <td style="text-align: right; vertical-align: middle;">
+                        <div class="actions-cell" style="justify-content: flex-end; display: flex; gap: 0.4rem;">
                             <button class="btn btn-primary btn-sm btn-record" data-id="${p.patient_id}" title="View Patient Record">Record</button>
-                            <button class="btn btn-secondary btn-sm btn-edit" data-id="${p.patient_id}" title="Edit Record">Edit</button>
-                            <button class="btn btn-warning btn-sm btn-archive" data-id="${p.patient_id}" data-name="${escapeHtml(fullName)}" title="Archive">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
-                                Archive
-                            </button>
+                            ${archiveBtn}
                         </div>
                     </td>
                 </tr>
@@ -355,9 +227,6 @@ export default {
 
         tbody.querySelectorAll('.btn-record').forEach(btn => {
             btn.addEventListener('click', () => this.viewPatientRecord(btn.getAttribute('data-id')));
-        });
-        tbody.querySelectorAll('.btn-edit').forEach(btn => {
-            btn.addEventListener('click', () => this.openEditModal(btn.getAttribute('data-id')));
         });
         tbody.querySelectorAll('.btn-archive').forEach(btn => {
             btn.addEventListener('click', () => this.handleSoftDelete(btn.getAttribute('data-id'), btn.getAttribute('data-name')));
@@ -401,170 +270,6 @@ export default {
         });
     },
 
-    clearFormErrors() {
-        this.container.querySelectorAll('.form-control').forEach(el => el.classList.remove('is-invalid'));
-        this.container.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
-    },
-
-    openAddModal() {
-        this.clearFormErrors();
-        this.container.querySelector('#patient-form').reset();
-        this.container.querySelector('#patient-id').value = '';
-        this.container.querySelector('#patient-middle-initial').value = '';
-        this.container.querySelector('#patient-gender').value = '';
-        this.container.querySelector('#patient-custom-gender-group').style.display = 'none';
-        this.container.querySelector('#patient-custom-gender').value = '';
-        this.container.querySelector('#patient-form-title').textContent = 'Add New Patient';
-        openModal('patient-form-modal');
-    },
-
-    async openEditModal(patientId) {
-        this.clearFormErrors();
-        try {
-            const res = await api.get('api/patient_controller.php', { id: patientId });
-            if (!res.success) throw new Error(res.message);
-
-            const p = res.data.patient;
-            this.container.querySelector('#patient-id').value = p.patient_id;
-            this.container.querySelector('#patient-first-name').value = p.first_name;
-            this.container.querySelector('#patient-middle-initial').value = p.middle_initial || '';
-            this.container.querySelector('#patient-last-name').value = p.last_name;
-            
-            const genderVal = p.gender || '';
-            const normalizedGender = genderVal.charAt(0).toUpperCase() + genderVal.slice(1).toLowerCase();
-            if (['Male', 'Female', 'Unknown'].includes(normalizedGender)) {
-                this.container.querySelector('#patient-gender').value = normalizedGender;
-                this.container.querySelector('#patient-custom-gender-group').style.display = 'none';
-                this.container.querySelector('#patient-custom-gender').value = '';
-            } else {
-                this.container.querySelector('#patient-gender').value = 'Other';
-                this.container.querySelector('#patient-custom-gender-group').style.display = 'block';
-                this.container.querySelector('#patient-custom-gender').value = genderVal;
-            }
-
-            this.container.querySelector('#patient-dob').value = p.date_of_birth;
-            
-            let val = (p.contact_no || '').replace(/\D/g, '');
-            if (val.length > 11) val = val.slice(0, 11);
-            let formatted = '';
-            for (let i = 0; i < val.length; i++) {
-                if (i === 4 || i === 7) formatted += ' ';
-                formatted += val[i];
-            }
-            this.container.querySelector('#patient-contact').value = formatted;
-
-            this.container.querySelector('#patient-address').value = p.address || '';
-
-            const fullName = `${p.last_name}, ${p.first_name}${p.middle_initial ? ' ' + p.middle_initial + '.' : ''}`;
-            this.container.querySelector('#patient-form-title').textContent = `Edit Patient: ${fullName}`;
-            openModal('patient-form-modal');
-        } catch (err) {
-            showToast(err.response?.data?.message || err.message, 'danger');
-        }
-    },
-
-    async savePatient() {
-        this.clearFormErrors();
-
-        const id = this.container.querySelector('#patient-id').value;
-        const firstName = this.container.querySelector('#patient-first-name').value.trim();
-        const middleInitial = this.container.querySelector('#patient-middle-initial').value.trim();
-        const lastName = this.container.querySelector('#patient-last-name').value.trim();
-        let gender = this.container.querySelector('#patient-gender').value;
-        const customGender = this.container.querySelector('#patient-custom-gender').value.trim();
-        const dob = this.container.querySelector('#patient-dob').value;
-        const contact = this.container.querySelector('#patient-contact').value.trim();
-        const address = this.container.querySelector('#patient-address').value.trim();
-
-        let hasErrors = false;
-        if (!firstName) {
-            this.showFieldError('patient-first-name', 'First name is required.');
-            hasErrors = true;
-        }
-        if (!lastName) {
-            this.showFieldError('patient-last-name', 'Last name is required.');
-            hasErrors = true;
-        }
-        if (middleInitial !== '' && !/^[A-Za-z]$/.test(middleInitial)) {
-            this.showFieldError('patient-middle-initial', 'Middle initial must be a single letter (A-Z).');
-            hasErrors = true;
-        }
-        if (!gender) {
-            this.showFieldError('patient-gender', 'Gender is required.');
-            hasErrors = true;
-        } else if (gender === 'Other') {
-            if (!customGender) {
-                this.showFieldError('patient-custom-gender', 'Please specify the custom gender.');
-                hasErrors = true;
-            } else {
-                gender = customGender;
-            }
-        }
-        if (!dob) {
-            this.showFieldError('patient-dob', 'Date of birth is required.');
-            hasErrors = true;
-        }
-        
-        const rawContact = contact.replace(/\s+/g, '');
-        if (rawContact && (rawContact.length !== 11 || !rawContact.startsWith('09'))) {
-            this.showFieldError('patient-contact', 'Contact number must be exactly 11 digits and start with 09.');
-            hasErrors = true;
-        }
-
-        if (hasErrors) return;
-
-        const payload = {
-            first_name: firstName,
-            middle_initial: middleInitial,
-            last_name: lastName,
-            gender: gender,
-            date_of_birth: dob,
-            contact_no: rawContact,
-            address: address
-        };
-
-        const saveBtn = this.container.querySelector('#btn-save-patient');
-        saveBtn.disabled = true;
-
-        try {
-            let res;
-            if (id) {
-                res = await api.put(`api/patient_controller.php?id=${id}`, payload);
-            } else {
-                res = await api.post('api/patient_controller.php', payload);
-            }
-
-            if (res.success) {
-                showToast(res.message, 'success');
-                closeModal('patient-form-modal');
-                if (this.state.recordPatientId) {
-                    this.viewPatientRecord(this.state.recordPatientId);
-                } else {
-                    this.loadData();
-                }
-            } else {
-                throw new Error(res.message);
-            }
-        } catch (err) {
-            const data = err.response?.data;
-            if (data?.errors) {
-                for (const [f, msg] of Object.entries(data.errors)) {
-                    this.showFieldError(`patient-${f.replace('_', '-')}`, msg);
-                }
-            }
-            showToast(data?.message || err.message, 'danger');
-        } finally {
-            saveBtn.disabled = false;
-        }
-    },
-
-    showFieldError(fieldId, message) {
-        const input = this.container.querySelector(`#${fieldId}`);
-        const feedback = this.container.querySelector(`#${fieldId}-error`);
-        if (input) input.classList.add('is-invalid');
-        if (feedback) feedback.textContent = message;
-    },
-
     async viewPatientRecord(patientId) {
         const manageCard = this.container.querySelector('#patients-manage-card');
         const recContainer = this.container.querySelector('#patient-record-container');
@@ -582,7 +287,6 @@ export default {
             }
             renderPatientRecord(recContainer, res.data, {
                 viewerRole: 'Administrator',
-                onEdit: () => this.openEditModal(patientId),
                 onBack: () => {
                     this.state.recordPatientId = null;
                     recContainer.style.display = 'none';
