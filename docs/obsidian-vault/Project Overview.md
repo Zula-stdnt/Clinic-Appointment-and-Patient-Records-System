@@ -8,7 +8,7 @@ The **Hospital Patient Information System** is a web application for hospital ad
 
 ## Roles
 The system separates screens and permissions by staff role (**Role-Based Access Control**):
-- **Administrator** — Has full access to all core hospital records (**Master Files**) and the **Central Archive** (`admin_dashboard.html` / `admin_dashboard.php`).
+- **Administrator** — Has full access to all core hospital records (**Master Files**), the **Central Archive**, and the **Compliance & Audit Logs** viewer (`admin_dashboard.html` / `admin_dashboard.php`). See [[Compliance & Audit Logs]].
 - **Doctor** — Uses a dedicated clinical workspace (`doctor_dashboard.html`) featuring daily appointment counters (**KPIs** — Key Performance Indicators), an appointment queue, a consultation charting screen (**SOAP notes**, diagnoses, prescriptions, and lab requests), a directory of assigned patients with their medical histories, and a personal profile settings screen. See [[Doctor Dashboard]].
 - **Receptionist** — Uses a front-desk booking workspace (`receptionist_dashboard.html`) to schedule patient appointments, record optional triage vital signs, and monitor the visit queue. See [[Receptionist Appointments]].
 
@@ -25,6 +25,7 @@ The system powers the complete clinical care sequence from patient arrival to lo
 - **Self-Service Doctor Profile:** Doctors can update their own name, gender, mobile number, username, and password in [[Doctor Profile]], which automatically updates both the `users` and `doctors` database tables at the same time.
 - **Multiple Clinical Specialties:** A single doctor account can be assigned to **one or more clinical specialties** (for example, Internal Medicine and Cardiology).
 - **Safe Archiving (Soft Deletes):** Removing a record from any main screen does not immediately erase it. Instead, the system marks it with a deletion timestamp (`deleted_at`) and moves it to [[Manage Archive]], where an Administrator can either restore it or permanently delete it.
+- **Human-Readable Compliance & Audit Trail:** Records all security events, Break-Glass emergency overrides, demographic changes, and appointment status transitions. Features a human-readable administrator viewer that translates raw JSON diffs into plain, simple English with an on-demand collapsible technical details toggle. See [[Compliance & Audit Logs]].
 - **Clear Form Validation:** Both the browser and the server check form inputs and display helpful error messages directly underneath any field that needs attention.
 - **Built-In Security:** Role-based access checks, doctor-only data privacy, **CSRF tokens** (security badges that verify form submissions came from the real app), and login rate-limiting protect the system — see [[Security]].
 

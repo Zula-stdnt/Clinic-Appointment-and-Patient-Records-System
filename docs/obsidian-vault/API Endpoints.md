@@ -51,7 +51,7 @@ These endpoints allow administrators to inspect immutable security and access lo
 
 | Controller | Allowed Roles | Method & Query | Purpose |
 | --- | --- | --- | --- |
-| `audit_log_controller.php` | `Administrator` | `GET ?page&page_size&search&action&date_filter&sort_by&sort_order` | Returns paged immutable audit log entries (`data.items`, `data.total`). Tracks Break-Glass access, demographic edits with old/new values, and appointment cancellations. |
+| `audit_log_controller.php` | `Administrator` | `GET ?page&page_size&search&action&date_filter&sort_by&sort_order` | Returns paged immutable audit log entries (`data.items`, `data.total`), enriched with real patient names (`target_patient_name`), doctor names (`target_doctor_name`), and target entity names (`target_name`). Decodes JSON diffs for human-readable audit presentation. |
 
 ## Meta lookups
 These helper requests return dropdown options for forms:

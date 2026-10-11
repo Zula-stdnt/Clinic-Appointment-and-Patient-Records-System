@@ -115,6 +115,131 @@ try {
     }
     unset($log);
 
+    // Enrich logs with related entity names for human-readable audit trail reporting
+    $patientIds = [];
+    $doctorIds = [];
+    $userIds = [];
+    $appointmentIds = [];
+
+    foreach ($logs as $log) {
+        $eType = strtolower($log['entity_type'] ?? '');
+        $eId = (int)($log['entity_id'] ?? 0);
+        if ($eId > 0) {
+            if ($eType === 'patient') $patientIds[] = $eId;
+            elseif ($eType === 'doctor') $doctorIds[] = $eId;
+            elseif ($eType === 'user') $userIds[] = $eId;
+            elseif ($eType === 'appointment') $appointmentIds[] = $eId;
+        }
+
+        if (!empty($log['new_values_parsed']['patient_id'])) {
+            $patientIds[] = (int)$log['new_values_parsed']['patient_id'];
+        }
+        if (!empty($log['new_values_parsed']['doctor_id'])) {
+            $doctorIds[] = (int)$log['new_values_parsed']['doctor_id'];
+        }
+        if (!empty($log['new_values_parsed']['appointment_id'])) {
+            $appointmentIds[] = (int)$log['new_values_parsed']['appointment_id'];
+        }
+    }
+
+    $patientNames = [];
+    if (!empty($patientIds)) {
+        $patientIds = array_values(array_unique($patientIds));
+        $inPat = implode(',', array_fill(0, count($patientIds), '?'));
+        $pStmt = $pdo->prepare("SELECT patient_id, CONCAT(first_name, ' ', last_name) AS full_name FROM patients WHERE patient_id IN ($inPat)");
+        $pStmt->execute($patientIds);
+        while ($row = $pStmt->fetch(PDO::FETCH_ASSOC)) {
+            $patientNames[$row['patient_id']] = trim($row['full_name']);
+        }
+    }
+
+    $doctorNames = [];
+    if (!empty($doctorIds)) {
+        $doctorIds = array_values(array_unique($doctorIds));
+        $inDoc = implode(',', array_fill(0, count($doctorIds), '?'));
+        $dStmt = $pdo->prepare("SELECT doctor_id, CONCAT(first_name, ' ', last_name) AS full_name FROM doctors WHERE doctor_id IN ($inDoc)");
+        $dStmt->execute($doctorIds);
+        while ($row = $dStmt->fetch(PDO::FETCH_ASSOC)) {
+            $doctorNames[$row['doctor_id']] = trim($row['full_name']);
+        }
+    }
+
+    $userNames = [];
+    if (!empty($userIds)) {
+        $userIds = array_values(array_unique($userIds));
+        $inUsr = implode(',', array_fill(0, count($userIds), '?'));
+        $uStmt = $pdo->prepare("SELECT user_id, CONCAT(first_name, ' ', last_name) AS full_name, username FROM users WHERE user_id IN ($inUsr)");
+        $uStmt->execute($userIds);
+        while ($row = $uStmt->fetch(PDO::FETCH_ASSOC)) {
+            $userNames[$row['user_id']] = trim($row['full_name']) ?: $row['username'];
+        }
+    }
+
+    $appointmentMap = [];
+    if (!empty($appointmentIds)) {
+        $appointmentIds = array_values(array_unique($appointmentIds));
+        $inAppt = implode(',', array_fill(0, count($appointmentIds), '?'));
+        $aStmt = $pdo->prepare("
+            SELECT a.appointment_id, a.patient_id, a.doctor_id,
+                   CONCAT(p.first_name, ' ', p.last_name) AS patient_name,
+                   CONCAT(d.first_name, ' ', d.last_name) AS doctor_name
+            FROM appointments a
+            LEFT JOIN patients p ON a.patient_id = p.patient_id
+            LEFT JOIN doctors d ON a.doctor_id = d.doctor_id
+            WHERE a.appointment_id IN ($inAppt)
+        ");
+        $aStmt->execute($appointmentIds);
+        while ($row = $aStmt->fetch(PDO::FETCH_ASSOC)) {
+            $appointmentMap[$row['appointment_id']] = $row;
+        }
+    }
+
+    foreach ($logs as &$log) {
+        $eType = strtolower($log['entity_type'] ?? '');
+        $eId = (int)($log['entity_id'] ?? 0);
+        $apptId = (int)($log['new_values_parsed']['appointment_id'] ?? ($eType === 'appointment' ? $eId : 0));
+
+        $patName = null;
+        $docName = null;
+        $targetName = null;
+
+        if ($apptId && isset($appointmentMap[$apptId])) {
+            $patName = trim($appointmentMap[$apptId]['patient_name'] ?? '');
+            $docName = trim($appointmentMap[$apptId]['doctor_name'] ?? '');
+        }
+
+        if (!empty($log['new_values_parsed']['patient_id'])) {
+            $pId = (int)$log['new_values_parsed']['patient_id'];
+            if (!empty($patientNames[$pId])) {
+                $patName = $patientNames[$pId];
+            }
+        }
+
+        if (!empty($log['new_values_parsed']['doctor_id'])) {
+            $dId = (int)$log['new_values_parsed']['doctor_id'];
+            if (!empty($doctorNames[$dId])) {
+                $docName = $doctorNames[$dId];
+            }
+        }
+
+        if ($eType === 'patient') {
+            $targetName = $patientNames[$eId] ?? null;
+            if (!$patName && $targetName) $patName = $targetName;
+        } elseif ($eType === 'doctor') {
+            $targetName = $doctorNames[$eId] ?? null;
+            if (!$docName && $targetName) $docName = $targetName;
+        } elseif ($eType === 'user') {
+            $targetName = $userNames[$eId] ?? null;
+        } elseif ($eType === 'appointment' && $patName) {
+            $targetName = $patName;
+        }
+
+        $log['target_name'] = $targetName;
+        $log['target_patient_name'] = $patName;
+        $log['target_doctor_name'] = $docName;
+    }
+    unset($log);
+
     $totalPages = (int)ceil($total / $limit);
 
     send_success('Audit logs retrieved successfully.', [

@@ -120,7 +120,7 @@ To ensure patient safety while maintaining clinical standards, the system employ
 - **Master Files Management (Administrator):**
   - **Users:** Create, view, edit, and archive staff login accounts. Creating a Doctor user automatically creates a matching clinical profile.
   - **Patients (Governance):** View patient registration directory and manage archive status. Direct registration and demographic edits are handled by front-desk Receptionists.
-  - **Compliance & Audit Logs:** Review immutable system audit logs, tracking all break-glass emergency chart reviews, patient demographic edits, user updates, and profile adjustments.
+  - **Compliance & Audit Logs:** Review immutable system audit logs presented in clear, human-readable English for non-coders and hospital administrators rather than raw technical code, tracking Break-Glass emergency access, patient demographic edits, appointment lifecycles, and staff logins, with an on-demand collapsible technical diff viewer.
   - **Doctors:** Manage doctor profiles, contact numbers, and one or more assigned medical specialties. Doctor legal names and genders remain administrator-managed.
   - **Services:** Maintain a catalog of hospital procedures, consultations, lab tests, and imaging services.
   - **Specialties:** Organize medical departments and clinical specialties (such as Cardiology or Pediatrics).

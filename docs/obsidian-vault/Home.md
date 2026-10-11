@@ -28,6 +28,7 @@ Welcome to the documentation hub for the **ITE 387 Hospital Patient Information 
 - [[Manage Services]] — Administrative catalog of hospital services.
 - [[Manage Specialties]] — Medical departments and clinical specialties.
 - [[Manage Archive]] — Central recycle bin to restore or permanently delete archived records.
+- [[Compliance & Audit Logs]] — Immutable security audit trail, emergency break-glass reviews, and human-readable event details.
 
 ## Doctor portal modules
 - [[Doctor Dashboard]] — Doctor portal shell, navigation router, and today's appointment counters.

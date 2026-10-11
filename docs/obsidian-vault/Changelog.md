@@ -30,6 +30,9 @@ A plain-English summary of major updates, new modules, and bug fixes across the 
 ### Immutable Audit Trail & Administrator Viewer
 - **Permanent Compliance Logging:** Introduced an immutable `audit_logs` table tracking critical actions across the system (Break-Glass emergency access, patient demographic edits, and appointment status changes).
 - **Admin Audit Viewer:** Dedicated Administrator module (`assets/js/modules/audit_logs.js`) with date range, user, action, and keyword filters.
+- **Human-Readable Details Transformation:** Converted raw JSON strings and technical diff codes in the "Details / Reason" column into clear, friendly English sentences (e.g., "Doctor logged in", "Appointment created for patient Jose Rizal and assigned to Dr. Gregory House", "Appointment status changed from Scheduled to Confirmed").
+- **Entity Name Enrichment:** Updated `api/audit_log_controller.php` to look up and attach real patient and doctor names, preventing cryptic database IDs from appearing in the log.
+- **On-Demand Technical Diff Preview:** Added an expandable "View technical details" toggle to every row containing raw JSON, giving developers and IT auditors full forensic visibility without cluttering the clean view for non-coders.
 
 ### Receptionist Navigation & Permissions
 - **Direct Dashboard Landing:** Configured Receptionists to land directly on the Overview Dashboard (`receptionist_overview.js`) upon login to review daily clinic volume and lobby queues before booking.

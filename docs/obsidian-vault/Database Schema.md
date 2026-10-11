@@ -40,7 +40,7 @@ erDiagram
 | --- | --- | --- |
 | `roles` | `role_id`, `role_name` (unique) | Pre-loaded staff roles: Administrator, Receptionist, Doctor |
 | `users` | `user_id`, `role_id` → roles, `username` (unique), `password_hash`, `first_name`, `last_name`, `middle_initial`, `gender` (VARCHAR 50), `deleted_at` | Stores staff login accounts, scrambled (`bcrypt`) passwords, and custom gender text |
-| `audit_logs` | `audit_id`, `action`, `actor_user_id` → users, `patient_id` → patients (nullable), `details` (JSON/TEXT), `created_at` | Immutable compliance audit log tracking Break-Glass emergency access, demographic changes with old/new values, and appointment status changes |
+| `audit_logs` | `log_id`, `user_id` → users, `action`, `entity_type`, `entity_id`, `old_values` (JSON/TEXT), `new_values` (JSON/TEXT), `reason` (TEXT), `ip_address`, `created_at` | Immutable compliance audit log tracking Break-Glass emergency access, demographic changes with old/new values, logins, and appointment status changes |
 
 ### Master files
 | Table | Key columns | Notes (Plain English) |

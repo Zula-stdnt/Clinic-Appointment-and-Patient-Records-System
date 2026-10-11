@@ -32,6 +32,22 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
+### 2026-10-11 — Human-Readable Audit Logs & Entity Name Enrichment (`pending`)
+**Type:** feat / fix
+**Database / migrations:** none
+**Files changed:**
+- `assets/js/modules/audit_logs.js` — added `formatAuditDetails(item)` helper to translate raw JSON payloads and technical diffs into natural, plain-English sentences for all 26 audit log actions (e.g., "Doctor logged in", "Appointment created for patient Jose Rizal and assigned to Dr. Gregory House", "Appointment status changed from Scheduled to Confirmed"); added expandable `<details>` section for optional inspection of raw JSON diffs; enriched target entity column with target names.
+- `api/audit_log_controller.php` — added batch entity lookups to enrich paginated logs with patient names (`target_patient_name`), doctor names (`target_doctor_name`), and target entity names (`target_name`); parsed JSON strings in `old_values` and `new_values`.
+- `assets/js/main.js` — incremented cache-busting query parameter for `audit_logs.js?v=2`.
+- `docs/obsidian-vault/Modules/Compliance & Audit Logs.md` — created dedicated module documentation in the Obsidian vault.
+**New IDs introduced:** none (read-only presentation enhancement; database schema and immutable JSON storage remain unchanged)
+**How to verify:**
+- Run `php tests/verify_improvements.php` (10/10 tests pass).
+- Log in as Administrator → navigate to Compliance & Audit Logs:
+  - Verify "Details / Reason" column shows plain English sentences without curly braces or JSON code.
+  - Verify patient and doctor names appear in appointment and medical record rows.
+  - Click "View technical details" under any modified record: original before-and-after JSON expands cleanly.
+
 ### 2026-10-11 — Universal Gender Filtering & "Other" Option Resolution (`b3f0bc2`)
 **Type:** fix
 **Database / migrations:** none

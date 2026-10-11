@@ -53,3 +53,22 @@
   - **Why:** Clinicians must be able to access critical health history in life-threatening emergencies, while ensuring all emergency overrides are strictly audited.
   - **Where:** [`assets/js/modules/doctor_patients.js`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/assets/js/modules/doctor_patients.js), [`api/patient_record_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/patient_record_controller.php), and [`includes/audit.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/includes/audit.php).
   - **How:** Clicking "Break-Glass" opens a dedicated modal dialog without screen flicker or network errors. Upon submission with a valid justification, emergency access is granted, an audited warning banner appears on the medical chart, and a permanent entry is recorded in `audit_logs`.
+
+---
+
+#### **5. Administrator Portal – Human-Readable Audit Logs & Entity Enrichment** `[COMPLETED]`
+* **Human-Readable Event Descriptions:**
+  - **What:** Converted the "Details / Reason" column in the Compliance & Audit Logs table from raw JSON strings, database identifiers, and technical code into clear, simple, human-readable English sentences that non-coders and hospital administrators can easily understand.
+  - **Why:** Displaying raw JSON payloads (`{"username":"dr.house","role_name":"Doctor"}` or `{"patient_id":91,"doctor_id":1,...}`) and technical diff codes created visual confusion for administrators inspecting system compliance.
+  - **Where:** [`assets/js/modules/audit_logs.js`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/assets/js/modules/audit_logs.js) and [`api/audit_log_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/audit_log_controller.php).
+  - **How:** Built a dedicated `formatAuditDetails(item)` formatter handling all 26 distinct actions in the hospital system. Automatically translates actions into clean sentences (e.g., "Doctor logged in", "Appointment created for patient Jose Rizal and assigned to Dr. Gregory House", "Appointment status changed from Scheduled to Confirmed").
+* **Backend Entity Name Enrichment:**
+  - **What:** Enriched paginated audit log responses with real-world person names (`target_patient_name`, `target_doctor_name`, and `target_name`) instead of displaying cryptic numerical database IDs.
+  - **Why:** Hospital administrators need to know which patient and doctor an appointment or medical record belongs to without cross-referencing internal database tables.
+  - **Where:** [`api/audit_log_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/audit_log_controller.php).
+  - **How:** Performs batch entity lookups on the 10-50 paginated rows to retrieve patient full names and doctor full names, providing smooth fallbacks ("the patient", "the doctor") if records were permanently purged.
+* **On-Demand Technical Diff Preview:**
+  - **What:** Added a subtle, collapsible "View technical details" `<details>` toggle under any audit row that contains raw JSON data or field diffs.
+  - **Why:** Keeps the primary table view 100% clean and readable for non-coders while allowing software developers and IT forensic auditors to inspect raw JSON data when needed.
+  - **Where:** [`assets/js/modules/audit_logs.js`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/assets/js/modules/audit_logs.js).
+  - **How:** Evaluates `old_values` and `new_values`. If present, renders an expandable summary that exposes the raw JSON diff without cluttering the main cell. The underlying database table `audit_logs` remains strictly immutable.

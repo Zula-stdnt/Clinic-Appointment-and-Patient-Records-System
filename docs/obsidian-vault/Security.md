@@ -32,8 +32,10 @@ Security protections are built directly into `includes/auth.php`, `includes/audi
 
 ## Immutable Compliance Audit Trail
 - Critical security and administrative events are recorded in an immutable `audit_logs` database table via `includes/audit.php`.
-- Tracked events include Break-Glass emergency overrides, patient demographic modifications (logging old and new values for accountability), user profile changes, and appointment cancellations.
+- Tracked events include Break-Glass emergency overrides, patient demographic modifications (logging old and new values for accountability), user profile changes, staff logins, and appointment lifecycle changes.
 - Administrators review these entries through a dedicated audit viewer (`assets/js/modules/audit_logs.js`) with date range, user, action, and keyword filters.
+- **Human-Readable Presentation:** To make security logs accessible to non-coders and hospital administrators, technical JSON payloads and diffs are automatically converted into clear, natural English sentences (e.g., "Doctor logged in", "Appointment created for patient Jose Rizal and assigned to Dr. Gregory House", "Appointment status changed from Scheduled to Confirmed").
+- **Audit Verification & Technical Diff:** For IT auditing and forensic verification, each row provides an on-demand collapsible `<details>` toggle to inspect original before-and-after JSON diffs without cluttering the clean administrative view.
 
 ## Clinical Integrity & Immutability
 - **Encounter Locking:** Completed consultations are permanently locked to protect medical record integrity and prevent post-consultation tampering.

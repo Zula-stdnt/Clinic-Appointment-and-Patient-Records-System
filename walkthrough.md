@@ -712,7 +712,7 @@ This update establishes permanent visual and behavioral consistency across all d
 
 ---
 
-## Section 30: Final System Verification & Acceptance Results
+## Section 30: System Verification & Acceptance Results
 
 All automated verification test suites across the entire application were executed to guarantee full system stability:
 
@@ -724,3 +724,42 @@ All automated verification test suites across the entire application were execut
 | **`tests/run_api_tests.php`** | Daily capacity model, operating hours, doctor gating | **4 / 4 Suites Passed (100%)** |
 | **`tests/verify_gender_filters.php`** | System-wide gender filtering, custom identities, 'Other' query logic | **6 / 6 Passed (100%)** |
 | **`tests/test_gender_ui.js`** | End-to-end browser automation (Playwright) testing table filtering | **100% Passed (0 console errors)** |
+
+---
+
+## Section 31: Human-Readable Audit Trail & Details Transformation
+
+### 1. Architectural Philosophy & Problem Statement
+- **The Problem:** The Administrator **Compliance & Audit Logs** table previously displayed raw JSON payloads (such as `{"username":"dr.house","role_name":"Doctor"}` or `{"patient_id":91,"doctor_id":1,...}`) and technical database diff strings directly in the "Details / Reason" column.
+- **Why It Needed Fixing:** Hospital administrators and compliance officers are typically non-technical users. Confronting them with raw computer code, curly braces, and unformatted JSON caused confusion and made reviewing routine hospital activity needlessly difficult.
+- **Solution Design:** Convert every technical audit payload into clear, friendly, human-readable English sentences, enrich rows with real patient and doctor names rather than database IDs, and provide an on-demand collapsible preview for forensic IT diff inspection while preserving original immutable database records.
+
+### 2. Frontend Natural Language Formatter (`formatAuditDetails`)
+- **Where:** [`assets/js/modules/audit_logs.js`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/assets/js/modules/audit_logs.js).
+- **How:** Implemented the `formatAuditDetails(item)` helper covering all 26 system actions:
+  - **`LOGIN` / `LOGOUT`:** Displays `[Role] logged in` (e.g., `Doctor logged in`).
+  - **`CREATE_APPOINTMENT`:** Displays `Appointment created for patient [Name] and assigned to Dr. [Doctor] (Scheduled for [Date] at [Time])` (with clean fallback to `the patient` / `the doctor` if unassigned or purged).
+  - **`STATUS_CHANGE`:** Displays `Appointment status changed from [Old] to [New]` and flags any rescheduling dates.
+  - **`COMPLETE_CONSULTATION`:** Displays `Doctor completed clinical consultation ([X] diagnosis and [Y] prescriptions recorded)`.
+  - **`BREAK_GLASS_ACCESS`:** Highlights `Emergency "Break-Glass" access override granted to restricted patient record` with prominent emergency justification text.
+  - **`EDIT_DEMOGRAPHICS`:** Formats clean field diffs: `Contact Number changed from "09170001122" to "09170003344"`.
+  - **`UPDATE_ALLERGIES_AT_INTAKE`:** Displays `Patient allergy alerts updated: "[Allergy]"` with doctor verification indicator.
+  - **`CANCEL_REQUEST`:** Displays `Doctor requested appointment cancellation` with clinical cancellation reason.
+  - **`ARCHIVE` / `RESTORE` / `PURGE`:** Clear plain English sentences explaining record lifecycle events.
+
+### 3. Backend Entity Enrichment (`api/audit_log_controller.php`)
+- **Where:** [`api/audit_log_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/audit_log_controller.php).
+- **How:** Before returning paginated log entries, the controller collects all referenced entity IDs (patients, doctors, users, appointments) and performs batch primary-key lookups. It enriches each row with `target_name`, `target_patient_name`, and `target_doctor_name`, eliminating cryptic database IDs from the interface.
+
+### 4. Collapsible Forensic Technical Details Preview
+- **How:** Rows with underlying JSON payloads include an unobtrusive `<details>` toggle labeled **"View technical details"**.
+- Non-coders see only the clean, human-readable sentence by default.
+- IT auditors and developers can expand the toggle to inspect raw before-and-after JSON diffs without leaving the interface.
+- Database records in `audit_logs` remain 100% immutable and intact.
+
+### 5. Automated Verification & Acceptance Results
+- **`tests/verify_improvements.php`:** 10 / 10 Passed (100%).
+- **`tests/verify_acceptance.php`:** 20 / 20 Passed (100%).
+- **`tests/verify_todo_improvements.php`:** 8 / 8 Passed (100%).
+- **`tests/verify_gender_filters.php`:** 6 / 6 Passed (100%).
+

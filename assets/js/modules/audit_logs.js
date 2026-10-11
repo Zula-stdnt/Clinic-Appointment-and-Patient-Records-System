@@ -206,23 +206,11 @@ const auditLogsModule = {
         else if (item.action.includes('VIEW')) actionBadgeClass = 'badge-status-confirmed';
 
         let entityLabel = item.entity_type ? `${escapeHtml(item.entity_type.toUpperCase())} #${escapeHtml(String(item.entity_id || ''))}` : '<span class="text-muted">—</span>';
+        if (item.target_name) {
+            entityLabel += `<div class="text-muted" style="font-size: 0.76rem; font-weight: 500; margin-top: 2px;">${escapeHtml(item.target_name)}</div>`;
+        }
 
-        let detailsHtml = '';
-        if (item.reason) {
-            detailsHtml += `<div style="font-weight: 500; color: var(--text);"><strong>Reason:</strong> ${escapeHtml(item.reason)}</div>`;
-        }
-        if (item.old_values_parsed || item.new_values_parsed) {
-            const oldVals = item.old_values_parsed ? JSON.stringify(item.old_values_parsed) : '';
-            const newVals = item.new_values_parsed ? JSON.stringify(item.new_values_parsed) : '';
-            if (oldVals && newVals) {
-                detailsHtml += `<div class="text-muted" style="font-size: 0.75rem;"><strong>Diff:</strong> ${escapeHtml(oldVals)} &rarr; ${escapeHtml(newVals)}</div>`;
-            } else if (newVals) {
-                detailsHtml += `<div class="text-muted" style="font-size: 0.75rem;">${escapeHtml(newVals)}</div>`;
-            }
-        } else if (!item.reason && item.new_values) {
-            detailsHtml += `<div class="text-muted" style="font-size: 0.75rem;">${escapeHtml(item.new_values)}</div>`;
-        }
-        if (!detailsHtml) detailsHtml = '<span class="text-muted">—</span>';
+        const detailsHtml = this.formatAuditDetails(item);
 
         return `
             <tr>
@@ -233,10 +221,363 @@ const auditLogsModule = {
                 </td>
                 <td><span class="badge ${actionBadgeClass}">${escapeHtml(item.action)}</span></td>
                 <td>${entityLabel}</td>
-                <td style="max-width: 320px; word-break: break-word; font-size: 0.85rem;">${detailsHtml}</td>
+                <td style="max-width: 380px; word-break: break-word; font-size: 0.85rem;">${detailsHtml}</td>
                 <td style="font-size: 0.8rem; font-family: monospace;">${escapeHtml(item.ip_address || '—')}</td>
             </tr>
         `;
+    },
+
+    formatAuditDetails(item) {
+        const action = item.action || '';
+        const oldVals = item.old_values_parsed || null;
+        const newVals = item.new_values_parsed || null;
+        const reason = (item.reason || '').trim();
+
+        let primaryText = '';
+        let additionalInfo = '';
+
+        const formatStatus = (s) => {
+            if (!s) return '';
+            const map = {
+                scheduled: 'Scheduled',
+                confirmed: 'Confirmed',
+                completed: 'Completed',
+                cancelled: 'Cancelled',
+                no_show: 'No Show'
+            };
+            return map[s.toLowerCase()] || s.charAt(0).toUpperCase() + s.slice(1);
+        };
+
+        const formatDateTime = (dateStr, timeStr) => {
+            if (!dateStr && !timeStr) return '';
+            let dPart = '';
+            if (dateStr) {
+                const parts = String(dateStr).split('-');
+                if (parts.length === 3) {
+                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                    const mIdx = parseInt(parts[1], 10) - 1;
+                    dPart = `${months[mIdx] || parts[1]} ${parseInt(parts[2], 10)}, ${parts[0]}`;
+                } else {
+                    dPart = String(dateStr);
+                }
+            }
+            let tPart = '';
+            if (timeStr) {
+                const tParts = String(timeStr).split(':');
+                if (tParts.length >= 2) {
+                    let h = parseInt(tParts[0], 10);
+                    const ampm = h >= 12 ? 'PM' : 'AM';
+                    h = h % 12 || 12;
+                    tPart = `${String(h).padStart(2, '0')}:${tParts[1]} ${ampm}`;
+                } else {
+                    tPart = String(timeStr);
+                }
+            }
+            if (dPart && tPart) return `${dPart} at ${tPart}`;
+            return dPart || tPart;
+        };
+
+        const formatDiff = (oldObj, newObj) => {
+            if (!oldObj && !newObj) return '';
+            const FIELD_LABELS = {
+                first_name: 'First Name',
+                last_name: 'Last Name',
+                middle_initial: 'Middle Initial',
+                contact_no: 'Contact Number',
+                address: 'Address',
+                gender: 'Gender',
+                date_of_birth: 'Date of Birth',
+                allergies_alerts: 'Allergies / Alerts',
+                allergies_confirmed_by_doctor: 'Physician Allergy Confirmation',
+                status: 'Status',
+                appointment_date: 'Date',
+                appointment_time: 'Time',
+                date: 'Date',
+                time: 'Time',
+                chief_complaint: 'Chief Complaint',
+                username: 'Username',
+                role_name: 'Role',
+                cancel_request_reason: 'Cancellation Reason'
+            };
+
+            const changes = [];
+            const allKeys = new Set([...Object.keys(oldObj || {}), ...Object.keys(newObj || {})]);
+
+            for (const k of allKeys) {
+                if (['appointment_id', 'patient_id', 'doctor_id', 'consultation_id', 'user_id', 'role_id'].includes(k)) continue;
+                const oVal = oldObj ? oldObj[k] : undefined;
+                const nVal = newObj ? newObj[k] : undefined;
+
+                if (JSON.stringify(oVal) !== JSON.stringify(nVal)) {
+                    const label = FIELD_LABELS[k] || k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                    let fromStr = (oVal === null || oVal === undefined || oVal === '') ? 'None' : String(oVal);
+                    let toStr = (nVal === null || nVal === undefined || nVal === '') ? 'None' : String(nVal);
+
+                    if (k === 'status') {
+                        fromStr = formatStatus(fromStr);
+                        toStr = formatStatus(toStr);
+                    } else if (k === 'date' || k === 'appointment_date') {
+                        fromStr = formatDateTime(fromStr, null);
+                        toStr = formatDateTime(toStr, null);
+                    } else if (k === 'time' || k === 'appointment_time') {
+                        fromStr = formatDateTime(null, fromStr);
+                        toStr = formatDateTime(null, toStr);
+                    }
+
+                    if (oVal === undefined || oVal === null || oVal === '') {
+                        changes.push(`<strong>${label}</strong> set to <em>"${escapeHtml(toStr)}"</em>`);
+                    } else if (nVal === undefined || nVal === null || nVal === '') {
+                        changes.push(`<strong>${label}</strong> cleared (was <em>"${escapeHtml(fromStr)}"</em>)`);
+                    } else {
+                        changes.push(`<strong>${label}</strong> changed from <em>"${escapeHtml(fromStr)}"</em> to <em>"${escapeHtml(toStr)}"</em>`);
+                    }
+                }
+            }
+            return changes.length > 0 ? changes.join('; ') : '';
+        };
+
+        // Specific actions human-readable translation
+        if (action === 'LOGIN') {
+            const role = (newVals && newVals.role_name) || item.role_name || 'User';
+            primaryText = `${escapeHtml(role)} logged in`;
+        } else if (action === 'LOGOUT') {
+            primaryText = 'User logged out of the system';
+        } else if (action === 'CHANGE_PASSWORD') {
+            primaryText = 'Account password was updated';
+        } else if (action === 'CREATE_APPOINTMENT') {
+            const patName = item.target_patient_name;
+            const docName = item.target_doctor_name;
+            const patientText = patName ? `patient <strong>${escapeHtml(patName)}</strong>` : 'the patient';
+            const doctorText = docName ? `Dr. <strong>${escapeHtml(docName)}</strong>` : 'the doctor';
+
+            primaryText = `Appointment created for ${patientText} and assigned to ${doctorText}`;
+
+            const dateVal = newVals ? (newVals.appointment_date || newVals.date) : null;
+            const timeVal = newVals ? (newVals.appointment_time || newVals.time) : null;
+            const scheduleStr = formatDateTime(dateVal, timeVal);
+            if (scheduleStr) {
+                additionalInfo = `Scheduled for ${escapeHtml(scheduleStr)}`;
+            }
+        } else if (action === 'STATUS_CHANGE') {
+            const oldStatus = oldVals ? oldVals.status : null;
+            const newStatus = newVals ? newVals.status : null;
+            const oldDate = oldVals ? (oldVals.appointment_date || oldVals.date) : null;
+            const newDate = newVals ? (newVals.appointment_date || newVals.date) : null;
+            const oldTime = oldVals ? (oldVals.appointment_time || oldVals.time) : null;
+            const newTime = newVals ? (newVals.appointment_time || newVals.time) : null;
+
+            const statusChanged = oldStatus && newStatus && oldStatus !== newStatus;
+            const scheduleChanged = (oldDate && newDate && oldDate !== newDate) || (oldTime && newTime && oldTime !== newTime);
+
+            if (statusChanged && scheduleChanged) {
+                primaryText = `Appointment status changed from <strong>${formatStatus(oldStatus)}</strong> to <strong>${formatStatus(newStatus)}</strong>`;
+                additionalInfo = `Rescheduled to ${escapeHtml(formatDateTime(newDate, newTime))}`;
+            } else if (statusChanged) {
+                primaryText = `Appointment status changed from <strong>${formatStatus(oldStatus)}</strong> to <strong>${formatStatus(newStatus)}</strong>`;
+                if (newDate || newTime) {
+                    additionalInfo = `Appointment schedule: ${escapeHtml(formatDateTime(newDate, newTime))}`;
+                }
+            } else if (scheduleChanged) {
+                primaryText = `Appointment rescheduled to ${escapeHtml(formatDateTime(newDate, newTime))}`;
+                if (oldDate || oldTime) {
+                    additionalInfo = `Previous schedule: ${escapeHtml(formatDateTime(oldDate, oldTime))}`;
+                }
+            } else {
+                primaryText = `Appointment status updated to <strong>${formatStatus(newStatus || 'Updated')}</strong>`;
+            }
+        } else if (action === 'CANCEL_APPOINTMENT') {
+            primaryText = 'Appointment cancelled';
+            if (reason) {
+                additionalInfo = `Reason: "${escapeHtml(reason)}"`;
+            }
+        } else if (action === 'CANCEL_REQUEST') {
+            primaryText = 'Doctor requested appointment cancellation';
+            const cancelReason = reason || (newVals && newVals.cancel_request_reason);
+            if (cancelReason) {
+                additionalInfo = `Reason: "${escapeHtml(cancelReason)}"`;
+            }
+        } else if (action === 'COMPLETE_CONSULTATION') {
+            primaryText = 'Doctor completed clinical consultation';
+            if (newVals && (newVals.diagnoses_count !== undefined || newVals.prescriptions_count !== undefined)) {
+                const dCount = Number(newVals.diagnoses_count) || 0;
+                const pCount = Number(newVals.prescriptions_count) || 0;
+                const dLabel = dCount === 1 ? 'diagnosis' : 'diagnoses';
+                const pLabel = pCount === 1 ? 'prescription' : 'prescriptions';
+                additionalInfo = `${dCount} ${dLabel} and ${pCount} ${pLabel} recorded`;
+            }
+        } else if (action === 'ADD_ENCOUNTER_ADDENDUM') {
+            primaryText = 'Clinical follow-up addendum note appended to consultation';
+            if (reason) {
+                additionalInfo = `Addendum note: "${escapeHtml(reason)}"`;
+            }
+        } else if (action === 'UPDATE_ALLERGIES_AT_INTAKE') {
+            const allergyText = newVals && newVals.allergies_alerts !== undefined ? newVals.allergies_alerts : (oldVals ? oldVals.allergies_alerts : '');
+            const isConfirmed = newVals && Boolean(newVals.allergies_confirmed_by_doctor);
+            if (allergyText) {
+                primaryText = `Patient allergy alerts updated: <strong>"${escapeHtml(allergyText)}"</strong>`;
+            } else {
+                primaryText = 'Patient allergy alerts cleared (No known allergies)';
+            }
+            additionalInfo = isConfirmed ? 'Confirmed by physician' : 'Recorded at front-desk intake (Pending physician verification)';
+        } else if (action === 'BREAK_GLASS_ACCESS') {
+            primaryText = 'Emergency "Break-Glass" access override granted to restricted patient record';
+            if (reason) {
+                additionalInfo = `Emergency justification: "${escapeHtml(reason)}"`;
+            }
+        } else if (action === 'VIEW_RECORD') {
+            primaryText = 'Accessed patient medical chart and consultation history';
+        } else if (action === 'VIEW_DEMOGRAPHICS') {
+            primaryText = 'Accessed patient demographic profile card';
+        } else if (action === 'REGISTER_PATIENT') {
+            let name = '';
+            if (newVals) {
+                const mi = newVals.middle_initial ? ` ${newVals.middle_initial}.` : '';
+                if (newVals.first_name || newVals.last_name) {
+                    name = `${newVals.first_name || ''}${mi} ${newVals.last_name || ''}`.trim();
+                }
+            }
+            primaryText = name ? `New patient registered: <strong>${escapeHtml(name)}</strong>` : 'New patient registered';
+            const metaParts = [];
+            if (newVals && newVals.gender) metaParts.push(`Gender: ${escapeHtml(newVals.gender)}`);
+            if (newVals && newVals.date_of_birth) metaParts.push(`DOB: ${escapeHtml(formatDateTime(newVals.date_of_birth, null))}`);
+            if (metaParts.length > 0) additionalInfo = metaParts.join(' &middot; ');
+        } else if (action === 'REGISTER_WALKIN') {
+            let name = '';
+            if (newVals) {
+                const mi = newVals.middle_initial ? ` ${newVals.middle_initial}.` : '';
+                if (newVals.first_name || newVals.last_name) {
+                    name = `${newVals.first_name || ''}${mi} ${newVals.last_name || ''}`.trim();
+                }
+            }
+            primaryText = name ? `Walk-in patient registered: <strong>${escapeHtml(name)}</strong>` : 'Walk-in patient registered at front desk';
+            const metaParts = [];
+            if (newVals && newVals.gender) metaParts.push(`Gender: ${escapeHtml(newVals.gender)}`);
+            if (newVals && newVals.date_of_birth) metaParts.push(`DOB: ${escapeHtml(formatDateTime(newVals.date_of_birth, null))}`);
+            if (metaParts.length > 0) additionalInfo = metaParts.join(' &middot; ');
+        } else if (action === 'EDIT_DEMOGRAPHICS') {
+            primaryText = 'Patient demographic profile updated';
+            const diffText = formatDiff(oldVals, newVals);
+            if (diffText) additionalInfo = diffText;
+            if (reason) {
+                additionalInfo = (additionalInfo ? `${additionalInfo}<br>` : '') + `Reason: "${escapeHtml(reason)}"`;
+            }
+        } else if (action === 'ARCHIVE' || action === 'ARCHIVE_PATIENT') {
+            primaryText = 'Patient record moved to Central Archive (soft-deleted)';
+            if (reason) additionalInfo = `Reason: "${escapeHtml(reason)}"`;
+        } else if (action === 'RESTORE' || action === 'RESTORE_PATIENT') {
+            primaryText = 'Patient record restored from Central Archive to active records';
+            if (reason) additionalInfo = `Reason: "${escapeHtml(reason)}"`;
+        } else if (action === 'PURGE' || action === 'PURGE_PATIENT') {
+            primaryText = 'Patient record permanently purged from database';
+            if (reason) additionalInfo = `Reason: "${escapeHtml(reason)}"`;
+        } else if (action === 'CREATE_DOCTOR') {
+            const docName = (newVals && newVals.full_name) || '';
+            const uname = (newVals && newVals.username) || '';
+            primaryText = docName ? `Doctor staff profile created for Dr. <strong>${escapeHtml(docName)}</strong>` : 'New doctor staff profile created';
+            const metaParts = [];
+            if (uname) metaParts.push(`Username: <code>${escapeHtml(uname)}</code>`);
+            if (newVals && newVals.contact_no) metaParts.push(`Contact: ${escapeHtml(newVals.contact_no)}`);
+            if (metaParts.length > 0) additionalInfo = metaParts.join(' &middot; ');
+        } else if (action === 'UPDATE_DOCTOR') {
+            const docName = (newVals && newVals.full_name) || item.target_name || '';
+            primaryText = docName ? `Doctor staff profile updated for Dr. <strong>${escapeHtml(docName)}</strong>` : 'Doctor staff profile updated';
+            const diffText = formatDiff(oldVals, newVals);
+            if (diffText) additionalInfo = diffText;
+            else if (newVals && newVals.contact_no) additionalInfo = `Contact: ${escapeHtml(newVals.contact_no)}`;
+            if (reason) additionalInfo = (additionalInfo ? `${additionalInfo}<br>` : '') + `Reason: "${escapeHtml(reason)}"`;
+        } else if (action === 'ARCHIVE_DOCTOR') {
+            primaryText = 'Doctor staff profile moved to Central Archive (deactivated)';
+            if (reason) additionalInfo = `Reason: "${escapeHtml(reason)}"`;
+        } else if (action === 'RESTORE_DOCTOR') {
+            primaryText = 'Doctor staff profile restored from Central Archive back to active staff';
+            if (reason) additionalInfo = `Reason: "${escapeHtml(reason)}"`;
+        } else if (action === 'PURGE_DOCTOR') {
+            primaryText = 'Doctor staff profile permanently purged from database';
+            if (reason) additionalInfo = `Reason: "${escapeHtml(reason)}"`;
+        } else if (action === 'CREATE_USER') {
+            const uname = (newVals && newVals.username) || '';
+            const role = (newVals && newVals.role_name) || '';
+            primaryText = uname ? `User account created for <code>${escapeHtml(uname)}</code>` : 'New system user account created';
+            if (role) additionalInfo = `Assigned Role: <strong>${escapeHtml(role)}</strong>`;
+        } else if (action === 'UPDATE_USER') {
+            const uname = (newVals && newVals.username) || item.target_name || '';
+            primaryText = uname ? `User account updated for <code>${escapeHtml(uname)}</code>` : 'User account updated';
+            const diffText = formatDiff(oldVals, newVals);
+            if (diffText) additionalInfo = diffText;
+            else if (newVals && newVals.role_name) additionalInfo = `Role: <strong>${escapeHtml(newVals.role_name)}</strong>`;
+            if (reason) additionalInfo = (additionalInfo ? `${additionalInfo}<br>` : '') + `Reason: "${escapeHtml(reason)}"`;
+        } else if (action === 'ARCHIVE_USER') {
+            primaryText = 'User account moved to Central Archive (deactivated)';
+            if (reason) additionalInfo = `Reason: "${escapeHtml(reason)}"`;
+        } else if (action === 'RESTORE_USER') {
+            primaryText = 'User account restored from Central Archive (reactivated)';
+            if (reason) additionalInfo = `Reason: "${escapeHtml(reason)}"`;
+        } else if (action === 'PURGE_USER') {
+            primaryText = 'User account permanently purged from database';
+            if (reason) additionalInfo = `Reason: "${escapeHtml(reason)}"`;
+        } else if (action === 'UPDATE_PROFILE') {
+            primaryText = 'User updated personal profile details';
+            const changes = [];
+            if (newVals) {
+                if (newVals.username_changed) changes.push('Username changed');
+                if (newVals.password_changed) changes.push('Password updated');
+                if (newVals.contact_no) changes.push(`Contact number updated to ${escapeHtml(newVals.contact_no)}`);
+            }
+            if (changes.length > 0) additionalInfo = changes.join(' &middot; ');
+            if (reason) additionalInfo = (additionalInfo ? `${additionalInfo}<br>` : '') + `Reason: "${escapeHtml(reason)}"`;
+        } else {
+            // Humanize any unrecognized action
+            const readableAction = action.replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, c => c.toUpperCase());
+            primaryText = readableAction;
+            const diffText = formatDiff(oldVals, newVals);
+            if (diffText) {
+                additionalInfo = diffText;
+            } else if (newVals && typeof newVals === 'object') {
+                const parts = [];
+                for (const [k, v] of Object.entries(newVals)) {
+                    if (v !== null && v !== undefined && v !== '') {
+                        const kLabel = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+                        parts.push(`${kLabel}: ${escapeHtml(String(v))}`);
+                    }
+                }
+                if (parts.length > 0) additionalInfo = parts.join(' &middot; ');
+            }
+            if (reason) {
+                additionalInfo = (additionalInfo ? `${additionalInfo}<br>` : '') + `Reason: "${escapeHtml(reason)}"`;
+            }
+        }
+
+        let detailsHtml = '';
+        if (primaryText) {
+            detailsHtml += `<div style="font-weight: 500; color: var(--text, #1e293b); line-height: 1.35;">${primaryText}</div>`;
+        }
+        if (additionalInfo) {
+            detailsHtml += `<div class="text-muted" style="font-size: 0.8rem; margin-top: 0.2rem; line-height: 1.35;">${additionalInfo}</div>`;
+        } else if (!primaryText && reason) {
+            detailsHtml += `<div style="font-weight: 500; color: var(--text, #1e293b);"><strong>Reason:</strong> ${escapeHtml(reason)}</div>`;
+        }
+
+        // Collapsible raw technical details for IT auditing or developer reference if raw JSON is present
+        const rawData = item.old_values || item.new_values;
+        if (rawData) {
+            let rawText = '';
+            if (item.old_values && item.new_values) {
+                rawText = `Old Values:\n${item.old_values}\n\nNew Values:\n${item.new_values}`;
+            } else if (item.new_values) {
+                rawText = `Values:\n${item.new_values}`;
+            } else {
+                rawText = `Values:\n${item.old_values}`;
+            }
+            detailsHtml += `
+                <details style="margin-top: 0.35rem; font-size: 0.72rem; color: var(--text-muted, #64748b);">
+                    <summary style="cursor: pointer; user-select: none;">View technical details</summary>
+                    <pre style="margin: 0.25rem 0 0; padding: 0.35rem 0.5rem; font-size: 0.7rem; background: var(--bg-hover, #f1f5f9); border: 1px solid var(--border-color, #e2e8f0); border-radius: 4px; max-height: 100px; overflow: auto; white-space: pre-wrap; word-break: break-all;">${escapeHtml(rawText)}</pre>
+                </details>
+            `;
+        }
+
+        if (!detailsHtml) detailsHtml = '<span class="text-muted">—</span>';
+        return detailsHtml;
     },
 
     renderPagination(p) {
