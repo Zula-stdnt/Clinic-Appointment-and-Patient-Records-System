@@ -32,7 +32,7 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
-### 2026-10-11 — Universal Gender Filtering & "Other" Option Resolution (`pending`)
+### 2026-10-11 — Universal Gender Filtering & "Other" Option Resolution (`b3f0bc2`)
 **Type:** fix
 **Database / migrations:** none
 **Files changed:**
@@ -48,7 +48,7 @@ A running, per-commit record of every change and implementation in this project,
 - Run `php tests/verify_gender_filters.php` (6/6 tests pass).
 - In Admin → Manage Patients, Receptionist → Patient Directory, and Doctor → Patient Records, choose "Other": custom entries like "Transgender" and "Non-Binary" are correctly listed without empty tables.
 
-### 2026-10-11 — Break-Glass Modal Direct Opening & Event Delegation Fix (`pending`)
+### 2026-10-11 — Break-Glass Modal Direct Opening & Event Delegation Fix (`b3f0bc2`)
 **Type:** fix
 **Database / migrations:** none
 **Files changed:**
@@ -57,7 +57,7 @@ A running, per-commit record of every change and implementation in this project,
 **How to verify:**
 - Log in as Doctor → Patient Records → locate an Unassigned patient → click "Break-Glass": modal opens smoothly with zero console errors or screen flickers.
 
-### 2026-10-11 — Two-Stage Patient Allergy Intake & Doctor Confirmation Workflow (`pending`)
+### 2026-10-11 — Two-Stage Patient Allergy Intake & Doctor Confirmation Workflow (`b3f0bc2`)
 **Type:** feat
 **Database / migrations:** none (columns `allergies_alerts` and `allergies_confirmed_by_doctor` pre-created in `setup/schema.sql`)
 **Files changed:**
@@ -73,7 +73,7 @@ A running, per-commit record of every change and implementation in this project,
 - Run `php tests/verify_allergy_workflow.php` (6/6 tests pass).
 - Receptionist schedules patient with allergy → status shows amber "Unconfirmed Intake Note". Doctor completes consultation → status elevates to green "Doctor Confirmed".
 
-### 2026-10-11 — Receptionist Dashboard Direct Landing & Doctor Controller Read Permission (`pending`)
+### 2026-10-11 — Receptionist Dashboard Direct Landing & Doctor Controller Read Permission (`b3f0bc2`)
 **Type:** feat / fix
 **Database / migrations:** none
 **Files changed:**
@@ -84,7 +84,7 @@ A running, per-commit record of every change and implementation in this project,
 **How to verify:**
 - Log in as Receptionist: browser routes directly to Dashboard. Clicking "Refresh" loads data with 0 console errors.
 
-### 2026-10-11 — Permanent Status Badge Design Tokens & Feather/Lucide SVG Icons (`pending`)
+### 2026-10-11 — Permanent Status Badge Design Tokens & Feather/Lucide SVG Icons (`b3f0bc2`)
 **Type:** chore / style
 **Database / migrations:** none
 **Files changed:**
@@ -94,7 +94,7 @@ A running, per-commit record of every change and implementation in this project,
 **How to verify:**
 - Inspect status badges across Admin, Doctor, and Receptionist portals: all colors and icon sizes are consistent and professional.
 
-### 2026-10-11 — Universal Interactive Column Sorting & Filter Parity Across All Tables (`pending`)
+### 2026-10-11 — Universal Interactive Column Sorting & Filter Parity Across All Tables (`b3f0bc2`)
 **Type:** feat
 **Database / migrations:** none
 **Files changed:**
@@ -104,7 +104,7 @@ A running, per-commit record of every change and implementation in this project,
 **How to verify:**
 - Click column headers on any table: rows sort A-Z on first click and Z-A on second click with visible caret indicators.
 
-### 2026-10-11 — Clinical Privacy Separation, Universal Directory & Break-Glass Protocol (`pending`)
+### 2026-10-11 — Clinical Privacy Separation, Universal Directory & Break-Glass Protocol (`b3f0bc2`)
 **Type:** feat
 **Database / migrations:** `migrations/011_create_audit_logs.sql`, `migrations/012_clinical_safety_and_constraints.sql`
 **Files changed:**
@@ -119,7 +119,7 @@ A running, per-commit record of every change and implementation in this project,
 - Run `php tests/verify_todo_improvements.php` (8/8 tests pass).
 - Run `php tests/verify_improvements.php` (10/10 tests pass).
 
-### 2026-10-11 — Foundational Bug Fixes & Session Check Probe (`pending`)
+### 2026-10-11 — Foundational Bug Fixes & Session Check Probe (`b3f0bc2`)
 **Type:** fix
 **Database / migrations:** `migrations/008_icd10_catalog.sql`, `migrations/009_prescriptions_time_to_take.sql`
 **Files changed:**
