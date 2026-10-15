@@ -59,10 +59,11 @@ The primary appointment queue for doctors. Each doctor can see their own schedul
 ## Table Columns & Information
 * **Date & Time:** The appointment date and time (sortable).
 * **Patient Name:** The patient's full name (sortable).
+* **Triage Vitals:** Standardized intake vital signs (BP, Temperature in °C, and SpO2 percentage) recorded by the receptionist at front-desk check-in.
 * **Chief Complaint:** The primary health issue reported by the patient (sortable).
 * **Status:** Color-coded status badge (`Scheduled`, `Confirmed`, `Completed`, `Cancelled`, `No Show`) (sortable).
 * **Action:**
   - `Awaiting Confirmation`: Patient has not yet checked in.
   - `Start Consult`: Patient is confirmed and ready for examination.
   - `View Encounter`: Examination is completed; opens view-only chart.
-  - Compact Cancel button with confirmation modal.
+  - **Compact Cancel Button:** Compact red ✕ icon button (`.btn-icon`) with tooltip prompt launching the audited cancellation dialog.

@@ -13,6 +13,8 @@ $pdo->exec("TRUNCATE TABLE lab_requests");
 $pdo->exec("TRUNCATE TABLE consultation");
 $pdo->exec("TRUNCATE TABLE vital_signs");
 $pdo->exec("TRUNCATE TABLE appointments");
+$pdo->exec("TRUNCATE TABLE record_access_requests");
+$pdo->exec("TRUNCATE TABLE doctor_schedules");
 $pdo->exec("TRUNCATE TABLE patients");
 $pdo->exec("TRUNCATE TABLE doctors");
 $pdo->exec("TRUNCATE TABLE users");
@@ -30,6 +32,10 @@ $pdo->exec("INSERT INTO users (user_id, username, password_hash, first_name, las
 $docPass = password_hash('Pass123!', PASSWORD_DEFAULT);
 $pdo->exec("INSERT INTO users (user_id, username, password_hash, first_name, last_name, role_id) VALUES (2, 'doc', '$docPass', 'Doc', 'Test', 3)");
 $pdo->exec("INSERT INTO doctors (doctor_id, user_id, contact_no) VALUES (1, 2, '09123456789')");
+// Seed Mon-Sat schedule for test doctor 1
+for ($d = 1; $d <= 6; $d++) {
+    $pdo->exec("INSERT INTO doctor_schedules (doctor_id, day_of_week, start_time, end_time, is_active) VALUES (1, $d, '08:00:00', '17:00:00', 1)");
+}
 
 // Insert Patient
 $pdo->exec("INSERT INTO patients (patient_id, first_name, last_name, gender, date_of_birth, contact_no) VALUES (1, 'John', 'Doe', 'Male', '1990-01-01', '09171234567')");

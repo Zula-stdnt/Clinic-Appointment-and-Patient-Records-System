@@ -144,16 +144,19 @@ $stmt = $pdo->prepare("SELECT doctor_id FROM doctors WHERE user_id = ? LIMIT 1")
 $stmt->execute([$doctorUserId]);
 $houseDocId = (int)$stmt->fetchColumn();
 
-// Find an unassigned patient
+// Find an unassigned patient without an active access grant
 $stmt = $pdo->prepare("
     SELECT p.patient_id FROM patients p
     WHERE p.deleted_at IS NULL
       AND p.patient_id NOT IN (
           SELECT a.patient_id FROM appointments a WHERE a.doctor_id = ? AND a.status != 'cancelled'
       )
+      AND p.patient_id NOT IN (
+          SELECT rar.patient_id FROM record_access_requests rar WHERE rar.doctor_id = ? AND rar.status = 'approved' AND rar.expires_at > NOW()
+      )
     LIMIT 1
 ");
-$stmt->execute([$houseDocId]);
+$stmt->execute([$houseDocId, $houseDocId]);
 $unassignedPid = (int)$stmt->fetchColumn();
 
 if (!$unassignedPid) {

@@ -21,6 +21,9 @@ erDiagram
     USERS ||--o| DOCTORS : "profile link"
     DOCTORS ||--o{ DOCTOR_SPECIALTY : has
     SPECIALTIES ||--o{ DOCTOR_SPECIALTY : groups
+    DOCTORS ||--o{ DOCTOR_SCHEDULES : scheduled
+    DOCTORS ||--o{ RECORD_ACCESS_REQUESTS : requests
+    PATIENTS ||--o{ RECORD_ACCESS_REQUESTS : targets
     USERS ||--o{ APPOINTMENTS : creates
     PATIENTS ||--o{ APPOINTMENTS : books
     DOCTORS ||--o{ APPOINTMENTS : attends
@@ -41,12 +44,14 @@ erDiagram
 | `roles` | `role_id`, `role_name` (unique) | Pre-loaded staff roles: Administrator, Receptionist, Doctor |
 | `users` | `user_id`, `role_id` → roles, `username` (unique), `password_hash`, `first_name`, `last_name`, `middle_initial`, `gender` (VARCHAR 50), `deleted_at` | Stores staff login accounts, scrambled (`bcrypt`) passwords, and custom gender text |
 | `audit_logs` | `log_id`, `user_id` → users, `action`, `entity_type`, `entity_id`, `old_values` (JSON/TEXT), `new_values` (JSON/TEXT), `reason` (TEXT), `ip_address`, `created_at` | Immutable compliance audit log tracking Break-Glass emergency access, demographic changes with old/new values, logins, and appointment status changes |
+| `record_access_requests` | `request_id`, `doctor_id` → doctors, `patient_id` → patients, `mode` (`'standard'`, `'urgent'`), `status` (`'pending'`, `'approved'`, `'rejected'`, `'expired'`), `reason` (TEXT), `is_audit_flagged`, `audit_reviewed`, `requested_at`, `reviewed_by` → users, `reviewed_at`, `review_notes`, `expires_at` | Tracks two-tier access requests: Planned standard requests requiring Admin approval (24-hour grant) and urgent break-glass overrides flagged for post-access audit review |
 
-### Master files
+### Master files & operational schedules
 | Table | Key columns | Notes (Plain English) |
 | --- | --- | --- |
 | `patients` | `patient_id`, `first_name`, `middle_initial`, `last_name`, `gender` (VARCHAR 50), `date_of_birth`, `contact_no`, `address`, `allergies_alerts` (TEXT), `allergies_confirmed_by_doctor` (TINYINT 1 DEFAULT 0), `deleted_at` | Patient profiles; `gender` defaults to `'unknown'` and supports custom values; tracks intake allergy notes and doctor verification |
 | `doctors` | `doctor_id`, `user_id` → users (unique), `contact_no`, `deleted_at` | Linked one-to-one with `users` (`user_id`); identity fields are pulled from the linked user record |
+| `doctor_schedules` | `schedule_id`, `doctor_id` → doctors, `day_of_week` (1=Mon..7=Sun), `start_time` (TIME DEFAULT '08:00:00'), `end_time` (TIME DEFAULT '17:00:00'), `is_active` (TINYINT 1), `created_at`, `updated_at` | Configures weekly duty days and shift hours per doctor. Enforces clinic rota and prevents booking on off-duty days or outside clinic operating hours |
 | `specialties` | `specialty_id`, `specialty_name` (unique), `deleted_at` | List of hospital medical specialties / departments |
 | `services` | `service_id`, `service_name` (unique), `deleted_at` | Administrative catalog of hospital services |
 | `doctor_specialty` | `doctor_id` + `specialty_id` (composite PK) | Linking table that connects doctors to one or more specialties |

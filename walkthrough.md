@@ -763,3 +763,144 @@ All automated verification test suites across the entire application were execut
 - **`tests/verify_todo_improvements.php`:** 8 / 8 Passed (100%).
 - **`tests/verify_gender_filters.php`:** 6 / 6 Passed (100%).
 
+---
+
+## Section 32: System UI & Functional Modernization
+
+This update delivers a major responsive redesign of the Receptionist Overview and Doctor Overview dashboards, removes table horizontal scrollbars at 100% browser zoom, aligns triage vital signs displays, and resolves a critical client-side reference bug in the patient record viewer.
+
+### 1. Dedicated Chief Complaint Column & 2-Line Text Clamping
+- **What Changed:** Moved the Chief Complaint from beneath the patient's name into its own dedicated table column on the Receptionist Overview dashboard.
+- **Styling:** Applied CSS 2-line clamp (`display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;`) with a native `title="..."` tooltip so receptionists can read lengthy complaints on hover without distorting row heights.
+- **Where:** `assets/js/modules/receptionist_overview.js`, `assets/css/style.css`.
+
+### 2. Standardized Stacked Triage Vitals Layout
+- **What Changed:** Aligned the Triage Vitals column in Receptionist Overview with the Doctor Dashboard structure, formatting Blood Pressure, Temperature (°C), and Oxygen Saturation (SpO2) into vertically stacked chip badges (`.vital-badge`).
+- **Where:** `assets/js/modules/receptionist_overview.js`.
+
+### 3. Elimination of Horizontal Scroll at 100% Browser Zoom
+- **What Changed:** Re-engineered the dashboard grid and table layouts to fit cleanly within viewport boundaries at 100% zoom without triggering horizontal scrollbars.
+- **How:**
+  - Updated desktop `.dashboard-columns` CSS grid template from equal fractions to `minmax(0, 2.35fr) minmax(260px, 1fr)`.
+  - Tightened table cell padding to `0.55rem 0.65rem`.
+  - Rebalanced column percentage widths across Time (12%), Patient (18%), Doctor (16%), Vitals (14%), Complaint (22%), Status (10%), and Action (8%).
+- **Where:** `assets/css/style.css`, `assets/js/modules/receptionist_overview.js`.
+
+### 4. Custom Date Range Pickers & Pagination Controls
+- **What Changed:** Added Start Date (`#overview-date-start`), End Date (`#overview-date-end`), and an "Apply" button (`#overview-apply-range`) to both Receptionist Overview and Doctor Overview, complemented by an **All Time** period filter pill and a **Rows per Page** dropdown (10, 25, 50 rows).
+- **Where:** `assets/js/modules/receptionist_overview.js`, `assets/js/modules/doctor_overview.js`.
+
+### 5. Doctor Appointments Compact Action Icon
+- **What Changed:** Replaced the wide text "Request Cancel" button in Doctor Appointments with a compact ✕ icon button (`.btn-icon`) featuring an accessible tooltip prompt.
+- **Where:** `assets/js/modules/doctor_appointments.js`.
+
+### 6. Patient Record View Runtime Bug Fix
+- **What Changed:** Resolved a runtime `ReferenceError: record is not defined` in `assets/js/components/patient-record-view.js` by safely initializing `const record = data || {};`.
+
+---
+
+## Section 33: Boutique Clinic Operational Scope & 3-Doctor Rotation Model
+
+This milestone codifies the operational boundaries and staffing profile of the clinic into CPRMS core architecture:
+- **Outpatient Clinic Reality:** Tailored for a specialized outpatient facility (*"Healing for Everyone"*), operating under structured clinic hours (08:00 AM – 05:00 PM) with a mandatory lunch pause (12:00 PM – 01:00 PM) and Sunday closures.
+- **Three Multi-Specialty Attending Physicians:**
+  - **Dr. Gregory House:** *Internal Medicine* & *Cardiology* &bull; Duty Days: **Mondays & Tuesdays** (08:00 AM – 05:00 PM).
+  - **Dr. Meredith Grey:** *General Surgery* & *Pediatrics* &bull; Duty Days: **Wednesdays & Thursdays** (08:00 AM – 05:00 PM).
+  - **Dr. Stephen Strange:** *Neurology* & *Dermatology* &bull; Duty Days: **Fridays & Saturdays** (08:00 AM – 05:00 PM).
+- **Strict 10-Patient Daily Capacity Ceiling:** Capped clinic intake at `MAX_DAILY_CAPACITY = 10` appointments daily clinic-wide to eliminate physician burnout and ensure exhaustive patient care.
+- **Decoupled Financial Boundary:** Maintained strict isolation between clinical EHR records and external cashiering/POS systems (formalized in Migration 006).
+
+---
+
+## Section 34: Hybrid Break-Glass & Standard Access Requests
+
+Introduced a comprehensive two-tier medical records access control system balancing emergency responsiveness with clinical governance.
+
+### 1. Database Schema Additions (`migrations/013_doctor_schedules_and_hybrid_break_glass.sql`)
+- Created `record_access_requests` table with fields for `doctor_id`, `patient_id`, `mode` (`'standard'`, `'urgent'`), `status` (`'pending'`, `'approved'`, `'rejected'`, `'expired'`), `reason`, `expires_at`, `reviewed_by`, and `reviewed_at`.
+- Seeded multi-specialties and weekly rotas for all 3 attending physicians.
+
+### 2. Backend Access Controller (`api/access_request_controller.php`)
+- **Standard Access Requests (`mode='standard'`):** Attending doctors submit planned record access requests for non-assigned patients with clinical justifications ($\ge 10$ characters). Administrators review requests in the administrative queue and grant a strictly time-bounded 24-hour access window (`expires_at = DATE_ADD(NOW(), INTERVAL 24 HOUR)`).
+- **Urgent Break-Glass Overrides (`mode='urgent'`):** In medical emergencies, physicians bypass approval queues immediately, unlocking the chart with a prominent red emergency alert banner, writing `BREAK_GLASS_ACCESS` to `audit_logs`, and flagging the request (`is_audit_flagged = 1`) for mandatory administrative review.
+- **Chart Gating Integration (`api/patient_record_controller.php`):** Checks for active standard approvals (`expires_at > NOW()`) or active break-glass overrides before returning clinical records.
+
+---
+
+## Section 35: Live Multi-Tab State Synchronization (`live-sync.js`)
+
+Eliminated stale data across clinic workstations through lightweight real-time state synchronization.
+
+### 1. Cross-Tab Revision Polling Engine (`assets/js/live-sync.js`)
+- Runs in the background and polls `api/appointment_controller.php?action=sync_state` every 5 seconds.
+- Compares revision metrics (`latest_id`, `latest_updated`, `total_count`, and hash) against client state.
+- When state transitions or new appointments are detected, dispatches a custom `cprms:sync` browser event.
+
+### 2. Multi-Module Queue Auto-Refresh
+- Subscribed `receptionist_overview.js`, `receptionist_appointments.js`, and `doctor_overview.js` to `cprms:sync`.
+- Receptionist lobby queues, doctor queues, and KPI metric cards automatically update within seconds when appointments are booked, confirmed, or completed on other machines, without requiring manual browser reloads.
+
+---
+
+## Section 36: Receptionist Appointment Form Schedule Warnings, Date/Time Boundaries & Zero-Retype UX
+
+Engineered proactive front-desk form protections to prevent invalid appointment submissions and eliminate user frustration.
+
+### 1. Inline Duty Schedule Notice & Dropdown Previews
+- Added `#doctor-schedule-notice` inline badge beneath the doctor selection combobox, immediately displaying the selected physician's duty days (e.g., `Duty: Monday, Tuesday (08:00 - 17:00)`).
+- Enriched combobox option text with duty schedule indicators alongside medical specialties.
+
+### 2. Native HTML5 Calendar & Time Input Boundaries
+- Configured Appointment Date with `min="YYYY-MM-DD"` (today's local date), natively preventing selection of previous months, years, or days in the browser calendar picker.
+- Configured Appointment Time with `min="08:00"`, `max="17:00"`, and `step="900"` (15-minute intervals).
+
+### 3. Real-Time Live Schedule Validation (`validateAppointmentScheduleLive()`)
+- Evaluates inputs in real time as the user selects the doctor, date, or time.
+- Proactively blocks past dates and Sundays with inline error feedback.
+- Cross-references the selected date's day of week against the chosen doctor's rota in `doctor_schedules`. If off-duty, an inline error displays under the date field and a prominent yellow warning banner (`#appt-schedule-warning-banner`) appears at the top of the modal detailing the doctor's duty days.
+- Proactively detects bookings during the 12:00–12:59 lunch pause.
+
+### 4. Zero Form Loss & Zero Retyping Guarantee
+- Client-side validation halts submission before server requests are sent if schedule constraints are violated.
+- Patient selection, chief complaint, allergies, and all triage vital signs are strictly preserved in the form, completely eliminating input loss and redundant retyping.
+
+---
+
+## Section 37: Admin Manage Doctors Weekly Schedule Column, Modal & 1-Click Rotation Presets
+
+Empowered administrators to manage and inspect weekly physician rotas directly from the Manage Doctors module.
+
+### 1. Weekly Schedule Table Column & Schedule Action Button
+- Added a dedicated `Weekly Schedule` column in the Manage Doctors table rendering colored badges for active duty days and shift hours.
+- Added a "Schedule" action button (`.btn-schedule` with calendar icon) on every doctor row.
+
+### 2. Interactive Schedule Configuration Modal (`#doctor-schedule-modal`)
+- Displays doctor name and specialties in the modal header.
+- Provides an interactive 7-day checklist (Monday through Sunday) with active checkboxes and Start/End time pickers.
+- Features one-click rotation presets aligned with clinic attending physicians:
+  - `Dr. House Rotation (Mon, Tue)`
+  - `Dr. Grey Rotation (Wed, Thu)`
+  - `Dr. Strange Rotation (Fri, Sat)`
+  - `Full Week (Mon-Sat)`
+  - `Clear All`
+
+### 3. Backend Integration & Audit Trail
+- Integrated with `api/doctor_schedule_controller.php` to persist changes into `doctor_schedules`.
+- Enforces valid shift time boundaries (`start_time < end_time`).
+- Automatically logs an immutable `UPDATE_DOCTOR_SCHEDULE` record in `audit_logs`.
+
+---
+
+## Section 38: System Verification Results & Test Suite Pass Rate
+
+System stability, functional safety, and regression resistance across all 38 development sections are verified by five (5) automated test suites maintaining a **100% pass rate (75/75 tests passing)**:
+
+| Test Suite | Script | Tests | Result | Verified Scope |
+| :--- | :--- | :---: | :---: | :--- |
+| **Doctor Schedules & Form UX** | `tests/verify_schedule_and_form_ux.php` | 20 / 20 | **100% PASS** | Form date `min`, time bounds, schedule notices, warning banners, zero-retype draft preservation, `doctor_schedule_controller.php`, modal presets |
+| **UI & Functional Improvements** | `tests/verify_ui_functional_improvements.php` | 17 / 17 | **100% PASS** | Overview table layout, no horizontal scroll at 100% zoom, dedicated Chief Complaint column, stacked vitals, date range picker, rows per page, compact cancel icon |
+| **System Acceptance** | `tests/verify_acceptance.php` | 20 / 20 | **100% PASS** | 10-patient capacity model, operating hours (08:00–17:00), lunch pause, Sunday closure, consultation gating, allergy confirmation, audit logs |
+| **CPRMS Enhancements** | `tests/verify_cprms_enhancements.php` | 10 / 10 | **100% PASS** | Universal table sorting, 4-way gender filtering ("Other" resolution), human-readable audit logs, entity name enrichment |
+| **To-Do Improvements** | `tests/verify_todo_improvements.php` | 8 / 8 | **100% PASS** | Hybrid break-glass access, standard access requests (24h window), live multi-tab synchronization (`live-sync.js`) |
+| **Total Test Coverage** | **5 Suites** | **75 / 75** | **100% PASS** | **Zero Regressions** |
+

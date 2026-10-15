@@ -17,7 +17,9 @@ $action = $_GET['action'] ?? null;
 
 try {
     if ($method === 'GET') {
-        if (isset($_GET['meta'])) {
+        if ($action === 'sync_state') {
+            getSyncState($pdo);
+        } elseif (isset($_GET['meta'])) {
             $meta = $_GET['meta'];
             if ($meta === 'patients') {
                 listPatientOptions($pdo);
@@ -89,6 +91,36 @@ function listAppointments(PDO $pdo) {
     if ($status !== '' && in_array($status, ['scheduled', 'confirmed', 'completed', 'cancelled', 'no_show'], true)) {
         $where[] = "a.status = :status";
         $params[':status'] = $status;
+    }
+
+    $startDate = trim($_GET['start_date'] ?? '');
+    $endDate = trim($_GET['end_date'] ?? '');
+    if ($startDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate)) {
+        if ($endDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate)) {
+            if ($startDate > $endDate) {
+                $temp = $startDate;
+                $startDate = $endDate;
+                $endDate = $temp;
+            }
+            $where[] = "a.appointment_date BETWEEN :start_date AND :end_date";
+            $params[':start_date'] = $startDate;
+            $params[':end_date'] = $endDate;
+        } else {
+            $where[] = "a.appointment_date >= :start_date";
+            $params[':start_date'] = $startDate;
+        }
+    } elseif ($endDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate)) {
+        $where[] = "a.appointment_date <= :end_date";
+        $params[':end_date'] = $endDate;
+    }
+
+    $monthFilter = trim($_GET['month'] ?? '');
+    if ($monthFilter !== '' && preg_match('/^\d{4}-\d{2}$/', $monthFilter)) {
+        $firstDay = $monthFilter . '-01';
+        $lastDay = date('Y-m-t', strtotime($firstDay));
+        $where[] = "a.appointment_date BETWEEN :month_start AND :month_end";
+        $params[':month_start'] = $firstDay;
+        $params[':month_end'] = $lastDay;
     }
 
     $dateFilter = trim($_GET['date_filter'] ?? '');
@@ -381,7 +413,120 @@ function listDoctorOptions(PDO $pdo): void {
 
     $stmt = $pdo->prepare($sql);
     $stmt->execute($params);
-    send_success('Doctor options retrieved.', ['items' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+    $doctors = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    // Fetch schedules for all doctors
+    $schedStmt = $pdo->query("SELECT doctor_id, day_of_week, start_time, end_time, is_active FROM doctor_schedules WHERE is_active = 1 ORDER BY doctor_id, day_of_week");
+    $dayAbbr = [1 => 'Mon', 2 => 'Tue', 3 => 'Wed', 4 => 'Thu', 5 => 'Fri', 6 => 'Sat', 7 => 'Sun'];
+    $schedulesByDoctor = [];
+    while ($row = $schedStmt->fetch(PDO::FETCH_ASSOC)) {
+        $dId = (int)$row['doctor_id'];
+        if (!isset($schedulesByDoctor[$dId])) {
+            $schedulesByDoctor[$dId] = [];
+        }
+        $schedulesByDoctor[$dId][] = $row;
+    }
+
+    foreach ($doctors as &$doc) {
+        $dId = (int)$doc['doctor_id'];
+        $docSchedules = $schedulesByDoctor[$dId] ?? [];
+        $doc['schedules'] = $docSchedules;
+        if (!empty($docSchedules)) {
+            $daysSummary = [];
+            foreach ($docSchedules as $ds) {
+                $dow = (int)$ds['day_of_week'];
+                $abbr = $dayAbbr[$dow] ?? "D$dow";
+                $daysSummary[] = $abbr;
+            }
+            $startFmt = date('H:i', strtotime($docSchedules[0]['start_time']));
+            $endFmt = date('H:i', strtotime($docSchedules[0]['end_time']));
+            $doc['schedule_summary'] = implode(', ', $daysSummary) . " ({$startFmt} - {$endFmt})";
+        } else {
+            $doc['schedule_summary'] = 'Mon-Sat (08:00 - 17:00)';
+        }
+    }
+    unset($doc);
+
+    send_success('Doctor options retrieved.', ['items' => $doctors]);
+}
+
+function getSyncState(PDO $pdo): void {
+    $manilaTz = new DateTimeZone('Asia/Manila');
+    $nowManila = new DateTime('now', $manilaTz);
+    $today = $nowManila->format('Y-m-d');
+
+    $stmt = $pdo->prepare("SELECT 
+        COUNT(*) as total_appointments,
+        SUM(CASE WHEN appointment_date = ? AND status IN ('scheduled', 'confirmed') THEN 1 ELSE 0 END) as active_today,
+        MAX(appointment_id) as max_id
+        FROM appointments");
+    $stmt->execute([$today]);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $auditStmt = $pdo->query("SELECT MAX(log_id) FROM audit_logs WHERE entity_type = 'appointment'");
+    $maxAudit = (int)$auditStmt->fetchColumn();
+
+    $revision = (int)($row['max_id'] ?? 0) . '-' . $maxAudit . '-' . (int)($row['total_appointments'] ?? 0) . '-' . (int)($row['active_today'] ?? 0);
+
+    send_success('Sync state retrieved', [
+        'revision' => $revision,
+        'total' => (int)($row['total_appointments'] ?? 0),
+        'active_today' => (int)($row['active_today'] ?? 0),
+        'server_time' => $nowManila->format('Y-m-d H:i:s')
+    ]);
+}
+
+function validateDoctorSchedule(PDO $pdo, int $doctorId, string $appointmentDate, string $normalizedTime): ?array {
+    $dateObj = DateTime::createFromFormat('Y-m-d', $appointmentDate);
+    if (!$dateObj) {
+        return ['field' => 'appointment_date', 'message' => 'A valid appointment date is required.'];
+    }
+    $dayNum = (int)$dateObj->format('N'); // 1 = Monday, 7 = Sunday
+    $dayMap = [1 => 'Monday', 2 => 'Tuesday', 3 => 'Wednesday', 4 => 'Thursday', 5 => 'Friday', 6 => 'Saturday', 7 => 'Sunday'];
+    $dayName = $dayMap[$dayNum] ?? 'Unknown';
+
+    if ($dayNum === 7) {
+        return ['field' => 'appointment_date', 'message' => 'The clinic is closed on Sundays.'];
+    }
+
+    if ($normalizedTime < '08:00:00' || $normalizedTime > '17:00:00') {
+        return ['field' => 'appointment_time', 'message' => 'Appointments can only be scheduled between 08:00 and 17:00.'];
+    }
+
+    $hour = (int)substr($normalizedTime, 0, 2);
+    if ($hour === 12) {
+        return ['field' => 'appointment_time', 'message' => 'The clinic is closed for lunch between 12:00 and 12:59.'];
+    }
+
+    $stmt = $pdo->prepare("SELECT day_of_week, start_time, end_time FROM doctor_schedules WHERE doctor_id = ? AND is_active = 1");
+    $stmt->execute([$doctorId]);
+    $schedules = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+    if (!empty($schedules)) {
+        $matching = null;
+        $activeDayNames = [];
+        foreach ($schedules as $s) {
+            $dow = (int)$s['day_of_week'];
+            $name = $dayMap[$dow] ?? "Day $dow";
+            $activeDayNames[] = $name;
+            if ($dow === $dayNum) {
+                $matching = $s;
+            }
+        }
+
+        if (!$matching) {
+            $daysList = implode(', ', array_unique($activeDayNames));
+            return ['field' => 'appointment_date', 'message' => "Doctor is not scheduled on {$dayName}. Available days: {$daysList}."];
+        }
+
+        $start = $matching['start_time'];
+        $end = $matching['end_time'];
+        if ($normalizedTime < $start || $normalizedTime > $end) {
+            return ['field' => 'appointment_time', 'message' => "Appointment time {$normalizedTime} is outside doctor's working hours ({$start} - {$end}) on {$dayName}."];
+        }
+    }
+
+    return null;
 }
 
 // Header-detail save: one appointment header plus optional triage vital sign row
@@ -410,23 +555,20 @@ function createAppointment(PDO $pdo): void {
     $dateObj = DateTime::createFromFormat('Y-m-d', $appointmentDate);
     if (!$dateObj || $dateObj->format('Y-m-d') !== $appointmentDate) {
         $errors['appointment_date'] = 'A valid appointment date is required.';
-    } else {
-        $dayOfWeek = (int)$dateObj->format('w');
-        if ($dayOfWeek === 0) {
-            $errors['appointment_date'] = 'The clinic is closed on Sundays.';
-        }
     }
 
     $timeObj = DateTime::createFromFormat('H:i', $appointmentTime)
         ?: DateTime::createFromFormat('H:i:s', $appointmentTime);
     if (!$timeObj) {
         $errors['appointment_time'] = 'A valid appointment time is required.';
-    } else {
-        $normalizedTime = $timeObj->format('H:i:s');
-        if ($normalizedTime < '08:00:00' || $normalizedTime > '17:00:00') {
-            $errors['appointment_time'] = 'Appointments can only be scheduled between 08:00 and 17:00.';
-        } elseif ((int)$timeObj->format('H') === 12) {
-            $errors['appointment_time'] = 'The clinic is closed for lunch between 12:00 and 12:59.';
+    }
+
+    $normalizedTime = $timeObj ? $timeObj->format('H:i:s') : '';
+
+    if ($dateObj && $timeObj && $doctorId > 0) {
+        $schedErr = validateDoctorSchedule($pdo, $doctorId, $appointmentDate, $normalizedTime);
+        if ($schedErr !== null) {
+            $errors[$schedErr['field']] = $schedErr['message'];
         }
     }
 
@@ -740,23 +882,20 @@ function updateAppointment(PDO $pdo, int $appointmentId): void {
         $dateObj = DateTime::createFromFormat('Y-m-d', $appointmentDate);
         if (!$dateObj || $dateObj->format('Y-m-d') !== $appointmentDate) {
             $errors['appointment_date'] = 'A valid appointment date is required.';
-        } elseif (in_array($status, ['scheduled', 'confirmed'])) {
-            $dayOfWeek = (int)$dateObj->format('w');
-            if ($dayOfWeek === 0) {
-                $errors['appointment_date'] = 'The clinic is closed on Sundays.';
-            }
         }
 
         $timeObj = DateTime::createFromFormat('H:i', $appointmentTime) ?: DateTime::createFromFormat('H:i:s', $appointmentTime);
         if (!$timeObj) {
             $errors['appointment_time'] = 'A valid appointment time is required.';
-        } else {
-            $normalizedTime = $timeObj->format('H:i:s');
-            if (in_array($status, ['scheduled', 'confirmed'])) {
-                if ($normalizedTime < '08:00:00' || $normalizedTime > '17:00:00') {
-                    $errors['appointment_time'] = 'Appointments can only be scheduled between 08:00 and 17:00.';
-                } elseif ((int)$timeObj->format('H') === 12) {
-                    $errors['appointment_time'] = 'The clinic is closed for lunch between 12:00 and 12:59.';
+        }
+
+        $normalizedTime = $timeObj ? $timeObj->format('H:i:s') : '';
+
+        if (in_array($status, ['scheduled', 'confirmed'])) {
+            if ($dateObj && $timeObj && $doctorId > 0) {
+                $schedErr = validateDoctorSchedule($pdo, $doctorId, $appointmentDate, $normalizedTime);
+                if ($schedErr !== null) {
+                    $errors[$schedErr['field']] = $schedErr['message'];
                 }
             }
         }

@@ -5,7 +5,7 @@
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays & 03 APIs and Database Operations/javascript_working_with_apis
 
 import api from '../api.js?v=7';
-import { escapeHtml, showToast } from '../ui.js?v=24';
+import { escapeHtml, showToast, formatStatusLabel } from '../ui.js?v=24';
 
 function formatTime(val) {
     if (!val) return '--';
@@ -43,7 +43,14 @@ function getGreeting(h) {
     return 'Good Evening';
 }
 
-function getPeriodLabel(period, now = new Date()) {
+function formatReadableDate(val) {
+    if (!val) return '';
+    const parsed = new Date(`${String(val).slice(0, 10)}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return String(val);
+    return parsed.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+function getPeriodLabel(period, now = new Date(), startDate = null, endDate = null) {
     if (period === 'today') {
         return formatDateHeader(now);
     }
@@ -57,13 +64,25 @@ function getPeriodLabel(period, now = new Date()) {
         const opt = { month: 'short', day: 'numeric' };
         return `Week of ${monday.toLocaleDateString('en-US', opt)} – ${sunday.toLocaleDateString('en-US', { ...opt, year: 'numeric' })}`;
     }
-    if (period === 'month') {
-        return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (period === 'range') {
+        if (startDate && endDate) {
+            return `${formatReadableDate(startDate)} to ${formatReadableDate(endDate)}`;
+        }
+        if (startDate) {
+            return `From ${formatReadableDate(startDate)}`;
+        }
+        if (endDate) {
+            return `Up to ${formatReadableDate(endDate)}`;
+        }
+        return 'Custom Date Range';
     }
-    return 'All-Time Clinical Records';
+    if (period === 'all') {
+        return 'All-Time Consultation Log (All Dates)';
+    }
+    return 'Clinic Overview';
 }
 
-function getAppointmentsForPeriod(allAppts, period, now = new Date()) {
+function getAppointmentsForPeriod(allAppts, period, now = new Date(), startDate = null, endDate = null) {
     const todayStr = formatDateYMD(now);
     if (period === 'today') {
         return allAppts
@@ -83,15 +102,18 @@ function getAppointmentsForPeriod(allAppts, period, now = new Date()) {
             .filter(a => a.appointment_date >= startStr && a.appointment_date <= endStr)
             .sort((a, b) => `${b.appointment_date} ${b.appointment_time || ''}`.localeCompare(`${a.appointment_date} ${a.appointment_time || ''}`));
     }
-    if (period === 'month') {
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const monthPrefix = `${year}-${month}`;
+    if (period === 'range') {
         return allAppts
-            .filter(a => (a.appointment_date || '').startsWith(monthPrefix))
+            .filter(a => {
+                if (startDate && a.appointment_date < startDate) return false;
+                if (endDate && a.appointment_date > endDate) return false;
+                return true;
+            })
             .sort((a, b) => `${b.appointment_date} ${b.appointment_time || ''}`.localeCompare(`${a.appointment_date} ${a.appointment_time || ''}`));
     }
-    // all_time
+    if (period === 'all') {
+        return [...allAppts].sort((a, b) => `${b.appointment_date} ${b.appointment_time || ''}`.localeCompare(`${a.appointment_date} ${a.appointment_time || ''}`));
+    }
     return [...allAppts].sort((a, b) => `${b.appointment_date} ${b.appointment_time || ''}`.localeCompare(`${a.appointment_date} ${a.appointment_time || ''}`));
 }
 
@@ -122,8 +144,12 @@ export default {
     state: {
         profile: null,
         allAppointments: [],
-        activePeriod: 'today', // 'today' | 'week' | 'month' | 'all_time'
+        activePeriod: 'today', // 'today' | 'week' | 'all' | 'range'
+        startDate: '',
+        endDate: '',
         filter: 'all', // sub-filter in queue/table
+        page: 1,
+        pageSize: 10,
         nextPatient: null,
         sortBy: 'time',
         sortOrder: 'asc'
@@ -132,7 +158,11 @@ export default {
     async init(container) {
         this.container = container;
         this.state.activePeriod = 'today';
+        this.state.startDate = '';
+        this.state.endDate = '';
         this.state.filter = 'all';
+        this.state.page = 1;
+        this.state.pageSize = 10;
         this.state.sortBy = 'time';
         this.state.sortOrder = 'asc';
         this.renderSkeleton();
@@ -246,10 +276,10 @@ export default {
         }
 
         const activePeriod = this.state.activePeriod;
-        const periodLabel = getPeriodLabel(activePeriod, now);
+        const periodLabel = getPeriodLabel(activePeriod, now, this.state.startDate, this.state.endDate);
 
         // Filter appointments for current period
-        const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, activePeriod, now);
+        const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, activePeriod, now, this.state.startDate, this.state.endDate);
         const stats = calculatePeriodStats(periodAppts);
 
         // Count today's waiting count for header status badge
@@ -279,19 +309,25 @@ export default {
 
                     <!-- Time Horizon Switcher & Refresh -->
                     <div style="display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;">
-                        <div class="period-switcher" style="display: flex; background: var(--bg); padding: 0.25rem; border-radius: var(--radius-md); border: 1px solid var(--border); gap: 0.2rem;">
+                        <div class="period-switcher" style="display: flex; align-items: center; background: var(--bg); padding: 0.25rem 0.4rem; border-radius: var(--radius-md); border: 1px solid var(--border); gap: 0.35rem; flex-wrap: wrap;">
                             <button type="button" class="btn btn-sm btn-period-tab ${activePeriod === 'today' ? 'btn-primary' : 'btn-secondary'}" data-period="today" style="padding: 0.3rem 0.75rem; font-size: 0.8rem;">
                                 Today
                             </button>
                             <button type="button" class="btn btn-sm btn-period-tab ${activePeriod === 'week' ? 'btn-primary' : 'btn-secondary'}" data-period="week" style="padding: 0.3rem 0.75rem; font-size: 0.8rem;">
                                 This Week
                             </button>
-                            <button type="button" class="btn btn-sm btn-period-tab ${activePeriod === 'month' ? 'btn-primary' : 'btn-secondary'}" data-period="month" style="padding: 0.3rem 0.75rem; font-size: 0.8rem;">
-                                This Month
-                            </button>
-                            <button type="button" class="btn btn-sm btn-period-tab ${activePeriod === 'all_time' ? 'btn-primary' : 'btn-secondary'}" data-period="all_time" style="padding: 0.3rem 0.75rem; font-size: 0.8rem;">
+                            <button type="button" class="btn btn-sm btn-period-tab ${activePeriod === 'all' ? 'btn-primary' : 'btn-secondary'}" data-period="all" style="padding: 0.3rem 0.75rem; font-size: 0.8rem;">
                                 All-Time
                             </button>
+                            <div class="date-range-controls" style="display: inline-flex; align-items: center; gap: 0.35rem; padding-left: 0.35rem; border-left: 1px solid var(--border); flex-wrap: wrap;">
+                                <label for="doc-range-start" style="margin: 0; font-size: 0.78rem; font-weight: 600; color: var(--text-muted);">From:</label>
+                                <input type="date" id="doc-range-start" class="form-control form-control-sm" value="${this.state.startDate || ''}" style="padding: 0.15rem 0.4rem; font-size: 0.78rem; height: 28px; width: auto; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);">
+                                <label for="doc-range-end" style="margin: 0; font-size: 0.78rem; font-weight: 600; color: var(--text-muted);">To:</label>
+                                <input type="date" id="doc-range-end" class="form-control form-control-sm" value="${this.state.endDate || ''}" style="padding: 0.15rem 0.4rem; font-size: 0.78rem; height: 28px; width: auto; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);">
+                                <button type="button" class="btn btn-sm ${activePeriod === 'range' ? 'btn-primary' : 'btn-secondary'}" id="btn-doc-apply-range" style="padding: 0.2rem 0.6rem; font-size: 0.78rem;">
+                                    Filter
+                                </button>
+                            </div>
                         </div>
 
                         <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-dashboard" title="Refresh Live Queue">
@@ -580,7 +616,15 @@ export default {
             });
         }
 
-        if (appts.length === 0) {
+        const total = appts.length;
+        const pageSize = this.state.pageSize || 10;
+        const totalPages = Math.ceil(total / pageSize) || 1;
+        if (this.state.page > totalPages) this.state.page = totalPages;
+        if (this.state.page < 1) this.state.page = 1;
+        const startIndex = (this.state.page - 1) * pageSize;
+        const pagedAppts = appts.slice(startIndex, startIndex + pageSize);
+
+        if (total === 0) {
             let msg = isToday
                 ? 'No appointments scheduled for today.'
                 : 'No appointment records found for this time period.';
@@ -612,15 +656,16 @@ export default {
                 <table class="data-table" style="margin: 0;">
                     <thead>
                         <tr>
-                            <th data-sort="time" class="${sortTimeClass}" style="width: ${isToday ? '115px' : '160px'};">${isToday ? 'Time' : 'Date &amp; Time'}</th>
-                            <th data-sort="patient" class="${sortPatClass}">Patient</th>
-                            <th>Chief Complaint</th>
-                            <th data-sort="status" class="${sortStatusClass}" style="width: 140px; text-align: center;">Status</th>
-                            <th style="width: 130px; text-align: center;">Action</th>
+                            <th data-sort="time" class="${sortTimeClass}" style="width: ${isToday ? '105px' : '140px'};">${isToday ? 'Time' : 'Date &amp; Time'}</th>
+                            <th data-sort="patient" class="${sortPatClass}" style="min-width: 120px;">Patient</th>
+                            <th style="min-width: 130px; white-space: nowrap;">Triage Vitals</th>
+                            <th style="max-width: 180px;">Chief Complaint</th>
+                            <th data-sort="status" class="${sortStatusClass}" style="width: 125px; text-align: center;">Status</th>
+                            <th style="width: 110px; text-align: center;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${appts.map(a => {
+                        ${pagedAppts.map(a => {
                             const patientName = `${a.patient_last || ''}, ${a.patient_first || ''}`;
                             const timeStr = formatTime(a.appointment_time);
                             const dateStr = formatShortDate(a.appointment_date);
@@ -671,18 +716,14 @@ export default {
                                 actionButton = '<span class="text-muted" style="font-size: 0.78rem;">&mdash;</span>';
                             }
 
-                            // Vitals pill if available
-                            let vitalsPill = '';
-                            if (a.blood_pressure || a.temperature) {
-                                const bp = a.blood_pressure ? `BP: ${a.blood_pressure}` : '';
-                                const temp = a.temperature ? `${a.temperature}&deg;C` : '';
-                                const vitalsText = [bp, temp].filter(Boolean).join(' &bull; ');
-                                vitalsPill = `
-                                    <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 0.15rem; display: flex; align-items: center; gap: 0.35rem;">
-                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
-                                        <span>${vitalsText}</span>
-                                    </div>
-                                `;
+                            // Vitals pill
+                            let vitalsHtml = '<span class="text-muted" style="font-size: 0.78rem;">--</span>';
+                            if (a.blood_pressure || a.temperature || a.oxygen_saturation) {
+                                const items = [];
+                                if (a.blood_pressure) items.push(`<span class="vital-badge" style="font-size: 0.74rem; background: var(--bg-alt); padding: 1px 5px; border-radius: var(--radius-sm); border: 1px solid var(--border);">BP: ${escapeHtml(a.blood_pressure)}</span>`);
+                                if (a.temperature) items.push(`<span class="vital-badge" style="font-size: 0.74rem; background: var(--bg-alt); padding: 1px 5px; border-radius: var(--radius-sm); border: 1px solid var(--border);">${escapeHtml(a.temperature)}&deg;C</span>`);
+                                if (a.oxygen_saturation) items.push(`<span class="vital-badge" style="font-size: 0.74rem; background: var(--bg-alt); padding: 1px 5px; border-radius: var(--radius-sm); border: 1px solid var(--border);">${escapeHtml(a.oxygen_saturation)}%</span>`);
+                                vitalsHtml = `<div style="display: flex; flex-direction: column; gap: 3px;">${items.join('')}</div>`;
                             }
 
                             return `
@@ -692,9 +733,11 @@ export default {
                                     </td>
                                     <td style="vertical-align: middle;">
                                         <strong style="color: var(--text); font-size: 0.92rem; display: block;">${escapeHtml(patientName)}</strong>
-                                        ${vitalsPill}
                                     </td>
-                                    <td style="vertical-align: middle; font-size: 0.84rem; color: var(--text-muted); max-width: 250px;">
+                                    <td style="vertical-align: middle; white-space: nowrap;">
+                                        ${vitalsHtml}
+                                    </td>
+                                    <td style="vertical-align: middle; font-size: 0.84rem; color: var(--text-muted); max-width: 180px;">
                                         <span title="${escapeHtml(reasonStr)}" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
                                             ${escapeHtml(reasonStr)}
                                         </span>
@@ -711,6 +754,23 @@ export default {
                     </tbody>
                 </table>
             </div>
+
+            <div class="pagination-wrapper" style="padding: 0.75rem 1.25rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; gap: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; color: var(--text-muted);">
+                    <span>Rows per page:</span>
+                    <select id="doc-overview-page-size" class="form-control form-control-sm" style="width: auto; height: 28px; padding: 0.15rem 0.5rem; font-size: 0.8rem; cursor: pointer;">
+                        <option value="10" ${pageSize === 10 ? 'selected' : ''}>10</option>
+                        <option value="25" ${pageSize === 25 ? 'selected' : ''}>25</option>
+                        <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
+                    </select>
+                    <span>Showing <strong>${total > 0 ? startIndex + 1 : 0}</strong> to <strong>${Math.min(startIndex + pageSize, total)}</strong> of <strong>${total}</strong> records</span>
+                </div>
+                <div class="pagination-controls" style="display: flex; align-items: center; gap: 0.35rem;">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-doc-prev" ${this.state.page <= 1 ? 'disabled' : ''} style="padding: 0.25rem 0.65rem; font-size: 0.78rem;">Previous</button>
+                    <span style="font-size: 0.8rem; color: var(--text-muted); padding: 0 0.35rem;">Page <strong>${this.state.page}</strong> of <strong>${totalPages}</strong></span>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-doc-next" ${this.state.page >= totalPages ? 'disabled' : ''} style="padding: 0.25rem 0.65rem; font-size: 0.78rem;">Next</button>
+                </div>
+            </div>
         `;
     },
 
@@ -723,18 +783,90 @@ export default {
             showToast('Refreshed clinical records and live queue.', 'info');
         });
 
-        // Time horizon period switcher (Today | This Week | This Month | All-Time)
+        // Time horizon period switcher (Today | This Week | All-Time)
         c.addEventListener('click', (e) => {
             const btn = e.target.closest('.btn-period-tab');
             if (btn) {
                 const targetPeriod = btn.getAttribute('data-period');
-                if (targetPeriod && targetPeriod !== this.state.activePeriod) {
+                if (targetPeriod && (targetPeriod !== this.state.activePeriod || targetPeriod === 'all')) {
                     this.state.activePeriod = targetPeriod;
+                    if (targetPeriod === 'all') {
+                        this.state.startDate = '';
+                        this.state.endDate = '';
+                    }
                     this.state.filter = 'all'; // reset sub-filter
+                    this.state.page = 1; // reset pagination
                     this.renderDashboard();
                 }
             }
         });
+
+        // Custom Date Range Picker Apply Button
+        c.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'btn-doc-apply-range') {
+                const startInput = c.querySelector('#doc-range-start');
+                const endInput = c.querySelector('#doc-range-end');
+                const startVal = startInput ? startInput.value.trim() : '';
+                const endVal = endInput ? endInput.value.trim() : '';
+                if (!startVal && !endVal) {
+                    showToast('Please select at least a start or end date.', 'warning');
+                    return;
+                }
+                this.state.activePeriod = 'range';
+                this.state.startDate = startVal;
+                this.state.endDate = endVal;
+                this.state.filter = 'all';
+                this.state.page = 1;
+                this.renderDashboard();
+            }
+        });
+
+        // Rows per Page selector
+        c.addEventListener('change', (e) => {
+            if (e.target && e.target.id === 'doc-overview-page-size') {
+                this.state.pageSize = parseInt(e.target.value, 10) || 10;
+                this.state.page = 1;
+                const now = new Date();
+                const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now, this.state.startDate, this.state.endDate);
+                const queueContainer = c.querySelector('#queue-list-container');
+                if (queueContainer) {
+                    queueContainer.innerHTML = this.renderQueueItemsHtml(periodAppts, this.state.activePeriod === 'today');
+                }
+            }
+        });
+
+        // Pagination Previous / Next buttons
+        c.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'btn-doc-prev') {
+                if (this.state.page > 1) {
+                    this.state.page--;
+                    const now = new Date();
+                    const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now, this.state.startDate, this.state.endDate);
+                    const queueContainer = c.querySelector('#queue-list-container');
+                    if (queueContainer) {
+                        queueContainer.innerHTML = this.renderQueueItemsHtml(periodAppts, this.state.activePeriod === 'today');
+                    }
+                }
+            } else if (e.target && e.target.id === 'btn-doc-next') {
+                this.state.page++;
+                const now = new Date();
+                const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now, this.state.startDate, this.state.endDate);
+                const queueContainer = c.querySelector('#queue-list-container');
+                if (queueContainer) {
+                    queueContainer.innerHTML = this.renderQueueItemsHtml(periodAppts, this.state.activePeriod === 'today');
+                }
+            }
+        });
+
+        // Real-time live update sync listener
+        if (!this._syncBound) {
+            this._syncBound = true;
+            document.addEventListener('cprms:sync', () => {
+                if (this.container && this.container.isConnected) {
+                    this.loadData();
+                }
+            });
+        }
 
         // Filter pills in queue header
         c.addEventListener('click', (e) => {
@@ -743,6 +875,7 @@ export default {
                 const targetFilter = btn.getAttribute('data-filter');
                 if (targetFilter) {
                     this.state.filter = targetFilter;
+                    this.state.page = 1;
                     // Update button active state
                     c.querySelectorAll('.queue-filter-btn').forEach(b => {
                         b.classList.remove('btn-primary');
@@ -753,7 +886,7 @@ export default {
 
                     // Re-render queue table
                     const now = new Date();
-                    const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now);
+                    const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now, this.state.startDate, this.state.endDate);
                     const queueContainer = c.querySelector('#queue-list-container');
                     if (queueContainer) {
                         queueContainer.innerHTML = this.renderQueueItemsHtml(periodAppts, this.state.activePeriod === 'today');
@@ -769,6 +902,7 @@ export default {
                 const targetFilter = card.getAttribute('data-filter');
                 if (targetFilter) {
                     this.state.filter = targetFilter;
+                    this.state.page = 1;
                     c.querySelectorAll('.queue-filter-btn').forEach(b => {
                         if (b.getAttribute('data-filter') === targetFilter) {
                             b.classList.remove('btn-secondary');
@@ -779,7 +913,7 @@ export default {
                         }
                     });
                     const now = new Date();
-                    const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now);
+                    const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now, this.state.startDate, this.state.endDate);
                     const queueContainer = c.querySelector('#queue-list-container');
                     if (queueContainer) {
                         queueContainer.innerHTML = this.renderQueueItemsHtml(periodAppts, this.state.activePeriod === 'today');
@@ -833,8 +967,9 @@ export default {
                         this.state.sortBy = sortField;
                         this.state.sortOrder = 'asc';
                     }
+                    this.state.page = 1;
                     const now = new Date();
-                    const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now);
+                    const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now, this.state.startDate, this.state.endDate);
                     const queueContainer = c.querySelector('#queue-list-container');
                     if (queueContainer) {
                         queueContainer.innerHTML = this.renderQueueItemsHtml(periodAppts, this.state.activePeriod === 'today');

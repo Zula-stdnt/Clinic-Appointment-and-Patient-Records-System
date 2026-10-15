@@ -10,10 +10,10 @@ The system is built without heavy external frameworks or complex build tools. Ea
 1. **Page shells & session guard** (`admin_dashboard.html`, `doctor_dashboard.html`, `receptionist_dashboard.html`, `login.html`, plus `assets/js/session-guard.js`) — Before showing any dashboard screen, `session-guard.js` asks `api/auth_controller.php?action=me` (`requireSession()`) whether the visitor is signed in and has the right role. For login checks without console errors, `action=check` provides a safe probe. On the server side, every PHP controller also runs `require_login()` and `require_role()` so data stays protected even if someone calls an API URL directly.
 2. **SPA routers** — `assets/js/main.js` (Administrator portal), `assets/js/doctor_main.js` (Doctor portal), and `assets/js/receptionist_main.js` (Receptionist portal). These scripts watch the `#hash` part of the browser address bar (such as `#patients`, `#doctor_appointments`, `#receptionist_overview`, or `#doctor_consultation/1` where `1` is the appointment ID), highlight the active menu item in the sidebar, load the matching screen module, and control the slide-out menu on mobile screens.
 3. **Feature modules** — `assets/js/modules/*.js`. Each screen is a self-contained JavaScript file that exports `{ state, init(container, param) }`. When you switch screens, the router calls `init` to draw that screen inside the `#module-viewport` area of the page.
-4. **UI toolkit & API helper** — `assets/js/ui.js` provides shared building blocks used by every screen: HTML/currency helpers (`create`, `gId`, `formatCurrency`), pop-up notifications (**toasts**), pop-up dialog boxes (**modals**) that keep keyboard focus inside the box, confirmation prompts, and `escapeHtml` (which turns special characters into safe text). `assets/js/api.js` wraps **Axios** (an HTTP request library) to automatically attach the user's **CSRF security token** on save/delete requests, unwrap server responses, and send the user back to the login page if their session expires (`401`).
-5. **API controllers** — `api/*_controller.php`. Each PHP controller connects to the database via `config/db_connect.php`, checks that the user is logged in with the right role (`require_login()` / `require_role()`), verifies the security token on data changes (`verify_csrf_on_state_change()`), and runs the requested action based on the HTTP method (`GET` to read, `POST` to create, `PUT` to update, `DELETE` to remove).
-6. **Audit & Compliance Layer** — `includes/audit.php` and `api/audit_log_controller.php`. Records immutable audit entries for Break-Glass chart views, demographic updates with old/new values, and appointment cancellations.
-7. **Database** — MySQL accessed through **PDO** (PHP Data Objects). Uses soft-delete timestamps (`deleted_at`), linking tables (**junction tables**), and all-or-nothing **database transactions** for clinical encounters; see [[Database Schema]].
+4. **UI toolkit, API helper & Live Sync** — `assets/js/ui.js` provides shared building blocks used by every screen: HTML/currency helpers (`create`, `gId`, `formatCurrency`), pop-up notifications (**toasts**), pop-up dialog boxes (**modals**) that keep keyboard focus inside the box, confirmation prompts, and `escapeHtml` (which turns special characters into safe text). `assets/js/api.js` wraps **Axios** (an HTTP request library) to automatically attach the user's **CSRF security token** on save/delete requests, unwrap server responses, and send the user back to the login page if their session expires (`401`). `assets/js/live-sync.js` provides lightweight multi-tab state synchronization by polling `api/appointment_controller.php?action=sync_state` and broadcasting a custom `cprms:sync` browser event whenever new appointments or status transitions occur.
+5. **API controllers** — `api/*_controller.php`. Each PHP controller connects to the database via `config/db_connect.php`, checks that the user is logged in with the right role (`require_login()` / `require_role()`), verifies the security token on data changes (`verify_csrf_on_state_change()`), and runs the requested action based on the HTTP method (`GET` to read, `POST` to create, `PUT` to update, `DELETE` to remove). Dedicated controllers include `api/doctor_schedule_controller.php` (weekly rota availability) and `api/access_request_controller.php` (hybrid standard/urgent record access approvals).
+6. **Audit & Compliance Layer** — `includes/audit.php` and `api/audit_log_controller.php`. Records immutable audit entries for Break-Glass chart views, demographic updates with old/new values, doctor schedule reconfigurations, and appointment cancellations.
+7. **Database** — MySQL accessed through **PDO** (PHP Data Objects). Uses soft-delete timestamps (`deleted_at`), linking tables (**junction tables**), doctor schedule rotas, and all-or-nothing **database transactions** for clinical encounters; see [[Database Schema]].
 
 ## Request lifecycle
 This diagram shows what happens step-by-step when you click a button or load a table in the browser:
@@ -45,10 +45,11 @@ flowchart LR
         Router[main.js / doctor_main.js / receptionist_main.js]
         Mod[JS modules]
         T[ui.js]
+        Sync[live-sync.js]
         APIJS[api.js + axios]
     end
     subgraph Server
-        Ctrl[api controllers]
+        Ctrl[api controllers: schedules, access, clinical]
         Auth[includes/auth.php]
         Audit[includes/audit.php]
         Resp[includes/response.php]
@@ -56,6 +57,8 @@ flowchart LR
     end
     Shell --> Router --> Mod
     Mod --> T
+    Mod --> Sync
+    Sync --> APIJS
     Mod --> APIJS --> Ctrl
     Ctrl --> Auth
     Ctrl --> Audit
@@ -65,9 +68,10 @@ flowchart LR
 
 ## Folder map
 ```text
-api/                     Server-side PHP controllers (master files, clinical endpoints, audit logs)
+api/                     Server-side PHP controllers (master files, clinical endpoints, schedules, access requests, audit logs)
 assets/css/style.css     Visual design system, semantic status badge tokens, and responsive layout rules
 assets/js/api.js         Axios network helper (attaches CSRF tokens, handles expired logins)
+assets/js/live-sync.js   Cross-tab state synchronization (cprms:sync event emitter)
 assets/js/main.js        Administrator SPA router + sidebar navigation
 assets/js/doctor_main.js Doctor SPA router (supports #module/param routes) + sidebar
 assets/js/receptionist_main.js Receptionist SPA router + navigation

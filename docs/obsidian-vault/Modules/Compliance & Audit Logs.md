@@ -40,6 +40,10 @@ The module converts technical audit payloads into plain English:
 | **`UPDATE_ALLERGIES_AT_INTAKE`** | Updated allergy alerts with verification status | `Patient allergy alerts updated: "peanuts allergy" (Recorded at front-desk intake)` |
 | **`CANCEL_REQUEST`** | Identifies doctor cancellation requests and displays clinical reason | `Doctor requested appointment cancellation. Reason: "Emergency surgery callout"` |
 | **`CANCEL_APPOINTMENT`** | Front-desk cancellation with reason | `Appointment cancelled. Reason: "Patient unwell"` |
+| **`UPDATE_DOCTOR_SCHEDULE`** | Doctor weekly duty rota updated with scheduled days and hours | `Doctor weekly schedule updated for Dr. Gregory House (Active days: Mon, Tue 08:00 - 17:00)` |
+| **`ACCESS_REQUEST_SUBMIT`** | Record access request submitted by doctor | `Standard 24-hour record access requested for patient Maria Clara. Reason: "Cardiology pre-op consultation"` |
+| **`ACCESS_REQUEST_APPROVE`** | Administrator approved record access request | `Administrator approved 24-hour access request for Dr. Gregory House to patient Maria Clara` |
+| **`ACCESS_REQUEST_ACKNOWLEDGE`** | Administrator reviewed emergency break-glass event | `Administrator reviewed and acknowledged emergency Break-Glass access by Dr. Stephen Strange` |
 | **`ARCHIVE` / `RESTORE` / `PURGE`** | Clear explanation of lifecycle change | `Record moved to Central Archive (soft-deleted)` or `Record permanently purged from database` |
 
 ## On-Demand Technical Details Toggle

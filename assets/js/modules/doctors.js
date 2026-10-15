@@ -44,7 +44,7 @@ export default {
                 <div class="card-header">
                     <div>
                         <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text);">Manage Doctors</h2>
-                        <p class="text-muted" style="font-size: 0.85rem;">Manage hospital medical staff and clinical specialties</p>
+                        <p class="text-muted" style="font-size: 0.85rem;">Manage clinic medical staff and clinical specialties</p>
                     </div>
                     <button id="btn-add-doctor" class="btn btn-primary">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
@@ -95,13 +95,14 @@ export default {
                             <tr>
                                 <th data-sort="last_name">Doctor Name</th>
                                 <th data-sort="specialty_name">Specialty</th>
+                                <th>Weekly Schedule</th>
                                 <th data-sort="contact_no">Contact No</th>
                                 <th data-sort="deleted_at">Status</th>
                                 <th style="text-align: right;">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="doctors-table-body">
-                            <tr><td colspan="5" class="text-center" style="padding: 2rem;">Loading doctors...</td></tr>
+                            <tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading doctors...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -214,6 +215,51 @@ export default {
                         <div class="modal-body" id="doctor-view-body"></div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manage Doctor Schedule Modal -->
+            <div class="modal" id="doctor-schedule-modal" tabindex="-1" aria-labelledby="doc-sched-modal-title" aria-hidden="true">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <div>
+                                <h3 class="modal-title" id="doc-sched-modal-title" style="margin-bottom: 0.2rem;">Assign Doctor Duty Schedule</h3>
+                                <p class="text-muted" style="margin: 0; font-size: 0.85rem;" id="doc-sched-doctor-name">Doctor Name</p>
+                            </div>
+                            <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <input type="hidden" id="sched-doctor-id">
+                            
+                            <!-- Quick Schedule Presets -->
+                            <div style="margin-bottom: 1.25rem; padding: 0.85rem; background: var(--bg-alt); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                                <label style="display: block; font-weight: 600; font-size: 0.82rem; margin-bottom: 0.4rem; color: var(--text);">Clinic Rotation Presets:</label>
+                                <div style="display: flex; flex-wrap: wrap; gap: 0.4rem;">
+                                    <button type="button" class="btn btn-sm btn-secondary btn-sched-preset" data-preset="house">Mon &amp; Tue (Dr. House)</button>
+                                    <button type="button" class="btn btn-sm btn-secondary btn-sched-preset" data-preset="grey">Wed &amp; Thu (Dr. Grey)</button>
+                                    <button type="button" class="btn btn-sm btn-secondary btn-sched-preset" data-preset="strange">Fri &amp; Sat (Dr. Strange)</button>
+                                    <button type="button" class="btn btn-sm btn-secondary btn-sched-preset" data-preset="full">Mon &ndash; Sat (Full Week)</button>
+                                    <button type="button" class="btn btn-sm btn-secondary btn-sched-preset" data-preset="clear" style="color: var(--danger);">Clear All</button>
+                                </div>
+                            </div>
+
+                            <!-- Day of Week Rows Container -->
+                            <div id="sched-days-container" style="display: flex; flex-direction: column; gap: 0.6rem;">
+                                <!-- Rendered dynamically by openScheduleModal -->
+                            </div>
+
+                            <!-- Sunday Policy Note -->
+                            <div style="margin-top: 0.85rem; padding: 0.65rem 0.85rem; background: var(--bg); border: 1px dashed var(--border); border-radius: var(--radius-md); font-size: 0.8rem; color: var(--text-muted); display: flex; align-items: center; gap: 0.5rem;">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                <span><strong>Sunday Policy:</strong> The clinic is closed on Sundays for sanitization and weekly maintenance. Consultations are conducted Monday through Saturday.</span>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                            <button type="button" class="btn btn-primary" id="btn-save-doctor-schedule">Save Schedule</button>
                         </div>
                     </div>
                 </div>
@@ -362,6 +408,18 @@ export default {
             e.preventDefault();
             this.saveDoctor();
         });
+
+        // Schedule modal preset buttons
+        this.container.querySelectorAll('.btn-sched-preset').forEach(btn => {
+            btn.addEventListener('click', () => {
+                this.applySchedulePreset(btn.getAttribute('data-preset'));
+            });
+        });
+
+        // Save doctor schedule button
+        this.container.querySelector('#btn-save-doctor-schedule')?.addEventListener('click', () => {
+            this.saveDoctorSchedule();
+        });
     },
 
     updateSortHeaders() {
@@ -375,7 +433,7 @@ export default {
 
     async loadData() {
         const tbody = this.container.querySelector('#doctors-table-body');
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center" style="padding: 2rem;">Loading doctors...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading doctors...</td></tr>';
 
         try {
             const res = await api.get('api/doctor_controller.php', {
@@ -398,7 +456,7 @@ export default {
                 throw new Error(res.message);
             }
         } catch (err) {
-            tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding: 2rem;">Failed to load doctors: ${escapeHtml(err.message)}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted" style="padding: 2rem;">Failed to load doctors: ${escapeHtml(err.message)}</td></tr>`;
         }
     },
 
@@ -407,7 +465,7 @@ export default {
         if (!items || items.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="5">
+                    <td colspan="6">
                         <div class="empty-state">
                             <strong>No doctors found</strong>
                             <p>Try modifying your search or specialty filters.</p>
@@ -428,9 +486,19 @@ export default {
                 </div>`;
             }
 
+            const scheduleBadge = (d.schedule_summary && d.schedule_summary !== 'Not Set')
+                ? `<span class="badge badge-info" style="font-size: 0.78rem;">${escapeHtml(d.schedule_summary)}</span>`
+                : '<span class="badge badge-secondary" style="font-size: 0.78rem;">Not Configured</span>';
+
             const statusBadge = d.deleted_at
                 ? '<span class="badge badge-status-deleted">Archived</span>'
                 : '<span class="badge badge-status-active">Active</span>';
+
+            const scheduleBtn = !d.deleted_at ? `
+                <button class="btn btn-secondary btn-sm btn-schedule" data-id="${d.doctor_id}" data-name="${escapeHtml(fullName)}" title="Assign / Edit Weekly Schedule">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 2px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>Schedule
+                </button>
+            ` : '';
 
             const archiveBtn = !d.deleted_at ? `
                 <button class="btn btn-warning btn-sm btn-archive" data-id="${d.doctor_id}" data-name="${escapeHtml(fullName)}" title="Archive">
@@ -443,11 +511,13 @@ export default {
                 <tr>
                     <td><strong>${escapeHtml(fullName)}</strong></td>
                     <td>${specialtyHtml}</td>
+                    <td>${scheduleBadge}</td>
                     <td>${escapeHtml(d.contact_no || '-')}</td>
                     <td>${statusBadge}</td>
                     <td>
                         <div class="actions-cell">
                             <button class="btn btn-secondary btn-sm btn-view" data-id="${d.doctor_id}" title="View Record">View</button>
+                            ${scheduleBtn}
                             <button class="btn btn-secondary btn-sm btn-edit" data-id="${d.doctor_id}" title="Edit Record">Edit</button>
                             ${archiveBtn}
                         </div>
@@ -458,6 +528,9 @@ export default {
 
         tbody.querySelectorAll('.btn-view').forEach(btn => {
             btn.addEventListener('click', () => this.viewDoctor(btn.getAttribute('data-id')));
+        });
+        tbody.querySelectorAll('.btn-schedule').forEach(btn => {
+            btn.addEventListener('click', () => this.openScheduleModal(btn.getAttribute('data-id'), btn.getAttribute('data-name')));
         });
         tbody.querySelectorAll('.btn-edit').forEach(btn => {
             btn.addEventListener('click', () => this.openEditModal(btn.getAttribute('data-id')));
@@ -758,9 +831,182 @@ export default {
         });
     },
 
-    
+    async openScheduleModal(doctorId, doctorName) {
+        const idInput = this.container.querySelector('#sched-doctor-id');
+        const nameEl = this.container.querySelector('#doc-sched-doctor-name');
+        if (idInput) idInput.value = doctorId;
+        if (nameEl) nameEl.textContent = `Configuring weekly duty schedule for Dr. ${doctorName}`;
 
-    
+        const container = this.container.querySelector('#sched-days-container');
+        if (container) {
+            container.innerHTML = '<div style="padding: 1.5rem; text-align: center; color: var(--text-muted);">Loading doctor schedule...</div>';
+        }
+
+        openModal('doctor-schedule-modal');
+
+        try {
+            const res = await api.get('api/doctor_schedule_controller.php', { doctor_id: doctorId });
+            const schedules = (res && res.success && res.data && res.data.items) ? res.data.items : [];
+            this.renderScheduleModalDays(schedules);
+        } catch (err) {
+            console.error('Failed to load doctor schedule', err);
+            this.renderScheduleModalDays([]);
+            showToast('Failed to load doctor schedule.', 'warning');
+        }
+    },
+
+    renderScheduleModalDays(schedules) {
+        const container = this.container.querySelector('#sched-days-container');
+        if (!container) return;
+
+        const dayNames = {
+            1: 'Monday',
+            2: 'Tuesday',
+            3: 'Wednesday',
+            4: 'Thursday',
+            5: 'Friday',
+            6: 'Saturday'
+        };
+
+        const activeMap = {};
+        schedules.forEach(s => {
+            activeMap[parseInt(s.day_of_week, 10)] = s;
+        });
+
+        let html = '';
+        for (let dow = 1; dow <= 6; dow++) {
+            const existing = activeMap[dow];
+            const isActive = !!existing && existing.is_active != 0;
+            const startVal = existing ? (existing.start_time || '08:00:00').slice(0, 5) : '08:00';
+            const endVal = existing ? (existing.end_time || '17:00:00').slice(0, 5) : '17:00';
+
+            html += `
+                <div class="schedule-day-row" data-day="${dow}" style="display: flex; align-items: center; justify-content: space-between; padding: 0.55rem 0.85rem; background: ${isActive ? 'rgba(16, 124, 65, 0.04)' : 'var(--bg)'}; border: 1px solid ${isActive ? 'var(--primary)' : 'var(--border)'}; border-radius: var(--radius-sm); gap: 0.75rem; flex-wrap: wrap;">
+                    <label style="display: flex; align-items: center; gap: 0.55rem; margin: 0; min-width: 130px; font-weight: 600; cursor: pointer; color: var(--text);">
+                        <input type="checkbox" class="sched-day-check" data-day="${dow}" ${isActive ? 'checked' : ''} style="width: 16px; height: 16px; cursor: pointer;">
+                        <span>${dayNames[dow]}</span>
+                    </label>
+
+                    <div class="sched-time-inputs" style="display: flex; align-items: center; gap: 0.5rem; opacity: ${isActive ? '1' : '0.45'}; pointer-events: ${isActive ? 'auto' : 'none'};">
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">From:</span>
+                        <input type="time" class="form-control form-control-sm sched-start-time" value="${startVal}" min="08:00" max="17:00" style="width: 110px; height: 30px; font-size: 0.82rem;">
+                        <span style="font-size: 0.8rem; color: var(--text-muted);">To:</span>
+                        <input type="time" class="form-control form-control-sm sched-end-time" value="${endVal}" min="08:00" max="17:00" style="width: 110px; height: 30px; font-size: 0.82rem;">
+                    </div>
+
+                    <span class="badge sched-status-badge ${isActive ? 'badge-success' : 'badge-secondary'}" style="font-size: 0.74rem; min-width: 75px; text-align: center;">
+                        ${isActive ? 'Active Duty' : 'Off Duty'}
+                    </span>
+                </div>
+            `;
+        }
+
+        container.innerHTML = html;
+
+        container.querySelectorAll('.sched-day-check').forEach(chk => {
+            chk.addEventListener('change', () => {
+                const row = chk.closest('.schedule-day-row');
+                const timeInputs = row.querySelector('.sched-time-inputs');
+                const badge = row.querySelector('.sched-status-badge');
+                if (chk.checked) {
+                    row.style.background = 'rgba(16, 124, 65, 0.04)';
+                    row.style.borderColor = 'var(--primary)';
+                    timeInputs.style.opacity = '1';
+                    timeInputs.style.pointerEvents = 'auto';
+                    badge.className = 'badge sched-status-badge badge-success';
+                    badge.textContent = 'Active Duty';
+                } else {
+                    row.style.background = 'var(--bg)';
+                    row.style.borderColor = 'var(--border)';
+                    timeInputs.style.opacity = '0.45';
+                    timeInputs.style.pointerEvents = 'none';
+                    badge.className = 'badge sched-status-badge badge-secondary';
+                    badge.textContent = 'Off Duty';
+                }
+            });
+        });
+    },
+
+    applySchedulePreset(presetType) {
+        const container = this.container.querySelector('#sched-days-container');
+        if (!container) return;
+
+        const targetDays = {
+            house: [1, 2],       // Monday & Tuesday
+            grey: [3, 4],        // Wednesday & Thursday
+            strange: [5, 6],     // Friday & Saturday
+            full: [1, 2, 3, 4, 5, 6], // Full week
+            clear: []            // Clear all
+        }[presetType] || [];
+
+        container.querySelectorAll('.schedule-day-row').forEach(row => {
+            const dow = parseInt(row.getAttribute('data-day'), 10);
+            const chk = row.querySelector('.sched-day-check');
+            const startTime = row.querySelector('.sched-start-time');
+            const endTime = row.querySelector('.sched-end-time');
+
+            const shouldBeActive = targetDays.includes(dow);
+            chk.checked = shouldBeActive;
+            if (shouldBeActive) {
+                startTime.value = '08:00';
+                endTime.value = '17:00';
+            }
+            chk.dispatchEvent(new Event('change'));
+        });
+    },
+
+    async saveDoctorSchedule() {
+        const idInput = this.container.querySelector('#sched-doctor-id');
+        const doctorId = parseInt(idInput?.value || '0', 10);
+        if (!doctorId) {
+            showToast('No doctor selected.', 'danger');
+            return;
+        }
+
+        const container = this.container.querySelector('#sched-days-container');
+        const saveBtn = this.container.querySelector('#btn-save-doctor-schedule');
+        const schedules = [];
+
+        container.querySelectorAll('.schedule-day-row').forEach(row => {
+            const dow = parseInt(row.getAttribute('data-day'), 10);
+            const chk = row.querySelector('.sched-day-check');
+            if (chk && chk.checked) {
+                let start = row.querySelector('.sched-start-time').value || '08:00';
+                let end = row.querySelector('.sched-end-time').value || '17:00';
+                if (start.length === 5) start += ':00';
+                if (end.length === 5) end += ':00';
+                schedules.push({
+                    day_of_week: dow,
+                    start_time: start,
+                    end_time: end
+                });
+            }
+        });
+
+        try {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving...';
+
+            const res = await api.post('api/doctor_schedule_controller.php', {
+                doctor_id: doctorId,
+                schedules: schedules
+            });
+
+            if (res.success) {
+                showToast(res.message || 'Doctor schedule updated successfully.', 'success');
+                closeModal('doctor-schedule-modal');
+                await this.loadData();
+            } else {
+                throw new Error(res.message || 'Failed to update schedule.');
+            }
+        } catch (err) {
+            console.error('Failed to save doctor schedule', err);
+            showToast(err.response?.data?.message || err.message || 'Failed to save schedule.', 'danger');
+        } finally {
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Schedule';
+        }
+    }
 };
 
 

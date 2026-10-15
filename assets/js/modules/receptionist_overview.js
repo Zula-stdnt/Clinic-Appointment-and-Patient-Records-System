@@ -6,7 +6,7 @@
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays & 03 APIs and Database Operations/javascript_working_with_apis
 
 import api from '../api.js?v=7';
-import { escapeHtml, showToast } from '../ui.js?v=24';
+import { escapeHtml, showToast, formatStatusLabel } from '../ui.js?v=24';
 import { printBlankForm } from '../components/print-appointment-form.js?v=24';
 
 const MAX_DAILY_CAPACITY = 10;
@@ -47,7 +47,14 @@ function getGreeting(h) {
     return 'Good Evening';
 }
 
-function getPeriodLabel(period, now = new Date()) {
+function formatReadableDate(val) {
+    if (!val) return '';
+    const parsed = new Date(`${String(val).slice(0, 10)}T00:00:00`);
+    if (Number.isNaN(parsed.getTime())) return String(val);
+    return parsed.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+}
+
+function getPeriodLabel(period, now = new Date(), startDate = null, endDate = null) {
     if (period === 'today') {
         return formatDateHeader(now);
     }
@@ -61,13 +68,25 @@ function getPeriodLabel(period, now = new Date()) {
         const opt = { month: 'short', day: 'numeric' };
         return `Week of ${monday.toLocaleDateString('en-US', opt)} – ${sunday.toLocaleDateString('en-US', { ...opt, year: 'numeric' })}`;
     }
-    if (period === 'month') {
-        return now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (period === 'range') {
+        if (startDate && endDate) {
+            return `${formatReadableDate(startDate)} to ${formatReadableDate(endDate)}`;
+        }
+        if (startDate) {
+            return `From ${formatReadableDate(startDate)}`;
+        }
+        if (endDate) {
+            return `Up to ${formatReadableDate(endDate)}`;
+        }
+        return 'Custom Date Range';
     }
-    return 'All-Time Front-Desk Records';
+    if (period === 'all') {
+        return 'All-Time Clinic Overview (All Dates)';
+    }
+    return 'Clinic Overview';
 }
 
-function getAppointmentsForPeriod(allAppts, period, now = new Date()) {
+function getAppointmentsForPeriod(allAppts, period, now = new Date(), startDate = null, endDate = null) {
     const todayStr = formatDateYMD(now);
     if (period === 'today') {
         return allAppts
@@ -87,13 +106,17 @@ function getAppointmentsForPeriod(allAppts, period, now = new Date()) {
             .filter(a => a.appointment_date >= startStr && a.appointment_date <= endStr)
             .sort((a, b) => `${b.appointment_date} ${b.appointment_time || ''}`.localeCompare(`${a.appointment_date} ${a.appointment_time || ''}`));
     }
-    if (period === 'month') {
-        const year = now.getFullYear();
-        const month = String(now.getMonth() + 1).padStart(2, '0');
-        const monthPrefix = `${year}-${month}`;
+    if (period === 'range') {
         return allAppts
-            .filter(a => (a.appointment_date || '').startsWith(monthPrefix))
+            .filter(a => {
+                if (startDate && a.appointment_date < startDate) return false;
+                if (endDate && a.appointment_date > endDate) return false;
+                return true;
+            })
             .sort((a, b) => `${b.appointment_date} ${b.appointment_time || ''}`.localeCompare(`${a.appointment_date} ${a.appointment_time || ''}`));
+    }
+    if (period === 'all') {
+        return [...allAppts].sort((a, b) => `${b.appointment_date} ${b.appointment_time || ''}`.localeCompare(`${a.appointment_date} ${a.appointment_time || ''}`));
     }
     return [...allAppts].sort((a, b) => `${b.appointment_date} ${b.appointment_time || ''}`.localeCompare(`${a.appointment_date} ${a.appointment_time || ''}`));
 }
@@ -104,8 +127,12 @@ export default {
         allAppointments: [],
         allPatients: [],
         doctors: [],
-        activePeriod: 'today', // 'today' | 'week' | 'month' | 'all_time'
+        activePeriod: 'today', // 'today' | 'week' | 'all' | 'range'
+        startDate: '',
+        endDate: '',
         filter: 'all', // 'all' | 'waiting' | 'scheduled' | 'completed'
+        page: 1,
+        pageSize: 10,
         sortBy: 'time',
         sortOrder: 'asc'
     },
@@ -113,7 +140,11 @@ export default {
     async init(container) {
         this.container = container;
         this.state.activePeriod = 'today';
+        this.state.startDate = '';
+        this.state.endDate = '';
         this.state.filter = 'all';
+        this.state.page = 1;
+        this.state.pageSize = 10;
         this.state.sortBy = 'time';
         this.state.sortOrder = 'asc';
         this.renderSkeleton();
@@ -212,10 +243,10 @@ export default {
         const greeting = getGreeting(now.getHours());
         const todayStr = formatDateYMD(now);
         const activePeriod = this.state.activePeriod;
-        const periodLabel = getPeriodLabel(activePeriod, now);
+        const periodLabel = getPeriodLabel(activePeriod, now, this.state.startDate, this.state.endDate);
 
         // Filter appointments for active period
-        const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, activePeriod, now);
+        const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, activePeriod, now, this.state.startDate, this.state.endDate);
 
         // Daily capacity calculation (today's active, non-cancelled appointments)
         const todayAppts = this.state.allAppointments.filter(a => a.appointment_date === todayStr);
@@ -236,9 +267,26 @@ export default {
         let newPatientsCount = 0;
         if (activePeriod === 'today') {
             newPatientsCount = this.state.allPatients.filter(p => (p.created_at || '').startsWith(todayStr)).length;
-        } else if (activePeriod === 'month') {
-            const monthPrefix = todayStr.slice(0, 7);
-            newPatientsCount = this.state.allPatients.filter(p => (p.created_at || '').startsWith(monthPrefix)).length;
+        } else if (activePeriod === 'week') {
+            const dayOfWeek = now.getDay();
+            const diffToMonday = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+            const monday = new Date(now);
+            monday.setDate(now.getDate() + diffToMonday);
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            const startStr = formatDateYMD(monday);
+            const endStr = formatDateYMD(sunday);
+            newPatientsCount = this.state.allPatients.filter(p => {
+                const d = (p.created_at || '').slice(0, 10);
+                return d >= startStr && d <= endStr;
+            }).length;
+        } else if (activePeriod === 'range') {
+            newPatientsCount = this.state.allPatients.filter(p => {
+                const d = (p.created_at || '').slice(0, 10);
+                if (this.state.startDate && d < this.state.startDate) return false;
+                if (this.state.endDate && d > this.state.endDate) return false;
+                return true;
+            }).length;
         } else {
             newPatientsCount = this.state.allPatients.length;
         }
@@ -278,7 +326,7 @@ export default {
                             <h2 class="page-title" style="margin: 0; font-size: 1.6rem; color: var(--text);">
                                 ${greeting}, Front-Desk Team
                             </h2>
-                            <span class="badge badge-info" style="font-size: 0.78rem;">Hospital Front-Desk Station</span>
+                            <span class="badge badge-info" style="font-size: 0.78rem;">Clinic Front-Desk Station</span>
                         </div>
                         <p class="page-subtitle" style="margin: 0; color: var(--text-muted); font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                             <span>${escapeHtml(periodLabel)}</span> &middot; 
@@ -288,19 +336,25 @@ export default {
 
                     <!-- Time Horizon Switcher & Refresh -->
                     <div style="display: flex; align-items: center; gap: 0.65rem; flex-wrap: wrap;">
-                        <div class="period-switcher" style="display: flex; background: var(--bg); padding: 0.25rem; border-radius: var(--radius-md); border: 1px solid var(--border); gap: 0.2rem;">
+                        <div class="period-switcher" style="display: flex; align-items: center; background: var(--bg); padding: 0.25rem 0.4rem; border-radius: var(--radius-md); border: 1px solid var(--border); gap: 0.35rem; flex-wrap: wrap;">
                             <button type="button" class="btn btn-sm btn-period-tab ${activePeriod === 'today' ? 'btn-primary' : 'btn-secondary'}" data-period="today" style="padding: 0.3rem 0.75rem; font-size: 0.8rem;">
                                 Today
                             </button>
                             <button type="button" class="btn btn-sm btn-period-tab ${activePeriod === 'week' ? 'btn-primary' : 'btn-secondary'}" data-period="week" style="padding: 0.3rem 0.75rem; font-size: 0.8rem;">
                                 This Week
                             </button>
-                            <button type="button" class="btn btn-sm btn-period-tab ${activePeriod === 'month' ? 'btn-primary' : 'btn-secondary'}" data-period="month" style="padding: 0.3rem 0.75rem; font-size: 0.8rem;">
-                                This Month
-                            </button>
-                            <button type="button" class="btn btn-sm btn-period-tab ${activePeriod === 'all_time' ? 'btn-primary' : 'btn-secondary'}" data-period="all_time" style="padding: 0.3rem 0.75rem; font-size: 0.8rem;">
+                            <button type="button" class="btn btn-sm btn-period-tab ${activePeriod === 'all' ? 'btn-primary' : 'btn-secondary'}" data-period="all" style="padding: 0.3rem 0.75rem; font-size: 0.8rem;">
                                 All-Time
                             </button>
+                            <div class="date-range-controls" style="display: inline-flex; align-items: center; gap: 0.35rem; padding-left: 0.35rem; border-left: 1px solid var(--border); flex-wrap: wrap;">
+                                <label for="rec-range-start" style="margin: 0; font-size: 0.78rem; font-weight: 600; color: var(--text-muted);">From:</label>
+                                <input type="date" id="rec-range-start" class="form-control form-control-sm" value="${this.state.startDate || ''}" style="padding: 0.15rem 0.4rem; font-size: 0.78rem; height: 28px; width: auto; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);">
+                                <label for="rec-range-end" style="margin: 0; font-size: 0.78rem; font-weight: 600; color: var(--text-muted);">To:</label>
+                                <input type="date" id="rec-range-end" class="form-control form-control-sm" value="${this.state.endDate || ''}" style="padding: 0.15rem 0.4rem; font-size: 0.78rem; height: 28px; width: auto; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);">
+                                <button type="button" class="btn btn-sm ${activePeriod === 'range' ? 'btn-primary' : 'btn-secondary'}" id="btn-rec-apply-range" style="padding: 0.2rem 0.6rem; font-size: 0.78rem;">
+                                    Filter
+                                </button>
+                            </div>
                         </div>
 
                         <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-dashboard" title="Refresh Live Front-Desk Data">
@@ -537,7 +591,7 @@ export default {
                         </div>
 
                         <div style="padding: 0.75rem; background: var(--bg); border: 1px dashed var(--border); border-radius: var(--radius-md); font-size: 0.78rem; color: var(--text-muted);">
-                            <strong>Hospital Capacity Policy:</strong> Daily maximum limit of 10 appointments ensures high quality patient care. Capacity warnings trigger at 8 and 9 slots.
+                            <strong>Clinic Capacity Policy:</strong> Daily maximum limit of 10 appointments ensures high quality patient care. Capacity warnings trigger at 8 and 9 slots.
                         </div>
                     </div>
 
@@ -623,7 +677,15 @@ export default {
             });
         }
 
-        if (appts.length === 0) {
+        const total = appts.length;
+        const pageSize = this.state.pageSize || 10;
+        const totalPages = Math.ceil(total / pageSize) || 1;
+        if (this.state.page > totalPages) this.state.page = totalPages;
+        if (this.state.page < 1) this.state.page = 1;
+        const startIndex = (this.state.page - 1) * pageSize;
+        const pagedAppts = appts.slice(startIndex, startIndex + pageSize);
+
+        if (total === 0) {
             let msg = isToday
                 ? 'No appointments scheduled for today.'
                 : 'No appointments found for this time period.';
@@ -654,82 +716,75 @@ export default {
                 <table class="data-table" style="margin: 0;">
                     <thead>
                         <tr>
-                            <th data-sort="time" class="${sortTimeClass}" style="width: ${isToday ? '115px' : '150px'};">${isToday ? 'Time' : 'Date &amp; Time'}</th>
-                            <th data-sort="patient" class="${sortPatClass}">Patient</th>
-                            <th data-sort="doctor" class="${sortDocClass}">Doctor</th>
-                            <th>Intake Vitals</th>
-                            <th data-sort="status" class="${sortStatusClass}" style="width: 135px; text-align: center;">Status</th>
-                            <th style="width: 125px; text-align: center;">Action</th>
+                            <th data-sort="time" class="${sortTimeClass}" style="width: ${isToday ? '88px' : '110px'};">${isToday ? 'Time' : 'Date &amp; Time'}</th>
+                            <th data-sort="patient" class="${sortPatClass}" style="min-width: 105px; max-width: 135px;">Patient</th>
+                            <th data-sort="doctor" class="${sortDocClass}" style="min-width: 105px; max-width: 130px;">Doctor</th>
+                            <th style="width: 85px; white-space: nowrap;">Triage Vitals</th>
+                            <th style="min-width: 110px; max-width: 150px;">Chief Complaint</th>
+                            <th data-sort="status" class="${sortStatusClass}" style="width: 95px; text-align: center;">Status</th>
+                            <th style="width: 88px; text-align: center;">Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${appts.map(a => {
+                        ${pagedAppts.map(a => {
                             const patientName = `${a.patient_last || ''}, ${a.patient_first || ''}`;
                             const docName = `Dr. ${a.doctor_first || 'Physician'} ${a.doctor_last || ''}`;
                             const timeStr = formatTime(a.appointment_time);
                             const dateStr = formatShortDate(a.appointment_date);
+                            const reasonStr = a.chief_complaint ? a.chief_complaint.trim() : 'General Consultation';
 
                             let dateTimeCell = '';
                             if (isToday) {
                                 dateTimeCell = `
-                                    <div style="font-weight: 600; color: var(--text); font-size: 0.88rem;">${escapeHtml(timeStr)}</div>
-                                    ${a.is_overdue ? `<span class="badge badge-status-overdue" style="font-size:0.65rem; padding: 2px 4px; display: inline-block; margin-top: 2px;">Overdue</span>` : ''}
+                                    <div style="font-weight: 600; color: var(--text); font-size: 0.86rem;">${escapeHtml(timeStr)}</div>
+                                    ${a.is_overdue ? `<span class="badge badge-status-overdue" style="font-size:0.65rem; padding: 1px 4px; display: inline-block; margin-top: 2px;">Overdue</span>` : ''}
                                 `;
                             } else {
                                 dateTimeCell = `
-                                    <div style="font-weight: 600; color: var(--text); font-size: 0.85rem;">${escapeHtml(dateStr)}</div>
-                                    <div style="font-size: 0.78rem; color: var(--text-muted);">${escapeHtml(timeStr)}</div>
+                                    <div style="font-weight: 600; color: var(--text); font-size: 0.84rem;">${escapeHtml(dateStr)}</div>
+                                    <div style="font-size: 0.76rem; color: var(--text-muted);">${escapeHtml(timeStr)}</div>
                                 `;
                             }
 
-                            // Vitals pill
-                            let vitalsCell = '';
-                            if (a.blood_pressure || a.temperature) {
-                                const bp = a.blood_pressure ? `BP: ${a.blood_pressure}` : '';
-                                const temp = a.temperature ? `${a.temperature}&deg;C` : '';
-                                const vitalsText = [bp, temp].filter(Boolean).join(' &bull; ');
-                                vitalsCell = `
-                                    <span class="badge badge-status-completed" style="font-size: 0.72rem; padding: 2px 6px;">
-                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline-block; vertical-align:middle; margin-right:3px;"><polyline points="20 6 9 17 4 12"></polyline></svg>${vitalsText}
-                                    </span>
-                                `;
-                            } else {
-                                vitalsCell = `
-                                    <span class="badge badge-status-secondary" style="font-size: 0.72rem; padding: 2px 6px;">
-                                        Intake Pending
-                                    </span>
-                                `;
+                            // Vitals stacked chips matching doctor dashboard
+                            let vitalsCell = '<span class="text-muted" style="font-size: 0.78rem;">--</span>';
+                            if (a.blood_pressure || a.temperature || a.oxygen_saturation) {
+                                const items = [];
+                                if (a.blood_pressure) items.push(`<span class="vital-badge" style="font-size: 0.72rem; background: var(--bg-alt); padding: 1px 5px; border-radius: var(--radius-sm); border: 1px solid var(--border);">BP: ${escapeHtml(a.blood_pressure)}</span>`);
+                                if (a.temperature) items.push(`<span class="vital-badge" style="font-size: 0.72rem; background: var(--bg-alt); padding: 1px 5px; border-radius: var(--radius-sm); border: 1px solid var(--border);">${escapeHtml(a.temperature)}&deg;C</span>`);
+                                if (a.oxygen_saturation) items.push(`<span class="vital-badge" style="font-size: 0.72rem; background: var(--bg-alt); padding: 1px 5px; border-radius: var(--radius-sm); border: 1px solid var(--border);">${escapeHtml(a.oxygen_saturation)}%</span>`);
+                                vitalsCell = `<div style="display: flex; flex-direction: column; gap: 2px;">${items.join('')}</div>`;
                             }
 
                             let statusBadge = '';
                             let actionButton = '';
 
                             if (a.status === 'confirmed') {
-                                statusBadge = '<span class="badge badge-status-confirmed">In Lobby</span>';
+                                statusBadge = '<span class="badge badge-status-confirmed" style="font-size: 0.72rem; padding: 2px 6px;">In Lobby</span>';
                                 actionButton = `
                                     <span class="text-muted" style="font-size: 0.75rem; display: block; text-align: center;">
-                                        Waiting for Doctor
+                                        Waiting
                                     </span>
                                 `;
                             } else if (a.status === 'scheduled') {
-                                statusBadge = '<span class="badge badge-status-scheduled">Scheduled</span>';
+                                statusBadge = '<span class="badge badge-status-scheduled" style="font-size: 0.72rem; padding: 2px 6px;">Scheduled</span>';
                                 actionButton = `
-                                    <a href="#receptionist_appointments" class="btn btn-primary btn-sm" style="width: 100%; white-space: nowrap; font-size: 0.75rem; padding: 0.25rem 0.5rem; text-align: center; display: block;">
+                                    <a href="#receptionist_appointments" class="btn btn-primary btn-sm" style="width: 100%; white-space: nowrap; font-size: 0.74rem; padding: 0.22rem 0.45rem; text-align: center; display: block;">
                                         Check-In
                                     </a>
                                 `;
                             } else if (a.status === 'completed') {
-                                statusBadge = '<span class="badge badge-status-completed">Completed</span>';
+                                statusBadge = '<span class="badge badge-status-completed" style="font-size: 0.72rem; padding: 2px 6px;">Completed</span>';
                                 actionButton = `
                                     <span class="text-muted" style="font-size: 0.75rem; display: block; text-align: center;">
                                         Finished
                                     </span>
                                 `;
                             } else if (a.status === 'cancelled') {
-                                statusBadge = '<span class="badge badge-status-cancelled">Cancelled</span>';
+                                statusBadge = '<span class="badge badge-status-cancelled" style="font-size: 0.72rem; padding: 2px 6px;">Cancelled</span>';
                                 actionButton = '<span class="text-muted" style="font-size: 0.75rem;">&mdash;</span>';
                             } else {
-                                statusBadge = '<span class="badge badge-status-noshow">No Show</span>';
+                                statusBadge = '<span class="badge badge-status-noshow" style="font-size: 0.72rem; padding: 2px 6px;">No Show</span>';
                                 actionButton = '<span class="text-muted" style="font-size: 0.75rem;">&mdash;</span>';
                             }
 
@@ -738,15 +793,19 @@ export default {
                                     <td style="vertical-align: middle;">
                                         ${dateTimeCell}
                                     </td>
-                                    <td style="vertical-align: middle;">
-                                        <strong style="color: var(--text); font-size: 0.92rem; display: block;">${escapeHtml(patientName)}</strong>
-                                        <span style="font-size: 0.78rem; color: var(--text-muted);">${escapeHtml(a.chief_complaint || 'General Consultation')}</span>
+                                    <td style="vertical-align: middle; max-width: 135px;">
+                                        <strong style="color: var(--text); font-size: 0.88rem; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(patientName)}">${escapeHtml(patientName)}</strong>
                                     </td>
-                                    <td style="vertical-align: middle; font-size: 0.85rem; color: var(--text);">
-                                        ${escapeHtml(docName)}
+                                    <td style="vertical-align: middle; font-size: 0.84rem; color: var(--text); max-width: 130px;">
+                                        <span style="display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${escapeHtml(docName)}">${escapeHtml(docName)}</span>
                                     </td>
-                                    <td style="vertical-align: middle;">
+                                    <td style="vertical-align: middle; white-space: nowrap;">
                                         ${vitalsCell}
+                                    </td>
+                                    <td style="vertical-align: middle; font-size: 0.82rem; color: var(--text-muted); max-width: 150px;">
+                                        <span title="${escapeHtml(reasonStr)}" style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word;">
+                                            ${escapeHtml(reasonStr)}
+                                        </span>
                                     </td>
                                     <td style="vertical-align: middle; text-align: center;">
                                         ${statusBadge}
@@ -759,6 +818,23 @@ export default {
                         }).join('')}
                     </tbody>
                 </table>
+            </div>
+
+            <div class="pagination-wrapper" style="padding: 0.75rem 1.25rem; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border); background: var(--surface); flex-wrap: wrap; gap: 0.75rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem; color: var(--text-muted);">
+                    <span>Rows per page:</span>
+                    <select id="rec-page-size" class="form-control form-control-sm" style="width: auto; height: 28px; padding: 0.15rem 0.5rem; font-size: 0.8rem; cursor: pointer;">
+                        <option value="10" ${pageSize === 10 ? 'selected' : ''}>10</option>
+                        <option value="25" ${pageSize === 25 ? 'selected' : ''}>25</option>
+                        <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
+                    </select>
+                    <span>Showing <strong>${total > 0 ? startIndex + 1 : 0}</strong> to <strong>${Math.min(startIndex + pageSize, total)}</strong> of <strong>${total}</strong> appointments</span>
+                </div>
+                <div class="pagination-controls" style="display: flex; align-items: center; gap: 0.35rem;">
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-rec-prev" ${this.state.page <= 1 ? 'disabled' : ''} style="padding: 0.25rem 0.65rem; font-size: 0.78rem;">Previous</button>
+                    <span style="font-size: 0.8rem; color: var(--text-muted); padding: 0 0.35rem;">Page <strong>${this.state.page}</strong> of <strong>${totalPages}</strong></span>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-rec-next" ${this.state.page >= totalPages ? 'disabled' : ''} style="padding: 0.25rem 0.65rem; font-size: 0.78rem;">Next</button>
+                </div>
             </div>
         `;
     },
@@ -777,18 +853,90 @@ export default {
             printBlankForm();
         });
 
-        // Time horizon period switcher (Today | This Week | This Month | All-Time)
+        // Time horizon period switcher (Today | This Week | All-Time)
         c.addEventListener('click', (e) => {
             const btn = e.target.closest('.btn-period-tab');
             if (btn) {
                 const targetPeriod = btn.getAttribute('data-period');
-                if (targetPeriod && targetPeriod !== this.state.activePeriod) {
+                if (targetPeriod && (targetPeriod !== this.state.activePeriod || targetPeriod === 'all')) {
                     this.state.activePeriod = targetPeriod;
+                    if (targetPeriod === 'all') {
+                        this.state.startDate = '';
+                        this.state.endDate = '';
+                    }
                     this.state.filter = 'all'; // reset sub-filter
+                    this.state.page = 1; // reset pagination
                     this.renderDashboard();
                 }
             }
         });
+
+        // Custom Date Range Picker Apply Button
+        c.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'btn-rec-apply-range') {
+                const startInput = c.querySelector('#rec-range-start');
+                const endInput = c.querySelector('#rec-range-end');
+                const startVal = startInput ? startInput.value.trim() : '';
+                const endVal = endInput ? endInput.value.trim() : '';
+                if (!startVal && !endVal) {
+                    showToast('Please select at least a start or end date.', 'warning');
+                    return;
+                }
+                this.state.activePeriod = 'range';
+                this.state.startDate = startVal;
+                this.state.endDate = endVal;
+                this.state.filter = 'all';
+                this.state.page = 1;
+                this.renderDashboard();
+            }
+        });
+
+        // Rows per Page selector
+        c.addEventListener('change', (e) => {
+            if (e.target && e.target.id === 'rec-page-size') {
+                this.state.pageSize = parseInt(e.target.value, 10) || 10;
+                this.state.page = 1;
+                const now = new Date();
+                const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now, this.state.startDate, this.state.endDate);
+                const lobbyContainer = c.querySelector('#lobby-list-container');
+                if (lobbyContainer) {
+                    lobbyContainer.innerHTML = this.renderLobbyItemsHtml(periodAppts, this.state.activePeriod === 'today');
+                }
+            }
+        });
+
+        // Pagination Previous / Next buttons
+        c.addEventListener('click', (e) => {
+            if (e.target && e.target.id === 'btn-rec-prev') {
+                if (this.state.page > 1) {
+                    this.state.page--;
+                    const now = new Date();
+                    const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now, this.state.startDate, this.state.endDate);
+                    const lobbyContainer = c.querySelector('#lobby-list-container');
+                    if (lobbyContainer) {
+                        lobbyContainer.innerHTML = this.renderLobbyItemsHtml(periodAppts, this.state.activePeriod === 'today');
+                    }
+                }
+            } else if (e.target && e.target.id === 'btn-rec-next') {
+                this.state.page++;
+                const now = new Date();
+                const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now, this.state.startDate, this.state.endDate);
+                const lobbyContainer = c.querySelector('#lobby-list-container');
+                if (lobbyContainer) {
+                    lobbyContainer.innerHTML = this.renderLobbyItemsHtml(periodAppts, this.state.activePeriod === 'today');
+                }
+            }
+        });
+
+        // Real-time live update sync listener
+        if (!this._syncBound) {
+            this._syncBound = true;
+            document.addEventListener('cprms:sync', () => {
+                if (this.container && this.container.isConnected) {
+                    this.loadData();
+                }
+            });
+        }
 
         // Filter pills in lobby table header
         c.addEventListener('click', (e) => {
@@ -797,6 +945,7 @@ export default {
                 const targetFilter = btn.getAttribute('data-filter');
                 if (targetFilter) {
                     this.state.filter = targetFilter;
+                    this.state.page = 1;
                     // Update active button styling
                     c.querySelectorAll('.queue-filter-btn').forEach(b => {
                         b.classList.remove('btn-primary');
@@ -807,7 +956,7 @@ export default {
 
                     // Re-render lobby table
                     const now = new Date();
-                    const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now);
+                    const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now, this.state.startDate, this.state.endDate);
                     const lobbyContainer = c.querySelector('#lobby-list-container');
                     if (lobbyContainer) {
                         lobbyContainer.innerHTML = this.renderLobbyItemsHtml(periodAppts, this.state.activePeriod === 'today');
@@ -823,6 +972,7 @@ export default {
                 const targetFilter = card.getAttribute('data-filter');
                 if (targetFilter) {
                     this.state.filter = targetFilter;
+                    this.state.page = 1;
                     c.querySelectorAll('.queue-filter-btn').forEach(b => {
                         if (b.getAttribute('data-filter') === targetFilter) {
                             b.classList.remove('btn-secondary');
@@ -833,7 +983,7 @@ export default {
                         }
                     });
                     const now = new Date();
-                    const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now);
+                    const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now, this.state.startDate, this.state.endDate);
                     const lobbyContainer = c.querySelector('#lobby-list-container');
                     if (lobbyContainer) {
                         lobbyContainer.innerHTML = this.renderLobbyItemsHtml(periodAppts, this.state.activePeriod === 'today');
@@ -854,8 +1004,9 @@ export default {
                         this.state.sortBy = sortField;
                         this.state.sortOrder = 'asc';
                     }
+                    this.state.page = 1;
                     const now = new Date();
-                    const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now);
+                    const periodAppts = getAppointmentsForPeriod(this.state.allAppointments, this.state.activePeriod, now, this.state.startDate, this.state.endDate);
                     const lobbyContainer = c.querySelector('#lobby-list-container');
                     if (lobbyContainer) {
                         lobbyContainer.innerHTML = this.renderLobbyItemsHtml(periodAppts, this.state.activePeriod === 'today');

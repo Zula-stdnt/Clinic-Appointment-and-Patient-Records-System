@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 03 APIs and Database Operations/header_detail_forms (appointment header + vital signs detail saved together) & 02 DOM and UI/dom_create_and_remove_elements (Create -> Configure -> Listen -> Append rows)
 
 import api from '../api.js?v=8';
-import { create, escapeHtml, showToast, openModal, closeModal, confirmAction } from '../ui.js?v=24';
+import { create, escapeHtml, showToast, openModal, closeModal, confirmAction, formatStatusLabel } from '../ui.js?v=24';
 import { SearchSelect } from '../components/search-select.js?v=1';
 import { PatientRegisterForm } from '../components/patient-register.js?v=1';
 import { printAppointmentForm } from '../components/print-appointment-form.js?v=2';
@@ -105,14 +105,12 @@ export default {
                                 <th data-sort="appointment_date">Date &amp; Time</th>
                                 <th data-sort="patient_name">Patient</th>
                                 <th data-sort="doctor_name">Doctor</th>
-                                <th data-sort="chief_complaint">Chief Complaint</th>
-                                <th>Triage Vitals</th>
                                 <th data-sort="status">Status</th>
                                 <th style="text-align: right; white-space: nowrap;">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="appointments-tbody">
-                            <tr><td colspan="7" class="text-center" style="padding: 2rem;">Loading appointments...</td></tr>
+                            <tr><td colspan="5" class="text-center" style="padding: 2rem;">Loading appointments...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -131,14 +129,14 @@ export default {
                             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
                                 <div class="form-group">
                                     <div style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; margin-bottom: 0.4rem;">
-                                        <label for="appt-patient" style="margin-bottom: 0;">Patient <span class="required-star">*</span></label>
+                                        <label for="appt-patient-input" style="margin-bottom: 0;">Patient <span class="required-star">*</span></label>
                                         <div style="display: flex; gap: 0.25rem;">
                                             <button type="button" class="btn btn-secondary btn-sm" id="btn-open-walkin" aria-haspopup="dialog" aria-controls="walkin-form-modal">+ Register Walk-in</button>
                                             <button type="button" class="btn btn-secondary btn-sm" id="btn-register-patient" style="display: none;">Register Patient</button>
                                         </div>
                                     </div>
-                                    <div id="appt-patient-picker" style="display: none;"></div>
-                                    <select id="appt-patient" class="form-control" style="margin-top: 0.5rem;">
+                                    <div id="appt-patient-picker"></div>
+                                    <select id="appt-patient" name="patient_id" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; opacity: 0; pointer-events: none;" tabindex="-1" aria-hidden="true">
                                         <option value="" disabled selected>Select Patient</option>
                                     </select>
                                     <div class="invalid-feedback" id="appt-patient-error"></div>
@@ -158,6 +156,10 @@ export default {
                                     <div id="doctor-listbox" role="listbox" aria-label="Doctor Options" tabindex="-1" style="display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 1050; max-height: 200px; overflow-y: auto; overflow-x: hidden; background: #ffffff; border: 1px solid #ced4da; border-radius: 4px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); margin-top: 2px;">
                                     </div>
                                     <div class="invalid-feedback" id="appt-doctor-error"></div>
+                                    <div id="doctor-schedule-notice" style="display: none; margin-top: 0.35rem; font-size: 0.8rem; padding: 0.35rem 0.6rem; border-radius: 4px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; align-items: center; gap: 0.4rem;">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                        <span id="doctor-schedule-notice-text"></span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -175,13 +177,18 @@ export default {
                                 <div class="form-group">
                                     <label for="appt-time">Appointment Time <span class="required-star">*</span></label>
                                     <div style="display: flex; gap: 0.25rem;">
-                                        <input type="time" id="appt-time" class="form-control" style="flex: 1;">
+                                        <input type="time" id="appt-time" class="form-control" style="flex: 1;" min="08:00" max="17:00" step="900">
                                         <button type="button" id="btn-picker-time" class="btn btn-outline-secondary" title="Open Time Picker" aria-label="Open Time Picker" style="padding: 0 0.75rem; display: flex; align-items: center; justify-content: center;">
                                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                                         </button>
                                     </div>
                                     <div class="invalid-feedback" id="appt-time-error"></div>
                                 </div>
+                            </div>
+
+                            <div id="appt-schedule-warning-banner" class="alert alert-warning" style="display: none; margin-top: -0.25rem; margin-bottom: 1rem; font-size: 0.84rem; padding: 0.55rem 0.75rem; align-items: flex-start; gap: 0.5rem;" role="alert">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+                                <div id="appt-schedule-warning-text"></div>
                             </div>
 
                             <div class="form-group">
@@ -527,6 +534,16 @@ export default {
             this.loadData();
         });
 
+        // Real-time live update sync listener
+        if (!this._syncBound) {
+            this._syncBound = true;
+            document.addEventListener('cprms:sync', () => {
+                if (this.container && this.container.isConnected) {
+                    this.loadData();
+                }
+            });
+        }
+
         this.container.querySelector('#btn-close-capacity-alert')?.addEventListener('click', () => {
             const alertBox = this.container.querySelector('#appointments-capacity-alert');
             if (alertBox) alertBox.style.display = 'none';
@@ -553,6 +570,19 @@ export default {
         const apptForm = this.container.querySelector('#appointment-form');
         apptForm.addEventListener('input', () => { this.state.isDirty = true; });
         apptForm.addEventListener('change', () => { this.state.isDirty = true; });
+
+        const apptDateInput = this.container.querySelector('#appt-date');
+        const apptTimeInput = this.container.querySelector('#appt-time');
+        if (apptDateInput) {
+            ['input', 'change', 'blur'].forEach(evt => {
+                apptDateInput.addEventListener(evt, () => this.validateAppointmentScheduleLive());
+            });
+        }
+        if (apptTimeInput) {
+            ['input', 'change', 'blur'].forEach(evt => {
+                apptTimeInput.addEventListener(evt, () => this.validateAppointmentScheduleLive());
+            });
+        }
 
         const apptModal = this.container.querySelector('#appointment-form-modal');
         apptModal.addEventListener('beforeModalClose', (e) => {
@@ -730,11 +760,14 @@ export default {
         const select = this.container.querySelector('#appt-doctor');
         const labelSpan = this.container.querySelector('#doctor-select-label');
         const btn = this.container.querySelector('#doctor-select-btn');
+        const schedNotice = this.container.querySelector('#doctor-schedule-notice');
+        const schedNoticeText = this.container.querySelector('#doctor-schedule-notice-text');
         if (!select || !labelSpan) return;
         const selectedId = select.value;
         if (!selectedId) {
             labelSpan.textContent = 'Select Doctor';
             labelSpan.classList.add('text-muted');
+            if (schedNotice) schedNotice.style.display = 'none';
             return;
         }
         const doc = this.state.doctors.find(d => String(d.doctor_id) === String(selectedId));
@@ -742,6 +775,10 @@ export default {
             const name = `${doc.last_name}, ${doc.first_name}${doc.middle_initial ? ' ' + doc.middle_initial + '.' : ''}`;
             labelSpan.textContent = `Dr. ${name}`;
             labelSpan.classList.remove('text-muted');
+            if (schedNotice && schedNoticeText) {
+                schedNoticeText.textContent = `Duty Schedule: ${doc.schedule_summary || 'Mon-Sat (08:00 - 17:00)'}`;
+                schedNotice.style.display = 'flex';
+            }
         } else {
             const opt = select.selectedOptions[0];
             labelSpan.textContent = opt ? opt.textContent : 'Select Doctor';
@@ -750,6 +787,7 @@ export default {
             } else {
                 labelSpan.classList.add('text-muted');
             }
+            if (schedNotice) schedNotice.style.display = 'none';
         }
         if (btn) btn.classList.remove('is-invalid');
     },
@@ -809,8 +847,15 @@ export default {
             specDiv.title = d.specialty_names || 'General Medicine';
             specDiv.textContent = d.specialty_names || 'General Medicine';
 
+            const schedDiv = document.createElement('div');
+            schedDiv.style.fontSize = '0.74rem';
+            schedDiv.style.color = '#0284c7';
+            schedDiv.style.fontWeight = '500';
+            schedDiv.textContent = `🗓️ ${d.schedule_summary || 'Mon-Sat (08:00 - 17:00)'}`;
+
             item.appendChild(nameDiv);
             item.appendChild(specDiv);
+            item.appendChild(schedDiv);
 
             item.addEventListener('mouseenter', () => {
                 this.highlightDoctorOption(item);
@@ -848,6 +893,7 @@ export default {
         const err = this.container.querySelector('#appt-doctor-error');
         if (err) err.textContent = '';
         this.closeDoctorListbox();
+        this.validateAppointmentScheduleLive();
         this.state.isDirty = true;
     },
 
@@ -1098,7 +1144,7 @@ export default {
         if (items.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7">
+                    <td colspan="5">
                         <div class="empty-state">
                             <strong>No appointments found</strong>
                             <p>Book a new appointment or adjust your search and filters.</p>
@@ -1119,7 +1165,6 @@ export default {
             const timeStr = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 
             const badgeClass = this.getStatusBadgeClass(appt.status);
-            const vitals = this.formatVitals(appt);
 
             const isTerminal = ['completed', 'cancelled', 'no_show'].includes(appt.status);
             const printBtnHtml = `
@@ -1161,14 +1206,8 @@ export default {
                     <div style="font-weight: 500;">Dr. ${escapeHtml(appt.doctor_last + ', ' + appt.doctor_first)}</div>
                 </td>
                 <td style="vertical-align: middle;">
-                    <span style="display: block; max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(appt.chief_complaint || 'None')}">
-                        ${escapeHtml(appt.chief_complaint || 'None')}
-                    </span>
-                </td>
-                <td style="font-size: 0.85rem; vertical-align: middle;">${vitals}</td>
-                <td style="vertical-align: middle;">
                     <span class="badge ${badgeClass}">
-                        ${escapeHtml((appt.status || '').toUpperCase())}
+                        ${escapeHtml(formatStatusLabel(appt.status))}
                     </span>
                     ${appt.cancel_requested ? `
                     <div style="margin-top: 0.35rem;">
@@ -1325,7 +1364,7 @@ export default {
             const dateInput = this.container.querySelector('#appt-date');
             const now = new Date();
             const localToday = new Date(now.getTime() - (now.getTimezoneOffset() * 60000));
-            dateInput.min = localToday.toISOString().slice(0, 10);
+            if (dateInput) dateInput.min = localToday.toISOString().slice(0, 10);
 
             const patSelect = this.container.querySelector('#appt-patient');
             if (patSelect) patSelect.value = '';
@@ -1339,6 +1378,21 @@ export default {
             const submitBtn = this.container.querySelector('#btn-save-appointment');
             submitBtn.textContent = 'Schedule Appointment';
         }
+
+        const dateInputEl = this.container.querySelector('#appt-date');
+        const timeInputEl = this.container.querySelector('#appt-time');
+        const now = new Date();
+        const localTodayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, 10);
+        if (dateInputEl) {
+            dateInputEl.min = localTodayStr;
+        }
+        if (timeInputEl) {
+            timeInputEl.min = '08:00';
+            timeInputEl.max = '17:00';
+            timeInputEl.step = '900';
+        }
+        this.clearFormErrors();
+        this.validateAppointmentScheduleLive();
 
         openModal('appointment-form-modal');
     },
@@ -1358,6 +1412,10 @@ export default {
         if (patErr) patErr.textContent = '';
         const docErr = this.container.querySelector('#appt-doctor-error');
         if (docErr) docErr.textContent = '';
+        const banner = this.container.querySelector('#appt-schedule-warning-banner');
+        if (banner) banner.style.display = 'none';
+        const bannerText = this.container.querySelector('#appt-schedule-warning-text');
+        if (bannerText) bannerText.innerHTML = '';
     },
 
     showFormErrors(errors) {
@@ -1402,19 +1460,150 @@ export default {
         });
     },
 
+    validateAppointmentScheduleLive() {
+        const docSelect = this.container.querySelector('#appt-doctor');
+        const dateInput = this.container.querySelector('#appt-date');
+        const timeInput = this.container.querySelector('#appt-time');
+        const dateErr = this.container.querySelector('#appt-date-error');
+        const timeErr = this.container.querySelector('#appt-time-error');
+        const warningBanner = this.container.querySelector('#appt-schedule-warning-banner');
+        const warningText = this.container.querySelector('#appt-schedule-warning-text');
+
+        if (!dateInput || !timeInput) return true;
+
+        let hasError = false;
+        let dateMsg = '';
+        let timeMsg = '';
+        let bannerMsg = '';
+
+        const selectedDocId = (docSelect && docSelect.value) || (this.doctorPicker && this.doctorPicker.getValue());
+        const selectedDoc = selectedDocId ? this.state.doctors.find(d => String(d.doctor_id) === String(selectedDocId)) : null;
+
+        const dateVal = (dateInput.value || '').trim();
+        const timeVal = (timeInput.value || '').trim();
+
+        const now = new Date();
+        const localTodayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, 10);
+
+        // 1. Live Date Validation
+        if (dateVal) {
+            if (dateVal < localTodayStr) {
+                dateMsg = 'Past dates cannot be selected. Please choose today or an upcoming date.';
+                hasError = true;
+            } else {
+                const parts = dateVal.split('-');
+                if (parts.length === 3) {
+                    const parsedDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                    const jsDow = parsedDate.getDay(); // 0 = Sunday, 1 = Monday, ...
+                    const isoDow = jsDow === 0 ? 7 : jsDow;
+                    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                    const dayName = dayNames[jsDow];
+
+                    if (jsDow === 0) {
+                        dateMsg = 'The clinic is closed on Sundays. Please choose Monday through Saturday.';
+                        hasError = true;
+                    } else if (selectedDoc && Array.isArray(selectedDoc.schedules) && selectedDoc.schedules.length > 0) {
+                        const matchingSchedule = selectedDoc.schedules.find(s => parseInt(s.day_of_week, 10) === isoDow && (s.is_active === undefined || s.is_active == 1));
+                        if (!matchingSchedule) {
+                            const docName = `Dr. ${selectedDoc.last_name}`;
+                            dateMsg = `${docName} is not on duty on ${dayName}. Available duty days: ${selectedDoc.schedule_summary || 'other days'}.`;
+                            bannerMsg = `<strong>Schedule Notice:</strong> ${docName} does not take appointments on ${dayName}s. Duty schedule: <strong>${selectedDoc.schedule_summary || 'None'}</strong>. Please select an on-duty date.`;
+                            hasError = true;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Live Time Validation
+        if (timeVal) {
+            if (timeVal < '08:00' || timeVal > '17:00') {
+                timeMsg = 'Appointments can only be scheduled between clinic hours (08:00 and 17:00).';
+                hasError = true;
+            } else {
+                const hour = parseInt(timeVal.split(':')[0], 10);
+                if (hour === 12) {
+                    timeMsg = 'The clinic is closed for lunch break between 12:00 and 12:59.';
+                    hasError = true;
+                } else if (selectedDoc && dateVal && Array.isArray(selectedDoc.schedules) && selectedDoc.schedules.length > 0) {
+                    const parts = dateVal.split('-');
+                    if (parts.length === 3) {
+                        const parsedDate = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                        const jsDow = parsedDate.getDay();
+                        const isoDow = jsDow === 0 ? 7 : jsDow;
+                        const matchingSchedule = selectedDoc.schedules.find(s => parseInt(s.day_of_week, 10) === isoDow && (s.is_active === undefined || s.is_active == 1));
+                        if (matchingSchedule) {
+                            const startTime = matchingSchedule.start_time.slice(0, 5);
+                            const endTime = matchingSchedule.end_time.slice(0, 5);
+                            if (timeVal < startTime || timeVal > endTime) {
+                                timeMsg = `Time ${timeVal} is outside Dr. ${selectedDoc.last_name}'s scheduled hours (${startTime} - ${endTime}).`;
+                                hasError = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Render live feedback
+        if (dateMsg) {
+            dateInput.classList.add('is-invalid');
+            if (dateErr) dateErr.textContent = dateMsg;
+        } else {
+            dateInput.classList.remove('is-invalid');
+            if (dateErr) dateErr.textContent = '';
+        }
+
+        if (timeMsg) {
+            timeInput.classList.add('is-invalid');
+            if (timeErr) timeErr.textContent = timeMsg;
+        } else {
+            timeInput.classList.remove('is-invalid');
+            if (timeErr) timeErr.textContent = '';
+        }
+
+        if (warningBanner && warningText) {
+            if (bannerMsg) {
+                warningText.innerHTML = bannerMsg;
+                warningBanner.style.display = 'flex';
+            } else {
+                warningBanner.style.display = 'none';
+                warningText.innerHTML = '';
+            }
+        }
+
+        return !hasError;
+    },
+
     validateForm(payload) {
         const errors = {};
         if (!payload.patient_id) errors.patient_id = 'Please choose a patient.';
         if (!payload.doctor_id) errors.doctor_id = 'Please choose a doctor.';
 
+        const now = new Date();
+        const localTodayStr = new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().slice(0, 10);
+
         if (!payload.appointment_date) {
             errors.appointment_date = 'Please pick a date.';
+        } else if (payload.appointment_date < localTodayStr) {
+            errors.appointment_date = 'Past dates cannot be selected. Please choose today or an upcoming date.';
         } else {
             const parts = payload.appointment_date.split('-');
             if (parts.length === 3) {
                 const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
-                if (d.getDay() === 0) {
-                    errors.appointment_date = 'The clinic is closed on Sundays.';
+                const jsDow = d.getDay();
+                const isoDow = jsDow === 0 ? 7 : jsDow;
+                const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+                if (jsDow === 0) {
+                    errors.appointment_date = 'The clinic is closed on Sundays. Please choose Monday through Saturday.';
+                } else if (payload.doctor_id) {
+                    const doc = this.state.doctors.find(docItem => String(docItem.doctor_id) === String(payload.doctor_id));
+                    if (doc && Array.isArray(doc.schedules) && doc.schedules.length > 0) {
+                        const sched = doc.schedules.find(s => parseInt(s.day_of_week, 10) === isoDow && (s.is_active === undefined || s.is_active == 1));
+                        if (!sched) {
+                            errors.appointment_date = `Dr. ${doc.last_name} is not on duty on ${dayNames[jsDow]}. Available duty days: ${doc.schedule_summary || 'other days'}.`;
+                        }
+                    }
                 }
             }
         }
@@ -1429,6 +1618,23 @@ export default {
                 const hour = parseInt(timeStr.split(':')[0], 10);
                 if (hour === 12) {
                     errors.appointment_time = 'The clinic is closed for lunch between 12:00 and 12:59.';
+                } else if (payload.doctor_id && payload.appointment_date) {
+                    const doc = this.state.doctors.find(docItem => String(docItem.doctor_id) === String(payload.doctor_id));
+                    if (doc && Array.isArray(doc.schedules) && doc.schedules.length > 0) {
+                        const parts = payload.appointment_date.split('-');
+                        if (parts.length === 3) {
+                            const d = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                            const isoDow = d.getDay() === 0 ? 7 : d.getDay();
+                            const sched = doc.schedules.find(s => parseInt(s.day_of_week, 10) === isoDow && (s.is_active === undefined || s.is_active == 1));
+                            if (sched) {
+                                const startH = sched.start_time.slice(0, 5);
+                                const endH = sched.end_time.slice(0, 5);
+                                if (timeStr < startH || timeStr > endH) {
+                                    errors.appointment_time = `Appointment time is outside Dr. ${doc.last_name}'s hours (${startH} - ${endH}).`;
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1436,6 +1642,7 @@ export default {
         this.clearFormErrors();
         if (Object.keys(errors).length > 0) {
             this.showFormErrors(errors);
+            this.validateAppointmentScheduleLive();
             return false;
         }
         return true;
@@ -1464,7 +1671,7 @@ export default {
             payload.status = this.state.activeEditStatus;
         }
 
-        if (!this.validateForm(payload)) return;
+        if (!this.validateForm(payload) || !this.validateAppointmentScheduleLive()) return;
 
         const saveBtn = this.container.querySelector('#btn-save-appointment');
         saveBtn.disabled = true;
@@ -1833,6 +2040,17 @@ export default {
             showToast('Request outcome unknown. Proceed with caution.', 'warning');
         } else {
             saveBtn.textContent = this.walkinUncertain ? 'Retry Request' : (this.state.activeEditId ? 'Save Changes' : 'Register & Select');
+        }
+    },
+
+    destroy() {
+        if (this.patientPicker) {
+            this.patientPicker.destroy();
+            this.patientPicker = null;
+        }
+        if (this.doctorPicker) {
+            this.doctorPicker.destroy();
+            this.doctorPicker = null;
         }
     }
 };

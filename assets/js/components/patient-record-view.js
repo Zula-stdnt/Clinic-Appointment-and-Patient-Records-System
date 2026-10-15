@@ -5,7 +5,7 @@
 // ITE 387 Lessons applied: 02 DOM and UI/dom_create_and_remove_elements (view is
 // built, replaced, and torn down by the hosting module)
 
-import { escapeHtml } from '../ui.js?v=24';
+import { escapeHtml, formatStatusLabel } from '../ui.js?v=24';
 import { printPrescription } from './print-prescription.js?v=2';
 import { printLabRequest } from './print-lab-request.js?v=1';
 import { printAppointmentForm } from './print-appointment-form.js?v=2';
@@ -15,7 +15,7 @@ const APPOINTMENT_STATUS = {
     confirmed: { label: 'Confirmed', className: 'badge-primary' },
     completed: { label: 'Completed', className: 'badge-success' },
     cancelled: { label: 'Cancelled', className: 'badge-deleted' },
-    no_show:   { label: 'No-show', className: 'badge-warning' }
+    no_show:   { label: 'No Show', className: 'badge-warning' }
 };
 
 const LAB_STATUS = {
@@ -431,7 +431,8 @@ function formatTime(value) {
 }
 
 function renderReceptionistDemographicsView(container, data, options = {}) {
-    const p = data.patient || {};
+    const record = data || {};
+    const p = record.patient || {};
     const patientName = `${p.last_name || ''}, ${p.first_name || ''}${p.middle_initial ? ' ' + p.middle_initial + '.' : ''}`;
     const archived = p.deleted_at
         ? '<span class="badge badge-warning">Archived</span>'
@@ -523,6 +524,68 @@ function renderReceptionistDemographicsView(container, data, options = {}) {
             </div>
 
             ${allergyBanner}
+        </div>
+
+        <div class="card" style="margin-bottom: 1.5rem;">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h3 class="card-title" style="font-size: 1.05rem;">Appointment History Log</h3>
+                    <span class="text-muted" style="font-size: 0.82rem;">Booking and visit log (clinical notes and diagnoses remain restricted to doctors)</span>
+                </div>
+                <span class="badge badge-info">${(record.appointment_history || []).length} Total Visits</span>
+            </div>
+            ${(() => {
+                const apptHistory = Array.isArray(record.appointment_history) ? record.appointment_history : [];
+                if (apptHistory.length === 0) {
+                    return `
+                        <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.88rem;">
+                            No clinic appointments recorded for this patient yet.
+                        </div>
+                    `;
+                }
+                return `
+                    <div class="table-responsive">
+                        <table class="data-table" style="font-size: 0.85rem;">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Time</th>
+                                    <th>Attending Doctor</th>
+                                    <th>Specialty</th>
+                                    <th style="text-align: center;">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${apptHistory.map(a => {
+                                    const docName = (a.doctor_last || a.doctor_first)
+                                        ? `Dr. ${a.doctor_last}, ${a.doctor_first}`
+                                        : 'Assigned Doctor';
+                                    const specialty = a.specialty_names || 'General Practice';
+                                    const statusLabel = formatStatusLabel(a.status);
+                                    let badgeClass = 'badge-secondary';
+                                    if (a.status === 'scheduled') badgeClass = 'badge-status-scheduled';
+                                    else if (a.status === 'confirmed') badgeClass = 'badge-status-confirmed';
+                                    else if (a.status === 'completed') badgeClass = 'badge-status-completed';
+                                    else if (a.status === 'cancelled') badgeClass = 'badge-status-cancelled';
+                                    else if (a.status === 'no_show') badgeClass = 'badge-status-noshow';
+
+                                    return `
+                                        <tr>
+                                            <td><strong>${escapeHtml(formatDate(a.appointment_date))}</strong></td>
+                                            <td>${escapeHtml(formatTime(a.appointment_time))}</td>
+                                            <td>${escapeHtml(docName)}</td>
+                                            <td><span class="text-muted">${escapeHtml(specialty)}</span></td>
+                                            <td style="text-align: center;">
+                                                <span class="badge ${badgeClass}">${escapeHtml(statusLabel)}</span>
+                                            </td>
+                                        </tr>
+                                    `;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            })()}
         </div>
 
         <div class="card" style="padding: 1.25rem; background: var(--bg-alt); border: 1px dashed var(--border);">

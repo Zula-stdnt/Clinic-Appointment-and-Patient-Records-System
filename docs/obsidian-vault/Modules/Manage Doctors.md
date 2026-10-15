@@ -15,9 +15,22 @@ Allows Administrators to manage doctor profiles, their linked login accounts, an
   - **Specialty Filter Dropdown:** Filter by specific clinical specialty.
   - **Gender Filter Dropdown:** `All Genders`, `Male`, `Female`, `Other` (properly matches all custom non-binary and other gender identities cleanly).
   - **Status Filter Dropdown:** `Active`, `Deleted` (archived), and `All`.
-  - **Interactive Column Headers:** Clickable headers (Doctor Name, Specialty, Contact No, Status) with `▲`/`▼` caret indicators.
+  - **Interactive Column Headers:** Clickable headers (Doctor Name, Specialty, Weekly Schedule, Contact No, Status) with `▲`/`▼` caret indicators.
   - **Page Navigation:** Standardized page size selector (5, 10, 25 rows per page).
-- **Doctors Table:** Multiple specialties display as neat, wrapping pill badges inside a compact container (`max-width: 250px`).
+- **Doctors Table:**
+  - Multiple specialties display as neat, wrapping pill badges inside a compact container (`max-width: 250px`).
+  - **Weekly Schedule Column:** Displays the doctor's active duty rota as color-coded badges indicating days on duty and working hours (e.g. `Mon, Tue: 08:00 - 17:00`).
+  - **Row Action Buttons:** Edit (`.btn-edit`), Archive (`.btn-delete`), and **Schedule** (`.btn-schedule` with calendar icon).
+- **Weekly Schedule Configuration Modal (`#doctor-schedule-modal`):**
+  - Displays doctor name and assigned specialties in the modal header.
+  - **7-Day Rota Checklist:** Individual day toggles (Monday through Sunday) with start and end time pickers defaulting to `08:00` and `17:00`.
+  - **1-Click Rotation Presets:** Instant configuration buttons aligned with clinic attending physicians:
+    - `Dr. House Rotation (Mon, Tue)` — Sets Monday & Tuesday 08:00–17:00; disables other days.
+    - `Dr. Grey Rotation (Wed, Thu)` — Sets Wednesday & Thursday 08:00–17:00; disables other days.
+    - `Dr. Strange Rotation (Fri, Sat)` — Sets Friday & Saturday 08:00–17:00; disables other days.
+    - `Full Week (Mon-Sat)` — Enables Monday through Saturday 08:00–17:00.
+    - `Clear All` — Unchecks all days for leaves or temporary schedule suspension.
+  - **Persistence & Audit:** Submits payload to `api/doctor_schedule_controller.php`, refreshes doctor rota in `doctor_schedules`, and writes an immutable `UPDATE_DOCTOR_SCHEDULE` audit trail record.
 - **Add/Edit Pop-Up Form (Modal):**
   - **First Name**, **Last Name**, and **Middle Initial** (optional, up to 5 characters).
   - **Gender** — Starts with an unselectable `"Select Gender"` prompt. Selecting `"Other"` reveals a text box for custom gender input.

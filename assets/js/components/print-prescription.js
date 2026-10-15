@@ -79,9 +79,9 @@ export function buildPrescription(data) {
 </head>
 <body>
     <div class="header">
-        <img src="${logoUrl}" alt="Hospital Logo">
+        <img src="${logoUrl}" alt="CPRMS Logo">
         <div>
-            <div class="org">HOSPITAL PATIENT INFORMATION SYSTEM</div>
+            <div class="org">CLINIC PATIENT RECORDS MANAGEMENT SYSTEM (CPRMS)</div>
             <div class="sub">Out-Patient Department &middot; Prescription</div>
         </div>
         <div class="doc-number">

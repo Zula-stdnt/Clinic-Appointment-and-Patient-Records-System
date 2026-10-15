@@ -56,7 +56,7 @@ export default {
                 <div class="card-header">
                     <div>
                         <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text);">Manage Users</h2>
-                        <p class="text-muted" style="font-size: 0.85rem;">Manage hospital user accounts (Doctors and Receptionists).</p>
+                        <p class="text-muted" style="font-size: 0.85rem;">Manage clinic user accounts (Doctors and Receptionists).</p>
                     </div>
                     <button id="btn-add-user" class="btn btn-primary">
                         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>

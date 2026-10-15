@@ -65,8 +65,8 @@ export default {
         this.container.innerHTML = `
             <div class="page-intro">
                 <div>
-                    <h2 class="page-title">Hospital Overview</h2>
-                    <p class="page-subtitle">A live snapshot of master file records and recent patient registrations.</p>
+                    <h2 class="page-title">Clinic Overview</h2>
+                    <p class="page-subtitle">A live snapshot of clinic master file records and recent patient registrations.</p>
                 </div>
             </div>
 

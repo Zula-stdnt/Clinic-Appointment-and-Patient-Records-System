@@ -26,6 +26,7 @@ There is no migration-tracking table in the database, so "is my machine up to da
 | `010_enforce_vitals_cardinality.sql` | Enforces 1-to-1 cardinality and constraints on triage `vital_signs` | No |
 | `011_create_audit_logs.sql` | Creates immutable `audit_logs` table for compliance and security tracking | No |
 | `012_clinical_safety_and_constraints.sql` | Creates `consultation_addenda` table and unique active slot constraint on `appointments` | No |
+| `013_doctor_schedules_and_hybrid_break_glass.sql` | Creates `doctor_schedules` and `record_access_requests` tables, seeds multi-specialties and fixed weekly doctor duty rotas | No |
 | `hospital_db.sql` | **DEPRECATED**: Legacy structural dump. **Do not use.** | n/a |
 
 > [!warning] Fresh installs use `setup/schema.sql`
@@ -71,6 +72,8 @@ Spot checks for the **Post-Migration Patient Records Schema**:
 | `prescriptions.time_to_take` | `varchar(100) NULL` |
 | `audit_logs` table | present |
 | `consultation_addenda` table | present |
+| `doctor_schedules` table | present |
+| `record_access_requests` table | present |
 | `billing`, `invoice_items`, `discounts` tables | **Absent** |
 
 Handy one-liners:
@@ -80,6 +83,8 @@ SHOW COLUMNS FROM users    LIKE 'gender';
 SHOW COLUMNS FROM patients LIKE 'allergies%';
 SHOW TABLES LIKE 'audit_logs';
 SHOW TABLES LIKE 'consultation_addenda';
+SHOW TABLES LIKE 'doctor_schedules';
+SHOW TABLES LIKE 'record_access_requests';
 SHOW TABLES LIKE 'billing';                     -- expect empty (migration 006)
 ```
 
@@ -100,6 +105,7 @@ For **existing databases**, inspect the specific migration file to confirm your 
 | 2026-10-10 | Applied `010_enforce_vitals_cardinality.sql` | Enforced vitals 1-to-1 cardinality |
 | 2026-10-10 | Applied `011_create_audit_logs.sql` | Added immutable compliance audit trail |
 | 2026-10-10 | Applied `012_clinical_safety_and_constraints.sql` | Added consultation addenda and unique appointment slot constraint |
+| 2026-10-13 | Applied `013_doctor_schedules_and_hybrid_break_glass.sql` | Configured doctor schedules and hybrid break-glass / standard access requests |
 
 ## Related
 

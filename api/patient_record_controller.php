@@ -62,21 +62,39 @@ function getPatientRecord(PDO $pdo, int $patientId): void {
     }
 
     // 2. PRIVACY RULE: Administrators and Receptionists have ZERO clinical access.
-    // They receive demographic columns only; encounters and medical charts are strictly omitted.
+    // They receive demographic columns and non-clinical appointment history log only.
+    // Encounters, notes, vitals, prescriptions, and lab orders are strictly omitted.
     if ($role === 'Administrator' || $role === 'Receptionist') {
+        $histStmt = $pdo->prepare("
+            SELECT a.appointment_id, a.appointment_date, a.appointment_time, a.status,
+                   u.first_name AS doctor_first, u.last_name AS doctor_last, u.middle_initial AS doctor_middle,
+                   GROUP_CONCAT(DISTINCT s.specialty_name ORDER BY s.specialty_name SEPARATOR ', ') AS doctor_specialties
+            FROM appointments a
+            INNER JOIN doctors d ON a.doctor_id = d.doctor_id
+            INNER JOIN users u ON d.user_id = u.user_id
+            LEFT JOIN doctor_specialty ds ON d.doctor_id = ds.doctor_id
+            LEFT JOIN specialties s ON ds.specialty_id = s.specialty_id
+            WHERE a.patient_id = ?
+            GROUP BY a.appointment_id, a.appointment_date, a.appointment_time, a.status, u.first_name, u.last_name, u.middle_initial
+            ORDER BY a.appointment_date DESC, a.appointment_time DESC
+        ");
+        $histStmt->execute([$patientId]);
+        $appointmentHistory = $histStmt->fetchAll(PDO::FETCH_ASSOC);
+
         log_audit($pdo, $userId, 'VIEW_DEMOGRAPHICS', 'patient', $patientId);
-        send_success('Patient record retrieved (demographics only).', [
-            'patient'     => $patient,
-            'summary'     => null,
-            'encounters'  => [],
-            'viewer_role' => $role,
-            'is_clinical' => false
+        send_success('Patient record retrieved (demographics and appointment history).', [
+            'patient'             => $patient,
+            'appointment_history' => $appointmentHistory,
+            'summary'             => null,
+            'encounters'          => [],
+            'viewer_role'         => $role,
+            'is_clinical'         => false
         ]);
         return;
     }
 
-    // 3. CLINICAL RULE: Doctors may only access patients with a non-cancelled appointment,
-    // or must supply an audited Break-Glass Emergency Override with a mandatory justification.
+    // 3. CLINICAL RULE: Doctors may access patients with a non-cancelled appointment,
+    // an approved administrative access request, or an audited Break-Glass Emergency Override.
     $doctorId = null;
     $isBreakGlass = false;
     $docStmt = $pdo->prepare("SELECT doctor_id FROM doctors WHERE user_id = ? LIMIT 1");
@@ -99,15 +117,53 @@ function getPatientRecord(PDO $pdo, int $patientId): void {
         $breakGlassParam = $_GET['break_glass'] ?? '';
         $breakGlassReason = trim($_GET['break_glass_reason'] ?? '');
 
-        if (($breakGlassParam === 'true' || $breakGlassParam === '1') && mb_strlen($breakGlassReason) >= 10) {
+        if ($breakGlassParam === 'true' || $breakGlassParam === '1') {
+            // Urgent Mode Break-Glass Override
+            if (mb_strlen($breakGlassReason) < 10) {
+                send_error('Clinical justification must be at least 10 characters long.', ['reason' => 'Justification is too short.'], 403);
+            }
+
             $isBreakGlass = true;
+            $expiresAt = date('Y-m-d H:i:s', strtotime('+24 hours'));
+            $insReq = $pdo->prepare("
+                INSERT INTO record_access_requests (doctor_id, patient_id, mode, status, reason, is_audit_flagged, audit_reviewed, expires_at)
+                VALUES (?, ?, 'urgent', 'approved', ?, 1, 0, ?)
+            ");
+            $insReq->execute([$doctorId, $patientId, $breakGlassReason, $expiresAt]);
+
             log_audit($pdo, $userId, 'BREAK_GLASS_ACCESS', 'patient', $patientId, null, null, $breakGlassReason);
         } else {
-            send_error(
-                'Unauthorized access to this patient record. A non-cancelled appointment is required, or a justified emergency break-glass override must be provided.',
-                ['break_glass_required' => true],
-                403
-            );
+            // Check for active routine administrative approval (Standard Mode)
+            $apprStmt = $pdo->prepare("
+                SELECT request_id, mode FROM record_access_requests 
+                WHERE doctor_id = ? AND patient_id = ? AND mode = 'standard' AND status = 'approved'
+                  AND (expires_at IS NULL OR expires_at > NOW())
+                ORDER BY request_id DESC LIMIT 1
+            ");
+            $apprStmt->execute([$doctorId, $patientId]);
+            $activeApproval = $apprStmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($activeApproval) {
+                log_audit($pdo, $userId, 'VIEW_RECORD_APPROVED_ACCESS', 'patient', $patientId, null, [
+                    'request_id' => (int)$activeApproval['request_id'],
+                    'mode'       => $activeApproval['mode']
+                ]);
+            } else {
+                // Check if a standard request is pending
+                $pendStmt = $pdo->prepare("SELECT request_id FROM record_access_requests WHERE doctor_id = ? AND patient_id = ? AND status = 'pending' LIMIT 1");
+                $pendStmt->execute([$doctorId, $patientId]);
+                $pendingReqId = $pendStmt->fetchColumn();
+
+                send_error(
+                    'Unauthorized access to this patient record. A non-cancelled appointment is required, or a justified emergency break-glass override must be provided.',
+                    [
+                        'break_glass_required' => true,
+                        'has_pending_request'  => (bool)$pendingReqId,
+                        'pending_request_id'   => $pendingReqId ? (int)$pendingReqId : null
+                    ],
+                    403
+                );
+            }
         }
     } else {
         log_audit($pdo, $userId, 'VIEW_RECORD', 'patient', $patientId);

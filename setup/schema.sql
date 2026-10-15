@@ -225,4 +225,41 @@ CREATE TABLE `audit_logs` (
   CONSTRAINT `fk_audit_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE `doctor_schedules` (
+  `schedule_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `doctor_id` int(10) unsigned NOT NULL,
+  `day_of_week` tinyint(3) unsigned NOT NULL COMMENT '1=Monday, 2=Tuesday, 3=Wednesday, 4=Thursday, 5=Friday, 6=Saturday, 7=Sunday',
+  `start_time` time NOT NULL DEFAULT '08:00:00',
+  `end_time` time NOT NULL DEFAULT '17:00:00',
+  `is_active` tinyint(1) NOT NULL DEFAULT 1,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`schedule_id`),
+  UNIQUE KEY `uq_doctor_day` (`doctor_id`, `day_of_week`),
+  KEY `idx_schedule_day` (`day_of_week`, `is_active`),
+  CONSTRAINT `fk_schedule_doctor` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`doctor_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `record_access_requests` (
+  `request_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `doctor_id` int(10) unsigned NOT NULL,
+  `patient_id` int(10) unsigned NOT NULL,
+  `mode` enum('standard','urgent') NOT NULL DEFAULT 'standard',
+  `status` enum('pending','approved','rejected','expired') NOT NULL DEFAULT 'pending',
+  `reason` text NOT NULL,
+  `is_audit_flagged` tinyint(1) NOT NULL DEFAULT 0,
+  `audit_reviewed` tinyint(1) NOT NULL DEFAULT 0,
+  `requested_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  `reviewed_by` int(10) unsigned DEFAULT NULL,
+  `reviewed_at` datetime DEFAULT NULL,
+  `review_notes` text DEFAULT NULL,
+  `expires_at` datetime DEFAULT NULL,
+  PRIMARY KEY (`request_id`),
+  KEY `idx_access_lookup` (`doctor_id`, `patient_id`, `status`, `expires_at`),
+  KEY `idx_access_audit` (`is_audit_flagged`, `audit_reviewed`),
+  CONSTRAINT `fk_access_doctor` FOREIGN KEY (`doctor_id`) REFERENCES `doctors` (`doctor_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_access_patient` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`patient_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_access_reviewer` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`user_id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;

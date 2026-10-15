@@ -4,6 +4,7 @@
 
 import { requireSession } from './session-guard.js?v=24';
 import { hideAllModals, closeSidebar } from './ui.js?v=24';
+import { LiveSync } from './live-sync.js?v=1';
 import receptionistOverview from './modules/receptionist_overview.js?v=2';
 import receptionistAppointments from './modules/receptionist_appointments.js?v=34';
 import receptionistPatients from './modules/receptionist_patients.js?v=33';
@@ -125,6 +126,8 @@ function startApp() {
 
     const initialHash = window.location.hash.replace('#', '');
     window.navigateTo(initialHash || 'receptionist_overview');
+
+    LiveSync.start();
 }
 
 const currentUser = await requireSession(['Receptionist']);

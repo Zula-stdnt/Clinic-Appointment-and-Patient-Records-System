@@ -9,6 +9,48 @@ A plain-English summary of major updates, new modules, and bug fixes across the 
 > [!info] Looking for the technical trail?
 > This note summarizes **features**. For a per-commit record (commit IDs, exact files, verification steps), see [[Development Log]].
 
+## Recent — Doctor Schedules, Form UX Constraints, and Dashboard Modernization
+
+### Receptionist Form UX, Schedule Warnings & Zero-Retype Protection
+- **Live Doctor Schedule Notice Badge:** Added an interactive inline `#doctor-schedule-notice` badge directly beneath the doctor selection combobox, immediately showing the assigned doctor's duty days (e.g. `Duty: Monday, Tuesday (08:00 - 17:00)`).
+- **Option Dropdown Schedule Previews:** Enriched doctor combobox option labels to display scheduled rota days alongside their specialties.
+- **HTML5 Date `min` Constraint:** Enforced `min="YYYY-MM-DD"` (today's local date) on the Appointment Date input, natively preventing selection of past months, years, or days in the calendar picker.
+- **HTML5 Time Bounds:** Enforced `min="08:00"` and `max="17:00"` with 15-minute intervals (`step="900"`) on the Appointment Time input.
+- **Proactive Client-Side Schedule Validation (`validateAppointmentScheduleLive()`):** Evaluates appointment inputs in real-time as the receptionist interacts with the form. Proactively blocks past dates and Sundays, verifies whether the chosen doctor is on duty on that specific weekday, and detects bookings during the 12:00–12:59 lunch pause.
+- **Persistent Warning Banner (`#appt-schedule-warning-banner`):** Renders a prominent yellow warning banner with doctor duty details and an inline date field error whenever an off-duty day is picked.
+- **Zero Form Loss & Zero Retyping Guarantee:** Proactive validation stops invalid form submissions before sending network requests; patient selections, chief complaint, allergies, and triage vitals inputs are never cleared or lost if a scheduling error occurs.
+
+### Admin Manage Doctors Weekly Schedule Rota Configuration
+- **Weekly Schedule Column:** Added a dedicated `Weekly Schedule` table column in the Manage Doctors module, rendering colored badges for each doctor's duty days and working hours.
+- **Interactive Schedule Modal (`#doctor-schedule-modal`):** Added a "Schedule" action button with calendar icon to each doctor row, launching an interactive 7-day checklist modal with Day toggles and custom Start/End time pickers.
+- **1-Click Rotation Presets:** Integrated one-click schedule presets aligned with the clinic's 3 attending physicians:
+  - `Dr. House Rotation (Mon, Tue)`
+  - `Dr. Grey Rotation (Wed, Thu)`
+  - `Dr. Strange Rotation (Fri, Sat)`
+  - `Full Week (Mon-Sat)`
+  - `Clear All`
+- **Backend Rota Management (`api/doctor_schedule_controller.php`):** Saves and retrieves weekly schedules via `doctor_schedules` table, validates shifts, and logs `UPDATE_DOCTOR_SCHEDULE` audit records.
+
+### Overview Dashboard Modernization & Responsive Layout (100% Zoom)
+- **Dedicated Chief Complaint Column:** Separated Chief Complaint from underneath the patient's name into its own column, styled with 2-line clamping (`-webkit-line-clamp: 2`), `overflow: hidden`, and native `title="..."` tooltips.
+- **Standardized Stacked Triage Vitals:** Formatted BP, Temperature, and SpO2 readings as vertical stacked badges (`.vital-badge`) on the Receptionist Overview dashboard, matching the Doctor Dashboard layout.
+- **100% Zoom Responsive Layout:** Eliminated horizontal scrollbar on standard displays at 100% browser zoom through optimized grid column sizing (`minmax(0, 2.35fr) minmax(260px, 1fr)`), compact table cell padding (`0.55rem 0.65rem`), and refined column width balance.
+- **Custom Date Range Filter:** Added Start Date and End Date datepickers with an "Apply" button to both Receptionist Overview and Doctor Overview, alongside quick period filter pills (`All Time`, `Today`, `This Week`, `This Month`).
+- **Rows per Page & Pagination:** Added a Rows per page selector (10, 25, 50) and responsive page controls to both overview tables.
+- **Doctor Appointments Compact Actions:** Replaced the wide "Request Cancel" button with a compact ✕ icon button with tooltip.
+
+### Hybrid Access Requests & Break-Glass Workflow
+- **Two-Tier Record Access Control:** Implemented `api/access_request_controller.php` and migration `013_doctor_schedules_and_hybrid_break_glass.sql` (`record_access_requests`).
+- **Standard Access Requests:** Doctors submit planned record access requests for non-assigned patients with clinical justification ($\ge 10$ chars); Administrators review and approve requests, granting a strictly time-bounded 24-hour access window.
+- **Urgent Break-Glass Overrides:** Immediate emergency access bypasses the approval queue with a red alert banner, immediately writing to `audit_logs` and flagging the request for mandatory administrative post-access sign-off.
+
+### Live Multi-Tab State Synchronization (`live-sync.js`)
+- **Real-Time Cross-Tab Event Bus:** Added `assets/js/live-sync.js` which polls `api/appointment_controller.php?action=sync_state` every 5 seconds.
+- **Automated Queue Refresh:** When appointment creations, status changes, or updates occur, `live-sync.js` detects revision state changes and dispatches a `cprms:sync` custom DOM event, automatically refreshing queues across all open browser tabs without manual reloads.
+
+### Patient Record View Runtime Fix
+- **Safe Record Initialization:** Fixed a runtime `ReferenceError: record is not defined` in `assets/js/components/patient-record-view.js` by safely initializing `const record = data || {};`.
+
 ## Recent — System Improvements, Clinical Privacy, and Modernization
 ### System-Wide Table Sorting, Filtering & Gender "Other" Resolution
 - **Universal Interactive Table Sorting:** Clickable column headers across all tables in Admin, Doctor, and Receptionist portals with ascending/descending caret indicators.

@@ -4,6 +4,7 @@
 
 import { requireSession } from './session-guard.js?v=24';
 import { hideAllModals, closeSidebar } from './ui.js?v=24';
+import { LiveSync } from './live-sync.js?v=1';
 import doctorOverview from './modules/doctor_overview.js?v=28';
 import doctorAppointments from './modules/doctor_appointments.js?v=31';
 import doctorPatients from './modules/doctor_patients.js?v=34';
@@ -136,6 +137,8 @@ function startApp() {
 
     const initialHash = window.location.hash.replace('#', '');
     window.navigateTo(initialHash || 'doctor_overview');
+
+    LiveSync.start();
 }
 
 const currentUser = await requireSession(['Doctor']);

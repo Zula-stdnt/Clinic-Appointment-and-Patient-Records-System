@@ -12,6 +12,23 @@ export const formatCurrency = (amount) => new Intl.NumberFormat('en-PH', {
     currency: 'PHP'
 }).format(Number(amount) || 0);
 
+export const APPOINTMENT_STATUS_MAP = {
+    scheduled: 'Scheduled',
+    confirmed: 'Confirmed',
+    completed: 'Completed',
+    cancelled: 'Cancelled',
+    no_show: 'No Show'
+};
+
+export function formatStatusLabel(status) {
+    if (!status) return '';
+    const s = String(status).trim().toLowerCase();
+    if (APPOINTMENT_STATUS_MAP[s]) {
+        return APPOINTMENT_STATUS_MAP[s];
+    }
+    return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 // Secure HTML escaping to prevent Cross-Site Scripting (XSS)
 export function escapeHtml(str) {
     if (str === null || str === undefined) {
@@ -337,20 +354,44 @@ export function closeAllDropdowns() {
 }
 
 // ---------------------------------------------------------------------------
-// Off-canvas sidebar
+// Off-canvas and Collapsible sidebar
 // ---------------------------------------------------------------------------
 
 export function closeSidebar() {
-    if (!document.body.classList.contains('sidebar-open')) return;
-    document.body.classList.remove('sidebar-open');
-    const toggle = document.querySelector('[data-sidebar-toggle]');
-    if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    if (document.body.classList.contains('sidebar-open')) {
+        document.body.classList.remove('sidebar-open');
+        const toggle = document.querySelector('[data-sidebar-toggle]');
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    }
 }
 
-function toggleSidebar() {
-    const isOpen = document.body.classList.toggle('sidebar-open');
-    const toggle = document.querySelector('[data-sidebar-toggle]');
-    if (toggle) toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+export function toggleSidebar() {
+    if (window.matchMedia('(min-width: 992px)').matches) {
+        // Desktop: toggle collapsed state
+        const isCollapsed = document.body.classList.toggle('sidebar-collapsed');
+        localStorage.setItem('cprms_sidebar_collapsed', isCollapsed ? '1' : '0');
+        const toggle = document.querySelector('[data-sidebar-toggle]');
+        if (toggle) toggle.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+    } else {
+        // Mobile: toggle off-canvas
+        const isOpen = document.body.classList.toggle('sidebar-open');
+        const toggle = document.querySelector('[data-sidebar-toggle]');
+        if (toggle) toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    }
+}
+
+function initSidebarState() {
+    if (window.matchMedia('(min-width: 992px)').matches) {
+        if (localStorage.getItem('cprms_sidebar_collapsed') === '1') {
+            document.body.classList.add('sidebar-collapsed');
+        }
+    }
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSidebarState);
+} else {
+    initSidebarState();
 }
 
 // ---------------------------------------------------------------------------

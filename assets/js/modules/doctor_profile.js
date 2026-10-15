@@ -100,7 +100,7 @@ export default {
                         <h3 style="margin-top: 0; margin-bottom: 1rem; font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem;">Personal Information</h3>
                         
                         <div style="font-size: 0.85rem; padding: 0.65rem 0.85rem; margin-bottom: 1.25rem; background: var(--bg-alt); border-left: 3px solid var(--info, #3b82f6); border-radius: 4px; color: var(--text-muted);">
-                            <strong>Notice:</strong> Legal identity and gender are managed by hospital administration.
+                            <strong>Notice:</strong> Legal identity and gender are managed by clinic administration.
                         </div>
 
                         <div class="form-group">

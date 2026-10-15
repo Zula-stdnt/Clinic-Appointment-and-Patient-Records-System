@@ -90,13 +90,13 @@ export default {
                         <div class="modal-header">
                             <h3 class="modal-title" id="break-glass-title" style="color: var(--danger, #dc2626); display: flex; align-items: center; gap: 0.5rem;">
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                                Break-Glass Emergency Access
+                                Clinical Chart Access (Hybrid Break-Glass)
                             </h3>
                             <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div class="modal-body">
                             <div style="background: #fef2f2; border: 1px solid #fecaca; color: #991b1b; padding: 0.75rem 1rem; border-radius: 6px; font-size: 0.875rem; margin-bottom: 1rem;">
-                                <strong>Security Notice:</strong> You do not have an active scheduled appointment with this patient. Opening this chart bypasses standard clinical relationship bounds and will be <strong>permanently logged in the compliance audit trail</strong>.
+                                <strong>Clinical Privacy Notice:</strong> You do not have an active scheduled appointment with this patient. You can either submit a <strong>Standard Access Request</strong> (subject to Admin review/approval for 24 hours) or perform an <strong>Urgent Override</strong> (immediate access, flagged for compliance audit review).
                             </div>
                             <div class="form-group" style="margin-bottom: 0.75rem;">
                                 <label style="font-weight: 600; font-size: 0.85rem; margin-bottom: 0.35rem; display: block;">Quick-Select Justification Tag:</label>
@@ -109,12 +109,15 @@ export default {
                             </div>
                             <div class="form-group">
                                 <label for="break-glass-reason" style="font-weight: 600; font-size: 0.85rem;">Clinical Justification Narrative * (Min. 10 chars)</label>
-                                <textarea id="break-glass-reason" class="form-control" rows="3" placeholder="Provide detailed clinical justification for emergency chart override..."></textarea>
+                                <textarea id="break-glass-reason" class="form-control" rows="3" placeholder="Provide detailed clinical justification for chart access..."></textarea>
                             </div>
                         </div>
-                        <div class="modal-footer">
+                        <div class="modal-footer" style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; flex-wrap: wrap;">
                             <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
-                            <button type="button" class="btn btn-danger" id="btn-confirm-break-glass">Activate Emergency Access</button>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button type="button" class="btn btn-outline-primary" id="btn-request-standard-access">Request Standard Access (24h)</button>
+                                <button type="button" class="btn btn-danger" id="btn-confirm-break-glass">Urgent Break-Glass Override</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -291,6 +294,16 @@ export default {
         this._listenersAttached = true;
         const c = this.container;
         
+        // Real-time live update sync listener
+        if (!this._syncBound) {
+            this._syncBound = true;
+            document.addEventListener('cprms:sync', () => {
+                if (this.container && this.container.isConnected && !this.state.viewingHistory) {
+                    this.loadPatients();
+                }
+            });
+        }
+
         // Search
         let timer = null;
         c.addEventListener('input', (e) => {
@@ -391,7 +404,39 @@ export default {
                 return;
             }
 
-            // Break-Glass Submit
+            // Standard Access Request Submit
+            const stdRequestBtn = e.target.closest('#btn-request-standard-access');
+            if (stdRequestBtn) {
+                const reasonInput = c.querySelector('#break-glass-reason');
+                const reason = reasonInput ? reasonInput.value.trim() : '';
+                if (!reason || reason.length < 10) {
+                    showToast('Please enter a clinical justification of at least 10 characters.', 'warning');
+                    return;
+                }
+                const targetPatientId = this.state.targetBreakGlassPatientId;
+                if (!targetPatientId) return;
+
+                stdRequestBtn.disabled = true;
+                stdRequestBtn.textContent = 'Submitting...';
+
+                api.post('api/access_request_controller.php', {
+                    patient_id: targetPatientId,
+                    mode: 'standard',
+                    reason: reason,
+                    duration_hours: 24
+                }).then(res => {
+                    closeModal('break-glass-modal');
+                    showToast('Standard access request submitted for Administrator approval.', 'success');
+                }).catch(err => {
+                    showToast(err.response?.data?.message || 'Failed to submit access request.', 'danger');
+                }).finally(() => {
+                    stdRequestBtn.disabled = false;
+                    stdRequestBtn.textContent = 'Request Standard Access (24h)';
+                });
+                return;
+            }
+
+            // Break-Glass Urgent Override Submit
             const confirmBtn = e.target.closest('#btn-confirm-break-glass');
             if (confirmBtn) {
                 const reasonInput = c.querySelector('#break-glass-reason');

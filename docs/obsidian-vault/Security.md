@@ -25,23 +25,26 @@ Security protections are built directly into `includes/auth.php`, `includes/audi
 - **Receptionist Clinical History Isolation:** Receptionists are strictly prevented from viewing medical consultation notes, encounter diagnoses, and prescriptions on both client and server sides. They are granted access exclusively to patient demographics and appointment scheduling queues.
 - **Doctor Ownership Gating:** Doctors can only read medical histories for patients who have an active appointment under their care. Accessing any unassigned patient chart requires passing the Break-Glass emergency override barrier.
 
-## Emergency Access & Break-Glass Protocol
-- When an urgent trauma or unconscious patient arrives, attending doctors can bypass standard ownership gating using the **Break-Glass Emergency Protocol**.
-- To activate this protocol, the physician must submit a formal clinical justification (at least 10 characters or standard emergency tags).
-- Activating the protocol opens the chart with a prominent red emergency alert banner, while immediately writing the physician's identity, timestamp, patient ID, and exact justification into the compliance audit log (`BREAK_GLASS_ACCESS`).
+## Emergency Access & Hybrid Access Model
+The system enforces a two-tier access request architecture (`record_access_requests`) governed by `api/access_request_controller.php`:
+- **Standard Access Requests:** For planned coverage, second opinions, or multi-specialty referrals where there is no immediate life threat. An unassigned physician submits a request with clinical justification (minimum 10 characters). An Administrator reviews the request in the admin access review queue and approves it, granting a temporary 24-hour record access window (`expires_at = DATE_ADD(NOW(), INTERVAL 24 HOUR)`).
+- **Urgent Break-Glass Protocol:** For emergency trauma, resuscitation, or unconscious patients requiring instantaneous chart access. The physician selects Urgent mode with emergency justification, immediately unlocking the chart with a prominent red alert banner. The system instantly logs `BREAK_GLASS_ACCESS` to the immutable `audit_logs` and flags the request (`is_audit_flagged = 1`) for mandatory post-access administrative audit and sign-off.
 
 ## Immutable Compliance Audit Trail
 - Critical security and administrative events are recorded in an immutable `audit_logs` database table via `includes/audit.php`.
-- Tracked events include Break-Glass emergency overrides, patient demographic modifications (logging old and new values for accountability), user profile changes, staff logins, and appointment lifecycle changes.
+- Tracked events include Break-Glass emergency overrides, patient demographic modifications (logging old and new values for accountability), user profile changes, doctor weekly schedule updates, staff logins, and appointment lifecycle changes.
 - Administrators review these entries through a dedicated audit viewer (`assets/js/modules/audit_logs.js`) with date range, user, action, and keyword filters.
 - **Human-Readable Presentation:** To make security logs accessible to non-coders and hospital administrators, technical JSON payloads and diffs are automatically converted into clear, natural English sentences (e.g., "Doctor logged in", "Appointment created for patient Jose Rizal and assigned to Dr. Gregory House", "Appointment status changed from Scheduled to Confirmed").
 - **Audit Verification & Technical Diff:** For IT auditing and forensic verification, each row provides an on-demand collapsible `<details>` toggle to inspect original before-and-after JSON diffs without cluttering the clean administrative view.
 
-## Clinical Integrity & Immutability
+## Clinical Integrity & Schedule Constraints
 - **Encounter Locking:** Completed consultations are permanently locked to protect medical record integrity and prevent post-consultation tampering.
 - **Attributed Addenda:** If a doctor needs to record additional observations after completing an encounter, they must append a timestamped, signed consultation addendum (`consultation_addenda`) rather than modifying past notes.
 - **Two-Stage Allergy Verification:** Patient-reported allergies recorded at intake remain unconfirmed until explicitly reviewed and confirmed by an attending physician during consultation.
 - **Double-Booking & Slot Constraints:** Unique database constraints prevent scheduling overlapping active appointments for the same doctor at the same time.
+- **Doctor Duty Rota Enforcement:** Appointments can only be booked on days when the selected doctor has an active weekly schedule in `doctor_schedules`.
+- **Operating Hours & Lunch Break Protection:** Clinic operating hours are strictly enforced between 08:00 AM and 05:00 PM. Appointments cannot be scheduled during the clinic's mandatory lunch break (12:00 PM – 01:00 PM) or on Sundays when the clinic is closed.
+- **Daily Clinic Capacity Ceiling:** Appointment volume is bounded by `MAX_DAILY_CAPACITY = 10` appointments clinic-wide per day, ensuring patient safety and preventing staff overload.
 
 ## CSRF (Cross-Site Request Forgery Protection)
 - A random 32-byte security badge (`csrf_token`) is created for each login session.

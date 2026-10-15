@@ -13,84 +13,143 @@ const auditLogsModule = {
     dateFilter: 'all',
     sortBy: 'created_at',
     sortOrder: 'DESC',
+    activeTab: 'audit-trail',
+    requestsFilter: 'all',
+    requestsPage: 1,
+    requestsPageSize: 10,
 
     init(container) {
         this.container = container;
         this.render();
         this.attachEventListeners();
         this.loadData();
+        this.checkPendingBadge();
     },
 
     render() {
         this.container.innerHTML = `
             <div class="card">
-                <div class="card-header">
+                <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
                     <div>
-                        <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text);">System Compliance & Audit Logs</h2>
+                        <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text);">System Compliance &amp; Audit Trail</h2>
                         <p class="text-muted" style="font-size: 0.85rem;">Review security events, patient record access, demographic changes, and emergency overrides</p>
+                    </div>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button type="button" class="btn btn-primary btn-sm audit-tab-btn" data-tab="audit-trail">Audit Trail</button>
+                        <button type="button" class="btn btn-secondary btn-sm audit-tab-btn" data-tab="access-requests">
+                            Access Requests
+                            <span id="pending-requests-badge" class="badge badge-status-scheduled" style="display: none; margin-left: 0.35rem; font-size: 0.72rem;">0</span>
+                        </button>
                     </div>
                 </div>
 
-                <div class="toolbar">
-                    <div class="toolbar-filters">
-                        <select id="audit-action-filter" class="form-control" style="width: auto; min-width: 180px;">
-                            <option value="">All Actions</option>
-                            <option value="BREAK_GLASS_ACCESS">Emergency Break-Glass</option>
-                            <option value="VIEW_RECORD">Medical Record Views</option>
-                            <option value="VIEW_DEMOGRAPHICS">Demographics Views</option>
-                            <option value="EDIT_DEMOGRAPHICS">Demographics Edited</option>
-                            <option value="CANCEL_REQUEST">Cancellation Requests</option>
-                            <option value="CANCEL_APPOINTMENT">Cancelled Appointments</option>
-                            <option value="REGISTER_PATIENT">Patient Registrations</option>
-                            <option value="REGISTER_WALKIN">Walk-in Registrations</option>
-                            <option value="CREATE_USER">User Creations</option>
-                            <option value="UPDATE_USER">User Updates</option>
-                            <option value="ARCHIVE">Archive Events</option>
-                            <option value="RESTORE">Restore Events</option>
-                        </select>
+                <div id="audit-trail-section">
+                    <div class="toolbar">
+                        <div class="toolbar-filters">
+                            <select id="audit-action-filter" class="form-control" style="width: auto; min-width: 180px;">
+                                <option value="">All Actions</option>
+                                <option value="BREAK_GLASS_ACCESS">Emergency Break-Glass</option>
+                                <option value="VIEW_RECORD">Medical Record Views</option>
+                                <option value="VIEW_DEMOGRAPHICS">Demographics Views</option>
+                                <option value="EDIT_DEMOGRAPHICS">Demographics Edited</option>
+                                <option value="CANCEL_REQUEST">Cancellation Requests</option>
+                                <option value="CANCEL_APPOINTMENT">Cancelled Appointments</option>
+                                <option value="REGISTER_PATIENT">Patient Registrations</option>
+                                <option value="REGISTER_WALKIN">Walk-in Registrations</option>
+                                <option value="CREATE_USER">User Creations</option>
+                                <option value="UPDATE_USER">User Updates</option>
+                                <option value="ARCHIVE">Archive Events</option>
+                                <option value="RESTORE">Restore Events</option>
+                            </select>
 
-                        <select id="audit-date-filter" class="form-control" style="width: auto; min-width: 140px;">
-                            <option value="all">All Dates</option>
-                            <option value="today">Today</option>
-                            <option value="last_7_days">Last 7 Days</option>
-                            <option value="last_30_days">Last 30 Days</option>
-                        </select>
+                            <select id="audit-date-filter" class="form-control" style="width: auto; min-width: 140px;">
+                                <option value="all">All Dates</option>
+                                <option value="today">Today</option>
+                                <option value="last_7_days">Last 7 Days</option>
+                                <option value="last_30_days">Last 30 Days</option>
+                            </select>
 
-                        <div class="search-input-wrapper">
-                            <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                            <input type="text" id="audit-search" class="form-control" placeholder="Search actor, reason, action...">
+                            <div class="search-input-wrapper">
+                                <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                                <input type="text" id="audit-search" class="form-control" placeholder="Search actor, reason, action...">
+                            </div>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="text-muted" style="font-size: 0.85rem;">Rows:</span>
+                            <select id="audit-page-size" class="form-control" style="width: auto;">
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                            </select>
                         </div>
                     </div>
 
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span class="text-muted" style="font-size: 0.85rem;">Rows:</span>
-                        <select id="audit-page-size" class="form-control" style="width: auto;">
-                            <option value="10" selected>10</option>
-                            <option value="25">25</option>
-                            <option value="50">50</option>
-                        </select>
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th data-sort="created_at">Timestamp</th>
+                                    <th data-sort="username">User (Actor)</th>
+                                    <th data-sort="action">Action</th>
+                                    <th data-sort="entity_type">Target Entity</th>
+                                    <th>Details / Reason</th>
+                                    <th>IP Address</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-table-body">
+                                <tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading audit trail...</td></tr>
+                            </tbody>
+                        </table>
                     </div>
+
+                    <div class="pagination-wrapper" id="audit-pagination"></div>
                 </div>
 
-                <div class="table-responsive">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th data-sort="created_at">Timestamp</th>
-                                <th data-sort="username">User (Actor)</th>
-                                <th data-sort="action">Action</th>
-                                <th data-sort="entity_type">Target Entity</th>
-                                <th>Details / Reason</th>
-                                <th>IP Address</th>
-                            </tr>
-                        </thead>
-                        <tbody id="audit-table-body">
-                            <tr><td colspan="6" class="text-center" style="padding: 2rem;">Loading audit trail...</td></tr>
-                        </tbody>
-                    </table>
-                </div>
+                <div id="access-requests-section" style="display: none;">
+                    <div class="toolbar">
+                        <div class="toolbar-filters">
+                            <select id="requests-status-filter" class="form-control" style="width: auto; min-width: 180px;">
+                                <option value="all">All Requests &amp; Overrides</option>
+                                <option value="pending">Pending Approval</option>
+                                <option value="flagged">Flagged Overrides</option>
+                            </select>
+                        </div>
 
-                <div class="pagination-wrapper" id="audit-pagination"></div>
+                        <div style="display: flex; align-items: center; gap: 0.75rem;">
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <span class="text-muted" style="font-size: 0.85rem;">Rows:</span>
+                                <select id="requests-page-size" class="form-control" style="width: auto;">
+                                    <option value="10" selected>10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                </select>
+                            </div>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-requests">Refresh</button>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Requested At</th>
+                                    <th>Doctor</th>
+                                    <th>Patient</th>
+                                    <th>Mode</th>
+                                    <th>Status / Window</th>
+                                    <th>Clinical Justification</th>
+                                    <th style="text-align: right; white-space: nowrap;">Administrative Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="access-requests-tbody">
+                                <tr><td colspan="7" class="text-center" style="padding: 2rem;">Loading access requests...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="pagination-wrapper" id="requests-pagination"></div>
+                </div>
             </div>
         `;
     },
@@ -149,6 +208,106 @@ const auditLogsModule = {
                 this.loadData();
             });
         });
+
+        // Tab switching
+        this.container.querySelectorAll('.audit-tab-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const targetTab = e.currentTarget.getAttribute('data-tab');
+                if (targetTab === this.activeTab) return;
+                this.activeTab = targetTab;
+
+                this.container.querySelectorAll('.audit-tab-btn').forEach(b => {
+                    if (b.getAttribute('data-tab') === targetTab) {
+                        b.classList.remove('btn-secondary');
+                        b.classList.add('btn-primary');
+                    } else {
+                        b.classList.remove('btn-primary');
+                        b.classList.add('btn-secondary');
+                    }
+                });
+
+                const auditSec = this.container.querySelector('#audit-trail-section');
+                const reqSec = this.container.querySelector('#access-requests-section');
+
+                if (targetTab === 'audit-trail') {
+                    if (auditSec) auditSec.style.display = '';
+                    if (reqSec) reqSec.style.display = 'none';
+                    this.loadData();
+                } else {
+                    if (auditSec) auditSec.style.display = 'none';
+                    if (reqSec) reqSec.style.display = '';
+                    this.loadAccessRequests();
+                }
+            });
+        });
+
+        // Requests filters & controls
+        const reqFilter = this.container.querySelector('#requests-status-filter');
+        if (reqFilter) {
+            reqFilter.addEventListener('change', (e) => {
+                this.requestsFilter = e.target.value;
+                this.requestsPage = 1;
+                this.loadAccessRequests();
+            });
+        }
+
+        const reqPageSize = this.container.querySelector('#requests-page-size');
+        if (reqPageSize) {
+            reqPageSize.addEventListener('change', (e) => {
+                this.requestsPageSize = parseInt(e.target.value, 10);
+                this.requestsPage = 1;
+                this.loadAccessRequests();
+            });
+        }
+
+        const refreshReqBtn = this.container.querySelector('#btn-refresh-requests');
+        if (refreshReqBtn) {
+            refreshReqBtn.addEventListener('click', () => {
+                this.loadAccessRequests();
+            });
+        }
+
+        // Requests action buttons delegation
+        const reqTbody = this.container.querySelector('#access-requests-tbody');
+        if (reqTbody) {
+            reqTbody.addEventListener('click', (e) => {
+                const approveBtn = e.target.closest('.btn-approve-request');
+                if (approveBtn) {
+                    const id = parseInt(approveBtn.getAttribute('data-id'), 10);
+                    if (id) this.approveRequest(id);
+                    return;
+                }
+
+                const rejectBtn = e.target.closest('.btn-reject-request');
+                if (rejectBtn) {
+                    const id = parseInt(rejectBtn.getAttribute('data-id'), 10);
+                    if (id) this.rejectRequest(id);
+                    return;
+                }
+
+                const ackBtn = e.target.closest('.btn-ack-audit');
+                if (ackBtn) {
+                    const id = parseInt(ackBtn.getAttribute('data-id'), 10);
+                    if (id) this.acknowledgeAudit(id);
+                    return;
+                }
+            });
+        }
+
+        // Real-time live update sync listener
+        if (!this._syncBound) {
+            this._syncBound = true;
+            document.addEventListener('cprms:sync', () => {
+                if (this.container && this.container.isConnected) {
+                    this.checkPendingBadge();
+                    if (this.activeTab === 'audit-trail') {
+                        this.loadData();
+                    } else {
+                        this.loadAccessRequests();
+                    }
+                }
+            });
+        }
     },
 
     updateSortHeaders() {
@@ -618,6 +777,201 @@ const auditLogsModule = {
                     this.loadData();
                 }
             });
+        }
+    },
+
+    async checkPendingBadge() {
+        try {
+            const res = await api.get('api/access_request_controller.php', { filter: 'pending', page_size: 1 });
+            const total = res.data?.total || 0;
+            const badge = this.container.querySelector('#pending-requests-badge');
+            if (badge) {
+                if (total > 0) {
+                    badge.textContent = total;
+                    badge.style.display = 'inline-block';
+                } else {
+                    badge.style.display = 'none';
+                }
+            }
+        } catch (e) {
+            // Ignore badge polling errors silently
+        }
+    },
+
+    async loadAccessRequests() {
+        const tbody = this.container.querySelector('#access-requests-tbody');
+        if (!tbody) return;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center" style="padding: 2rem;">Loading access requests...</td></tr>`;
+
+        try {
+            const res = await api.get('api/access_request_controller.php', {
+                filter: this.requestsFilter,
+                page: this.requestsPage,
+                page_size: this.requestsPageSize
+            });
+            const items = res.data?.items || [];
+            const total = res.data?.total || 0;
+            const pages = res.data?.pages || 1;
+
+            if (items.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted" style="padding: 2rem;">No access requests found matching the filter.</td></tr>`;
+                this.renderRequestsPagination({ current_page: this.requestsPage, total_pages: pages, total_items: total });
+                return;
+            }
+
+            tbody.innerHTML = items.map(it => this.renderRequestRow(it)).join('');
+            this.renderRequestsPagination({ current_page: this.requestsPage, total_pages: pages, total_items: total });
+
+            this.checkPendingBadge();
+        } catch (err) {
+            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-danger" style="padding: 2rem;">Failed to load access requests: ${escapeHtml(err.response?.data?.message || err.message)}</td></tr>`;
+        }
+    },
+
+    renderRequestRow(item) {
+        const isUrgent = item.mode === 'urgent';
+        const isPending = item.status === 'pending';
+        const isApproved = item.status === 'approved';
+        const isRejected = item.status === 'rejected';
+        const isFlagged = item.is_audit_flagged == 1;
+        const isAuditReviewed = item.audit_reviewed == 1;
+
+        let modeBadge = isUrgent
+            ? `<span class="badge badge-status-breakglass">URGENT OVERRIDE</span>`
+            : `<span class="badge badge-status-confirmed">STANDARD (24H)</span>`;
+
+        let statusBadge = '';
+        if (isPending) {
+            statusBadge = `<span class="badge badge-status-scheduled">PENDING APPROVAL</span>`;
+        } else if (isApproved) {
+            const expires = item.expires_at ? `<div class="text-muted" style="font-size: 0.75rem;">Expires: ${escapeHtml(item.expires_at)}</div>` : '';
+            statusBadge = `<span class="badge badge-status-active">APPROVED</span>${expires}`;
+        } else if (isRejected) {
+            statusBadge = `<span class="badge badge-status-critical">REJECTED</span>`;
+        }
+
+        let auditBadge = '';
+        if (isFlagged) {
+            auditBadge = isAuditReviewed
+                ? `<div style="margin-top: 0.25rem;"><span class="badge badge-status-completed" style="font-size: 0.7rem;">AUDIT REVIEWED</span></div>`
+                : `<div style="margin-top: 0.25rem;"><span class="badge badge-status-critical" style="font-size: 0.7rem;">FLAGGED FOR AUDIT</span></div>`;
+        }
+
+        let actionsHtml = '';
+        if (isPending) {
+            actionsHtml = `
+                <div style="display: flex; gap: 0.4rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-sm btn-outline-success btn-approve-request" data-id="${item.request_id}" title="Approve for 24 Hours">
+                        Approve (24h)
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-danger btn-reject-request" data-id="${item.request_id}" title="Reject Request">
+                        Reject
+                    </button>
+                </div>
+            `;
+        } else if (isFlagged && !isAuditReviewed) {
+            actionsHtml = `
+                <div style="display: flex; justify-content: flex-end;">
+                    <button type="button" class="btn btn-sm btn-outline-warning btn-ack-audit" data-id="${item.request_id}" title="Acknowledge & Sign-off Audit Override">
+                        Acknowledge Audit
+                    </button>
+                </div>
+            `;
+        } else {
+            const reviewer = item.reviewer_username ? `by <code>${escapeHtml(item.reviewer_username)}</code>` : '';
+            actionsHtml = `<span class="text-muted" style="font-size: 0.8rem;">Reviewed ${reviewer}</span>`;
+        }
+
+        return `
+            <tr>
+                <td style="white-space: nowrap; font-size: 0.82rem; vertical-align: middle;">${escapeHtml(item.requested_at)}</td>
+                <td style="vertical-align: middle;">
+                    <strong>Dr. ${escapeHtml(item.doctor_last)}, ${escapeHtml(item.doctor_first)}</strong>
+                </td>
+                <td style="vertical-align: middle;">
+                    <strong>${escapeHtml(item.patient_last)}, ${escapeHtml(item.patient_first)}</strong>
+                </td>
+                <td style="vertical-align: middle;">${modeBadge}</td>
+                <td style="vertical-align: middle;">${statusBadge}${auditBadge}</td>
+                <td style="vertical-align: middle; max-width: 280px;">
+                    <div style="font-size: 0.85rem; word-break: break-word;">${escapeHtml(item.reason || '')}</div>
+                    ${item.review_notes ? `<div class="text-muted" style="font-size: 0.76rem; font-style: italic; margin-top: 0.2rem;">Notes: ${escapeHtml(item.review_notes)}</div>` : ''}
+                </td>
+                <td style="text-align: right; vertical-align: middle; white-space: nowrap;">${actionsHtml}</td>
+            </tr>
+        `;
+    },
+
+    renderRequestsPagination(p) {
+        const pagEl = this.container.querySelector('#requests-pagination');
+        if (!pagEl) return;
+
+        if (p.total_pages <= 1) {
+            pagEl.innerHTML = `<span class="text-muted" style="font-size: 0.85rem;">Showing ${p.total_items} requests</span>`;
+            return;
+        }
+
+        pagEl.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                <span class="text-muted" style="font-size: 0.85rem;">Page ${p.current_page} of ${p.total_pages} (${p.total_items} total)</span>
+                <div class="pagination">
+                    <button type="button" class="btn btn-sm btn-secondary" ${p.current_page <= 1 ? 'disabled' : ''} id="requests-prev-page">Prev</button>
+                    <span style="font-weight: 600; padding: 0 0.5rem;">${p.current_page}</span>
+                    <button type="button" class="btn btn-sm btn-secondary" ${p.current_page >= p.total_pages ? 'disabled' : ''} id="requests-next-page">Next</button>
+                </div>
+            </div>
+        `;
+
+        const prevBtn = pagEl.querySelector('#requests-prev-page');
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => {
+                if (this.requestsPage > 1) {
+                    this.requestsPage--;
+                    this.loadAccessRequests();
+                }
+            });
+        }
+
+        const nextBtn = pagEl.querySelector('#requests-next-page');
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => {
+                if (this.requestsPage < p.total_pages) {
+                    this.requestsPage++;
+                    this.loadAccessRequests();
+                }
+            });
+        }
+    },
+
+    async approveRequest(requestId) {
+        try {
+            const res = await api.put('api/access_request_controller.php?action=approve', { request_id: requestId });
+            showToast(res.message || 'Access request approved for 24 hours.', 'success');
+            this.loadAccessRequests();
+        } catch (err) {
+            showToast(err.response?.data?.message || 'Failed to approve request.', 'danger');
+        }
+    },
+
+    async rejectRequest(requestId) {
+        const notes = prompt('Enter rejection reason (optional):');
+        if (notes === null) return;
+        try {
+            const res = await api.put('api/access_request_controller.php?action=reject', { request_id: requestId, notes: notes });
+            showToast(res.message || 'Access request rejected.', 'success');
+            this.loadAccessRequests();
+        } catch (err) {
+            showToast(err.response?.data?.message || 'Failed to reject request.', 'danger');
+        }
+    },
+
+    async acknowledgeAudit(requestId) {
+        try {
+            const res = await api.put('api/access_request_controller.php?action=acknowledge_audit', { request_id: requestId });
+            showToast(res.message || 'Urgent break-glass audit review acknowledged and logged.', 'success');
+            this.loadAccessRequests();
+        } catch (err) {
+            showToast(err.response?.data?.message || 'Failed to acknowledge audit.', 'danger');
         }
     }
 };

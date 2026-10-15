@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 02 DOM and UI/dom_create_and_remove_elements (Create -> Configure -> Listen -> Append row pattern) & 03 APIs and Database Operations/javascript_working_with_apis (Async/await response validation)
 
 import api from '../api.js?v=8';
-import { create, escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=24';
+import { create, escapeHtml, showToast, openModal, closeModal, formatStatusLabel } from '../ui.js?v=24';
 import { confirmDialog } from '../components/confirm-dialog.js?v=1';
 
 export default {
@@ -80,13 +80,14 @@ export default {
                             <tr>
                                 <th data-sort="appointment_date">Date &amp; Time</th>
                                 <th data-sort="patient_name">Patient Name</th>
+                                <th>Triage Vitals</th>
                                 <th data-sort="chief_complaint">Chief Complaint</th>
                                 <th data-sort="status">Status</th>
                                 <th style="text-align: right;">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="appointments-tbody">
-                            <tr><td colspan="5" class="text-center text-muted" style="padding: 2rem;">Loading appointments...</td></tr>
+                            <tr><td colspan="6" class="text-center text-muted" style="padding: 2rem;">Loading appointments...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -124,6 +125,16 @@ export default {
         if (refreshBtn) {
             refreshBtn.addEventListener('click', () => {
                 this.loadData();
+            });
+        }
+
+        // Real-time live update sync listener
+        if (!this._syncBound) {
+            this._syncBound = true;
+            document.addEventListener('cprms:sync', () => {
+                if (this.container && this.container.isConnected) {
+                    this.loadData();
+                }
             });
         }
 
@@ -281,7 +292,7 @@ export default {
         if (!this.state.appointments || this.state.appointments.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="text-center text-muted py-4">
+                    <td colspan="6" class="text-center text-muted py-4">
                         <div style="display: flex; flex-direction: column; align-items: center; gap: 0.5rem;">
                             <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="text-muted"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
                             <span>No appointments scheduled.</span>
@@ -325,6 +336,33 @@ export default {
                 actionContent = `<span class="text-muted" style="font-size: 0.85rem;">N/A</span>`;
             }
 
+            // Triage vitals cell
+            let vitalsHtml = '<span class="text-muted" style="font-size: 0.8rem;">--</span>';
+            if (appt.blood_pressure || appt.temperature || appt.oxygen_saturation) {
+                const items = [];
+                if (appt.blood_pressure) items.push(`<span class="vital-badge" style="font-size: 0.74rem; background: var(--bg-alt); padding: 1px 5px; border-radius: var(--radius-sm); border: 1px solid var(--border);">BP: ${escapeHtml(appt.blood_pressure)}</span>`);
+                if (appt.temperature) items.push(`<span class="vital-badge" style="font-size: 0.74rem; background: var(--bg-alt); padding: 1px 5px; border-radius: var(--radius-sm); border: 1px solid var(--border);">${escapeHtml(appt.temperature)}&deg;C</span>`);
+                if (appt.oxygen_saturation) items.push(`<span class="vital-badge" style="font-size: 0.74rem; background: var(--bg-alt); padding: 1px 5px; border-radius: var(--radius-sm); border: 1px solid var(--border);">${escapeHtml(appt.oxygen_saturation)}%</span>`);
+                vitalsHtml = `<div style="display: flex; flex-direction: column; gap: 3px;">${items.join('')}</div>`;
+            }
+
+            const complaint = (appt.chief_complaint || '').trim();
+            let complaintHtml = '<span class="text-muted">None</span>';
+            if (complaint) {
+                if (complaint.length > 45) {
+                    const shortText = complaint.slice(0, 45);
+                    complaintHtml = `
+                        <div class="chief-complaint-wrapper" style="max-width: 240px; font-size: 0.875rem;">
+                            <span class="cc-short">${escapeHtml(shortText)}...</span>
+                            <span class="cc-full" style="display: none; white-space: normal; word-break: break-word;">${escapeHtml(complaint)}</span>
+                            <button type="button" class="btn btn-link btn-sm cc-toggle" style="padding: 0 0.25rem; font-size: 0.75rem; text-decoration: underline; vertical-align: baseline;">More</button>
+                        </div>
+                    `;
+                } else {
+                    complaintHtml = `<span style="font-size: 0.875rem;">${escapeHtml(complaint)}</span>`;
+                }
+            }
+
             tr.innerHTML = `
                 <td style="vertical-align: middle;">
                     <div style="font-weight: 500;">${escapeHtml(dateStr)}</div>
@@ -333,14 +371,15 @@ export default {
                 <td style="vertical-align: middle;">
                     <div style="font-weight: 500;">${escapeHtml(appt.patient_first)} ${escapeHtml(appt.patient_last)}</div>
                 </td>
+                <td style="vertical-align: middle; white-space: nowrap;">
+                    ${vitalsHtml}
+                </td>
                 <td style="vertical-align: middle;">
-                    <span style="display: block; max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${escapeHtml(appt.chief_complaint || 'None')}">
-                        ${escapeHtml(appt.chief_complaint || 'None')}
-                    </span>
+                    ${complaintHtml}
                 </td>
                 <td style="vertical-align: middle;">
                     <span class="badge ${badgeClass}">
-                        ${escapeHtml((appt.status || '').toUpperCase())}
+                        ${escapeHtml(formatStatusLabel(appt.status))}
                     </span>
                     ${appt.cancel_requested ? `
                     <div style="margin-top: 0.3rem;">
@@ -350,21 +389,39 @@ export default {
                     </div>` : ''}
                 </td>
                 <td style="text-align: right; vertical-align: middle;">
-                    <div class="actions-cell" style="display: flex; gap: 0.5rem; justify-content: flex-end; align-items: center;">
+                    <div class="actions-cell" style="display: flex; gap: 0.4rem; justify-content: flex-end; align-items: center;">
                         ${actionContent}
                         ${(appt.status === 'scheduled' || appt.status === 'confirmed') ? (
                             appt.cancel_requested ? `
                             <span class="text-muted" style="font-size: 0.8rem; font-style: italic;">Request Pending</span>
                             ` : `
-                            <button class="btn btn-outline-danger btn-sm btn-request-cancel" data-id="${appt.appointment_id}" title="Request Cancellation" style="display: inline-flex; align-items: center; gap: 0.3rem;">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                                Request Cancel
+                            <button class="btn btn-outline-danger btn-sm btn-icon btn-request-cancel" data-id="${appt.appointment_id}" title="Request Appointment Cancellation" aria-label="Request Appointment Cancellation" style="display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; padding: 0; border-radius: var(--radius-sm); flex-shrink: 0;">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                             </button>
                             `
                         ) : ''}
                     </div>
                 </td>
             `;
+
+            const ccToggleBtn = tr.querySelector('.cc-toggle');
+            if (ccToggleBtn) {
+                ccToggleBtn.addEventListener('click', () => {
+                    const wrapper = ccToggleBtn.closest('.chief-complaint-wrapper');
+                    const shortSpan = wrapper.querySelector('.cc-short');
+                    const fullSpan = wrapper.querySelector('.cc-full');
+                    const isExpanded = fullSpan.style.display !== 'none';
+                    if (isExpanded) {
+                        fullSpan.style.display = 'none';
+                        shortSpan.style.display = '';
+                        ccToggleBtn.textContent = 'More';
+                    } else {
+                        fullSpan.style.display = '';
+                        shortSpan.style.display = 'none';
+                        ccToggleBtn.textContent = 'Less';
+                    }
+                });
+            }
 
             const consultBtn = tr.querySelector('.btn-start-consult');
             if (consultBtn) {

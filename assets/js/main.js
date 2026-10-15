@@ -4,6 +4,7 @@
 
 import { requireSession } from './session-guard.js?v=24';
 import { hideAllModals, closeSidebar } from './ui.js?v=24';
+import { LiveSync } from './live-sync.js?v=1';
 import overviewModule from './modules/overview.js?v=24';
 import usersModule from './modules/users.js?v=24';
 import patientsModule from './modules/patients.js?v=29';
@@ -158,6 +159,8 @@ function startApp() {
     // Initial load from URL hash or default to the dashboard overview
     const initialHash = window.location.hash.replace('#', '');
     navigateTo(initialHash || 'overview');
+
+    LiveSync.start();
 }
 
 const currentUser = await requireSession(['Administrator']);

@@ -21,16 +21,26 @@ The front-desk appointment management screen. Receptionists use this screen to s
 * **What the receptionist does:**
   1. Clicks the **New Appointment** button to open the appointment booking form.
   2. Selects the patient from the searchable patient menu (which automatically pre-loads any existing recorded allergies and their verification status).
-  3. Selects a doctor from the searchable doctor menu.
-  4. Chooses an appointment date and selects an available time slot during operating hours (**08:00 AM to 05:00 PM**, excluding the **12:00 PM to 12:59 PM** lunch hour, Monday through Saturday).
-  5. Types the patient's primary concern in the **Chief Complaint** box.
-  6. Captures reported patient allergies in the **Allergies & Clinical Alerts** box (saved with an amber `Unconfirmed Intake Note` badge).
-  7. Optionally enters initial triage vital signs: blood pressure (e.g., `120/80`), temperature in °C (e.g., `36.8`), and oxygen level percentage (e.g., `98%`).
-  8. Clicks **Schedule Appointment**.
+  3. Selects a doctor from the doctor dropdown. Dropdown options display duty schedules (e.g. `[Mon, Tue 08:00-17:00]`), and selecting a doctor immediately renders the inline **Doctor Duty Schedule Notice** (`#doctor-schedule-notice`) beneath the field.
+  4. Chooses an appointment date:
+     - The HTML5 date input enforces `min="YYYY-MM-DD"` (today's local date), natively disallowing previous months, years, or dates in the calendar picker.
+     - The system validates that the selected date is not a Sunday (clinic closed).
+     - The system validates in real time whether the chosen doctor is on duty on that weekday. If off-duty, an inline error appears beneath the date input and the form displays a prominent **Schedule Warning Banner** (`#appt-schedule-warning-banner`) detailing the doctor's duty days.
+  5. Selects an appointment time:
+     - Constrained between **08:00 AM and 05:00 PM** (`min="08:00"` / `max="17:00"` with 15-minute intervals `step="900"`).
+     - Proactively rejects bookings during the mandatory **12:00 PM to 12:59 PM** lunch hour.
+  6. Types the patient's primary concern in the **Chief Complaint** box.
+  7. Captures reported patient allergies in the **Allergies & Clinical Alerts** box (saved with an amber `Unconfirmed Intake Note` badge).
+  8. Optionally enters initial triage vital signs: blood pressure (e.g., `120/80`), temperature in °C (e.g., `36.8`), and oxygen level percentage (e.g., `98%`).
+  9. Clicks **Schedule Appointment**.
+* **Zero Form Loss & Zero Retyping Guarantee:**
+  - Client-side validation halts submission proactively before server round-trips if schedule constraints are violated.
+  - The receptionist never loses their typed draft; the patient selection, chief complaint, allergies note, and all triage vital signs are fully preserved, completely preventing input loss and redundant typing.
 * **What happens:**
   - The system checks doctor availability to ensure double-booking never occurs.
-  - The system checks daily clinic capacity (a maximum of **10 appointments per day** across all doctors). If the clinic has 8 or 9 appointments, a warning notes that the clinic is near capacity. If the day already has 10 appointments, the system prevents further bookings and asks the receptionist to select another date.
+  - The system verifies the daily clinic capacity (maximum of **10 appointments per day** clinic-wide). If the clinic has 8 or 9 appointments, a capacity warning alerts the receptionist. If the day already has 10 appointments, the system prevents booking and prompts the receptionist to pick another date.
   - The appointment is added to the queue as **Scheduled**.
+  - `live-sync.js` detects the update and broadcasts a `cprms:sync` event to refresh queues across all open clinic tabs.
 
 ---
 
@@ -90,3 +100,9 @@ The front-desk appointment management screen. Receptionists use this screen to s
   * **Date Range Filter:** `Today`, `Upcoming`, or `Past`.
   * **Status Dropdown:** Filter by visit status (`All`, `Scheduled`, `Confirmed`, `Completed`, `Cancelled`, `No Show`).
   * **Page Size Selector ("Rows:"):** 5, 10, or 25 records per page.
+* **Proactive Schedule Form Elements:**
+  * **Doctor Schedule Notice Badge (`#doctor-schedule-notice`):** Displays real-time duty days upon doctor selection.
+  * **Schedule Warning Banner (`#appt-schedule-warning-banner`):** Alerts receptionist with duty days if an off-duty day or invalid time is picked.
+  * **HTML5 Bounds:** `min="YYYY-MM-DD"` on date input, `min="08:00"` and `max="17:00"` on time input.
+* **Live Synchronization:**
+  * Subscribes to `cprms:sync` event dispatched by `live-sync.js` to auto-refresh appointments list in the background when changes occur in other tabs or portals.

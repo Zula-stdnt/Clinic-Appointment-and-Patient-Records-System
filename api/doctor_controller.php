@@ -152,6 +152,44 @@ function listDoctors(PDO $pdo): void {
     $stmt->execute();
     $items = $stmt->fetchAll();
 
+    // Enrich with active doctor schedules
+    $docIds = array_column($items, 'doctor_id');
+    $schedulesByDoctor = [];
+    if (!empty($docIds)) {
+        $inPlaceholders = implode(',', array_fill(0, count($docIds), '?'));
+        $schedStmt = $pdo->prepare("SELECT doctor_id, day_of_week, start_time, end_time, is_active FROM doctor_schedules WHERE doctor_id IN ($inPlaceholders) AND is_active = 1 ORDER BY doctor_id, day_of_week");
+        $schedStmt->execute($docIds);
+        $dayAbbr = [1 => 'Mon', 2 => 'Tue', 3 => 'Wed', 4 => 'Thu', 5 => 'Fri', 6 => 'Sat', 7 => 'Sun'];
+        while ($row = $schedStmt->fetch(PDO::FETCH_ASSOC)) {
+            $dId = (int)$row['doctor_id'];
+            if (!isset($schedulesByDoctor[$dId])) {
+                $schedulesByDoctor[$dId] = [];
+            }
+            $schedulesByDoctor[$dId][] = $row;
+        }
+    }
+
+    foreach ($items as &$doc) {
+        $dId = (int)$doc['doctor_id'];
+        $docSchedules = $schedulesByDoctor[$dId] ?? [];
+        $doc['schedules'] = $docSchedules;
+        if (!empty($docSchedules)) {
+            $daysSummary = [];
+            $dayAbbr = [1 => 'Mon', 2 => 'Tue', 3 => 'Wed', 4 => 'Thu', 5 => 'Fri', 6 => 'Sat', 7 => 'Sun'];
+            foreach ($docSchedules as $ds) {
+                $dow = (int)$ds['day_of_week'];
+                $abbr = $dayAbbr[$dow] ?? "D$dow";
+                $daysSummary[] = $abbr;
+            }
+            $startFmt = date('H:i', strtotime($docSchedules[0]['start_time']));
+            $endFmt = date('H:i', strtotime($docSchedules[0]['end_time']));
+            $doc['schedule_summary'] = implode(', ', $daysSummary) . " ({$startFmt} - {$endFmt})";
+        } else {
+            $doc['schedule_summary'] = 'Not Set';
+        }
+    }
+    unset($doc);
+
     send_success('Doctors retrieved successfully.', [
         'items'     => $items,
         'total'     => $total,
@@ -180,6 +218,23 @@ function getDoctorById(PDO $pdo, int $id): void {
 
     if (!$doctor) {
         send_error('Doctor not found.', [], 404);
+    }
+
+    $schedStmt = $pdo->prepare("SELECT schedule_id, doctor_id, day_of_week, start_time, end_time, is_active FROM doctor_schedules WHERE doctor_id = ? AND is_active = 1 ORDER BY day_of_week");
+    $schedStmt->execute([$id]);
+    $doctor['schedules'] = $schedStmt->fetchAll(PDO::FETCH_ASSOC);
+    if (!empty($doctor['schedules'])) {
+        $dayAbbr = [1 => 'Mon', 2 => 'Tue', 3 => 'Wed', 4 => 'Thu', 5 => 'Fri', 6 => 'Sat', 7 => 'Sun'];
+        $daysSummary = [];
+        foreach ($doctor['schedules'] as $ds) {
+            $dow = (int)$ds['day_of_week'];
+            $daysSummary[] = $dayAbbr[$dow] ?? "D$dow";
+        }
+        $startFmt = date('H:i', strtotime($doctor['schedules'][0]['start_time']));
+        $endFmt = date('H:i', strtotime($doctor['schedules'][0]['end_time']));
+        $doctor['schedule_summary'] = implode(', ', $daysSummary) . " ({$startFmt} - {$endFmt})";
+    } else {
+        $doctor['schedule_summary'] = 'Not Set';
     }
 
     send_success('Doctor details retrieved.', ['doctor' => $doctor]);

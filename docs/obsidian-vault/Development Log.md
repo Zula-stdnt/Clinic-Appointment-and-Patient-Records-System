@@ -32,7 +32,62 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
-### 2026-10-11 — Human-Readable Audit Logs & Entity Name Enrichment (`pending`)
+### 2026-10-14 — Admin Manage Doctors Weekly Schedule Column, Modal & Rotation Presets (`local`)
+**Type:** feat
+**Database / migrations:** `migrations/013_doctor_schedules_and_hybrid_break_glass.sql`
+**Files changed:**
+- `assets/js/modules/doctors.js` — added "Weekly Schedule" table column rendering colored duty day badges; added "Schedule" action button with calendar icon; created `#doctor-schedule-modal` with 7-day checkboxes and start/end time pickers; added 1-click rotation presets (`Dr. House Rotation (Mon, Tue)`, `Dr. Grey Rotation (Wed, Thu)`, `Dr. Strange Rotation (Fri, Sat)`, `Full Week`, `Clear All`); integrated with `api/doctor_schedule_controller.php`.
+- `api/doctor_schedule_controller.php` — handles `GET ?doctor_id=X` and `POST` schedule array; enforces daily time boundaries; emits `UPDATE_DOCTOR_SCHEDULE` audit log.
+- `api/doctor_controller.php` — enriched `GET` response items with `schedules` array and formatted `schedule_summary`.
+**New IDs introduced:** `doctor_schedules` table, `api/doctor_schedule_controller.php`, modal `#doctor-schedule-modal`
+**How to verify:**
+- Log in as Administrator → navigate to Manage Doctors.
+- Inspect the Weekly Schedule column showing duty days badges.
+- Click "Schedule" on any doctor → test 1-click rotation presets → save and verify schedule badges update.
+
+### 2026-10-14 — Receptionist Appointment Form Schedule Warnings, Date/Time Boundaries & Zero-Retype UX (`local`)
+**Type:** feat / fix
+**Database / migrations:** none
+**Files changed:**
+- `assets/js/modules/receptionist_appointments.js` — added `#doctor-schedule-notice` inline badge beneath doctor combobox; enriched dropdown options with duty day badges; added calendar date `min="YYYY-MM-DD"` (today's date); added time bounds `min="08:00"` and `max="17:00"` (`step="900"`); implemented real-time `validateAppointmentScheduleLive()` displaying `#appt-schedule-warning-banner` and inline field error when an off-duty doctor, Sunday, or lunch hour is picked; guaranteed zero form resets on validation failure.
+- `api/appointment_controller.php` — enriched `meta=doctors` payload with `schedules` and `schedule_summary`; strictly validates doctor duty days against `doctor_schedules`, clinic operating window, and daily capacity.
+**New IDs introduced:** `#doctor-schedule-notice`, `#appt-schedule-warning-banner`, `validateAppointmentScheduleLive()`
+**How to verify:**
+- Run `php tests/verify_schedule_and_form_ux.php` (20/20 pass).
+- Log in as Receptionist → New Appointment:
+  - Select Dr. Gregory House → observe duty notice shows Mon, Tue (08:00 - 17:00).
+  - Pick a Wednesday → observe immediate schedule warning banner and inline error.
+  - Fill patient, triage vitals, and chief complaint → click "Schedule Appointment" → verify form inputs are never cleared.
+
+### 2026-10-13 — Hybrid Break-Glass, Standard Access Requests & Live Multi-Tab Sync (`local`)
+**Type:** feat
+**Database / migrations:** `migrations/013_doctor_schedules_and_hybrid_break_glass.sql`
+**Files changed:**
+- `migrations/013_doctor_schedules_and_hybrid_break_glass.sql` — created `doctor_schedules` and `record_access_requests` tables; seeded multi-specialties and weekly rotas for clinic's 3 doctors.
+- `api/access_request_controller.php` — created two-tier request controller: standard mode (requires Admin review, 24-hr grant) vs urgent break-glass mode (immediate access flagged for audit).
+- `assets/js/live-sync.js` — created cross-tab revision polling helper; polls `api/appointment_controller.php?action=sync_state` every 5 seconds and dispatches `cprms:sync` custom event.
+- `assets/js/modules/receptionist_overview.js`, `assets/js/modules/receptionist_appointments.js`, `assets/js/modules/doctor_overview.js` — subscribed to `cprms:sync` for auto-refreshing queues.
+- `assets/js/components/patient-record-view.js` — fixed runtime `ReferenceError: record is not defined` via `const record = data || {};`.
+**New IDs introduced:** `record_access_requests` table, `api/access_request_controller.php`, `assets/js/live-sync.js`, `cprms:sync` event
+**How to verify:**
+- Run `php tests/verify_todo_improvements.php` and `php tests/verify_acceptance.php`.
+- Open two browser tabs: Receptionist booking in Tab 1 and Doctor Overview in Tab 2.
+- Book an appointment in Tab 1 → observe Doctor Overview automatically refreshes without reloading.
+
+### 2026-10-12 — System UI & Functional Improvements (Overview Tables, Date Range Filter, Vitals Alignment) (`local`)
+**Type:** feat / style
+**Database / migrations:** none
+**Files changed:**
+- `assets/js/modules/receptionist_overview.js` — moved Chief Complaint to a dedicated table column with 2-line clamp and tooltip; standardized Triage Vitals into stacked `.vital-badge` chips matching Doctor Dashboard; added Start/End Date range picker with Apply button; added "All Time" period filter pill; added Rows per page selector (10, 25, 50).
+- `assets/js/modules/doctor_overview.js` — updated queue table layout; added Start/End Date range filter; added Rows per page selector; subscribed to `cprms:sync`.
+- `assets/js/modules/doctor_appointments.js` — restored Triage Vitals column; replaced text "Request Cancel" button with compact ✕ icon button with tooltip.
+- `assets/css/style.css` — refined `.dashboard-columns` desktop grid template (`minmax(0, 2.35fr) minmax(260px, 1fr)`), table cell padding, and column width distribution to eliminate horizontal scrollbars at 100% zoom.
+**New IDs introduced:** `.vital-badge`, `#overview-date-start`, `#overview-date-end`, `#overview-apply-range`, `#overview-page-size`
+**How to verify:**
+- Run `php tests/verify_ui_functional_improvements.php` (17/17 pass).
+- View Receptionist Overview at 100% zoom: verify no horizontal scrollbar exists and Chief Complaint has its own column.
+
+### 2026-10-11 — Human-Readable Audit Logs & Entity Name Enrichment (`6557204`)
 **Type:** feat / fix
 **Database / migrations:** none
 **Files changed:**

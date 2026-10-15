@@ -36,7 +36,7 @@ export default {
                         <h3 class="card-title mt-3 mb-1" id="profile-name">Loading...</h3>
                         <span class="badge badge-role" id="profile-role">&mdash;</span>
                         <p class="text-muted small mt-3 mb-0">
-                            ${SHIELD_CHECK_ICON}Signed in with a secure hospital session.
+                            ${SHIELD_CHECK_ICON}Signed in with a secure clinic session.
                         </p>
                     </div>
                 </div>

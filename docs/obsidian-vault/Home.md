@@ -24,26 +24,28 @@ Welcome to the documentation hub for the **ITE 387 Hospital Patient Information 
 - [[Overview Dashboard]] — Summary counts and recent patient registrations.
 - [[Manage Users]] — Staff login accounts and role assignments.
 - [[Manage Patients]] — Patient personal profiles and contact records.
-- [[Manage Doctors]] — Doctor profiles and assigned medical specialties.
+- [[Manage Doctors]] — Doctor profiles, multiple medical specialties, and weekly duty schedule rota configuration.
 - [[Manage Services]] — Administrative catalog of hospital services.
 - [[Manage Specialties]] — Medical departments and clinical specialties.
 - [[Manage Archive]] — Central recycle bin to restore or permanently delete archived records.
-- [[Compliance & Audit Logs]] — Immutable security audit trail, emergency break-glass reviews, and human-readable event details.
+- [[Compliance & Audit Logs]] — Immutable security audit trail, emergency break-glass reviews, doctor schedule audits, and human-readable event details.
 
 ## Doctor portal modules
-- [[Doctor Dashboard]] — Doctor portal shell, navigation router, and today's appointment counters.
-- [[Doctor Appointments]] — Assigned patient schedule and consultation launch screen.
+- [[Doctor Dashboard]] — Doctor portal shell, navigation router, interactive queue table, date range filters, and multi-tab live sync.
+- [[Doctor Appointments]] — Assigned patient schedule, triage vitals display, and consultation launch screen.
 - [[Doctor Consultation]] — Clinical charting screen for notes, diagnoses, prescriptions, and lab orders.
-- [[Doctor Patient Records]] — Assigned patient directory and chronological medical history timeline.
+- [[Doctor Patient Records]] — Assigned patient directory, hybrid access requests, break-glass protocol, and chronological medical history timeline.
 - [[Doctor Profile]] — Personal details, contact number, username, and password management.
 
 ## Core Clinical Flow (Patient Records System)
 The system guides hospital staff through the complete clinical workflow:
 `Appointment → Consultation → Diagnosis → Medical History`
-- [[Receptionist Appointments]] — Front-desk appointment scheduling, walk-in patient registration, triage vital signs, and daily clinic capacity management.
+- [[Receptionist Overview]] — Front-desk landing dashboard with KPI metrics, daily capacity gauge, lobby queue, and multi-tab live synchronization.
+- [[Receptionist Appointments]] — Front-desk appointment scheduling, doctor schedule duty validation, walk-in patient registration, triage vital signs, and daily clinic capacity management.
 - [[Doctor Appointments]] — Doctor schedule queue, confirmation gating, and consultation launching.
 - [[Doctor Consultation]] — Clinical charting for SOAP examination notes, ICD-10 diagnoses, prescriptions, and lab orders.
 - [[Doctor Patient Records]] — Patient directory and dynamic, accumulated medical history timeline.
 
 ## Receptionist portal modules
-- [[Receptionist Appointments]] — Front-desk appointment booking, walk-in registration, and triage vital signs.
+- [[Receptionist Overview]] — Front-desk landing dashboard with KPI metrics, daily capacity gauge, lobby queue, and date range filters.
+- [[Receptionist Appointments]] — Front-desk appointment booking, live doctor schedule duty warnings, walk-in registration, and triage vital signs.
