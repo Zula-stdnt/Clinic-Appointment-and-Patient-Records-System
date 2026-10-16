@@ -49,23 +49,38 @@ export function buildPrescription(data) {
 
     const rxHtml = data.prescriptions.map((p, index) => {
         const generic = p.medication_generic ? ` (${escapeHtml(p.medication_generic)})` : '';
-        const duration = p.end_date
-            ? `${escapeHtml(formatDate(p.start_date))} to ${escapeHtml(formatDate(p.end_date))}`
-            : `Starting ${escapeHtml(formatDate(p.start_date))}`;
-        const timeToTake = p.time_to_take
-            ? `<span><em>Time to take:</em> ${escapeHtml(p.time_to_take)}</span>`
-            : '';
+        const strengthStr = p.strength ? ` ${escapeHtml(p.strength)}` : '';
+        let durationStr = '';
+        if (p.duration) {
+            durationStr = escapeHtml(p.duration);
+            if (p.start_date && p.end_date) {
+                durationStr += ` (${escapeHtml(formatDate(p.start_date))} to ${escapeHtml(formatDate(p.end_date))})`;
+            }
+        } else if (p.end_date) {
+            durationStr = `${escapeHtml(formatDate(p.start_date))} to ${escapeHtml(formatDate(p.end_date))}`;
+        } else if (p.start_date) {
+            durationStr = `Starting ${escapeHtml(formatDate(p.start_date))}`;
+        } else {
+            durationStr = 'As directed';
+        }
+
+        const routeHtml = p.route ? `<span><em>Route:</em> ${escapeHtml(p.route)}</span>` : '';
+        const instructionsHtml = p.instructions ? `<span><em>Instructions:</em> ${escapeHtml(p.instructions)}</span>` : '';
+        const timeToTake = p.time_to_take ? `<span><em>Time to take:</em> ${escapeHtml(p.time_to_take)}</span>` : '';
+
         return `
             <div class="rx-item">
                 <div class="rx-line">
                     <span class="rx-number">${index + 1}.</span>
-                    <strong class="rx-drug">${escapeHtml(orDash(p.medication_name))}${generic}</strong>
+                    <strong class="rx-drug">${escapeHtml(orDash(p.medication_name))}${strengthStr}${generic}</strong>
                 </div>
                 <div class="rx-detail">
                     <span><em>Dosage:</em> ${escapeHtml(orDash(p.dosage))}</span>
+                    ${routeHtml}
                     <span><em>Frequency:</em> ${escapeHtml(orDash(p.frequency))}</span>
+                    <span><em>Duration:</em> ${durationStr}</span>
                     ${timeToTake}
-                    <span><em>Duration:</em> ${duration}</span>
+                    ${instructionsHtml}
                 </div>
             </div>`;
     }).join('');

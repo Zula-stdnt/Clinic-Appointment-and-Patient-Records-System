@@ -8,7 +8,7 @@ import { LiveSync } from './live-sync.js?v=1';
 import doctorOverview from './modules/doctor_overview.js?v=28';
 import doctorAppointments from './modules/doctor_appointments.js?v=31';
 import doctorPatients from './modules/doctor_patients.js?v=34';
-import doctorConsultation from './modules/doctor_consultation.js?v=32';
+import doctorConsultation from './modules/doctor_consultation.js?v=33';
 import settingsModule from './modules/account_settings.js?v=24';
 import doctorProfile from './modules/doctor_profile.js?v=31';
 

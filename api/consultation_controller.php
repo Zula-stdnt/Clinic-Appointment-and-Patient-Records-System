@@ -10,6 +10,7 @@ require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/audit.php';
+require_once __DIR__ . '/../includes/clinical_notes.php';
 
 require_login();
 require_role('Doctor');
@@ -108,6 +109,7 @@ function getConsultationDetails(PDO $pdo, int $appointmentId) {
 
     if ($consultation) {
         $consId = (int)$consultation['consultation_id'];
+        $consultation['soap'] = parse_soap_notes($consultation['notes'] ?? '');
         
         $stmtDiag = $pdo->prepare("SELECT d.diagnosis_id, d.icd10_code, d.diagnosis_name, d.notes, ic.description as icd10_description
                                    FROM diagnosis d
@@ -117,10 +119,13 @@ function getConsultationDetails(PDO $pdo, int $appointmentId) {
         $stmtDiag->execute([$consId]);
         $diagnoses = $stmtDiag->fetchAll(PDO::FETCH_ASSOC);
 
-        $stmtRx = $pdo->prepare("SELECT p.prescription_id, p.medication_id, m.name as medication_name, m.generic_name as medication_generic, p.dosage, p.frequency, p.time_to_take, p.start_date, p.end_date 
+        $stmtRx = $pdo->prepare("SELECT p.prescription_id, p.medication_id, m.name as medication_name, m.generic_name as medication_generic,
+                                        p.strength, p.dosage, p.route, p.frequency, p.duration, p.instructions,
+                                        p.time_to_take, p.start_date, p.end_date 
                                  FROM prescriptions p
                                  INNER JOIN medications m ON p.medication_id = m.medication_id
-                                 WHERE p.consultation_id = ?");
+                                 WHERE p.consultation_id = ?
+                                 ORDER BY p.prescription_id ASC");
         $stmtRx->execute([$consId]);
         $prescriptions = $stmtRx->fetchAll(PDO::FETCH_ASSOC);
 
@@ -218,7 +223,12 @@ function saveConsultation(PDO $pdo) {
         $stmtConsCheck->execute([$appointmentId]);
         $existingCons = $stmtConsCheck->fetch(PDO::FETCH_ASSOC);
 
-        $notes = $input['notes'] ?? null;
+        $notes = null;
+        if (isset($input['soap']) && is_array($input['soap'])) {
+            $notes = compile_soap_notes($input['soap']);
+        } elseif (isset($input['notes'])) {
+            $notes = trim((string)$input['notes']) ?: null;
+        }
         $consultationId = null;
 
         if ($existingCons) {
@@ -245,13 +255,32 @@ function saveConsultation(PDO $pdo) {
         // 3. Replace Prescriptions
         $pdo->prepare("DELETE FROM prescriptions WHERE consultation_id = ?")->execute([$consultationId]);
         if (!empty($input['prescriptions']) && is_array($input['prescriptions'])) {
-            $stmtRx = $pdo->prepare("INSERT INTO prescriptions (consultation_id, medication_id, dosage, frequency, time_to_take, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?)");
+            $stmtRx = $pdo->prepare("INSERT INTO prescriptions (consultation_id, medication_id, strength, dosage, route, frequency, duration, instructions, time_to_take, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
             foreach ($input['prescriptions'] as $p) {
-                if (!empty($p['medication_id']) && !empty($p['dosage']) && !empty($p['frequency'])) {
+                if (!empty($p['medication_id']) && (!empty($p['dosage']) || !empty($p['frequency']))) {
+                    $strength = trim((string)($p['strength'] ?? '')) ?: null;
+                    $dosage = trim((string)($p['dosage'] ?? '')) ?: 'As directed';
+                    $route = trim((string)($p['route'] ?? '')) ?: null;
+                    $frequency = trim((string)($p['frequency'] ?? '')) ?: 'As directed';
+                    $duration = trim((string)($p['duration'] ?? '')) ?: null;
+                    $instructions = trim((string)($p['instructions'] ?? '')) ?: null;
+                    $timeToTake = trim((string)($p['time_to_take'] ?? '')) ?: null;
                     $startDate = !empty($p['start_date']) ? $p['start_date'] : date('Y-m-d');
                     $endDate = !empty($p['end_date']) ? $p['end_date'] : null;
-                    $timeToTake = trim($p['time_to_take'] ?? '') ?: null;
-                    $stmtRx->execute([$consultationId, $p['medication_id'], $p['dosage'], $p['frequency'], $timeToTake, $startDate, $endDate]);
+
+                    $stmtRx->execute([
+                        $consultationId,
+                        (int)$p['medication_id'],
+                        $strength,
+                        $dosage,
+                        $route,
+                        $frequency,
+                        $duration,
+                        $instructions,
+                        $timeToTake,
+                        $startDate,
+                        $endDate
+                    ]);
                 }
             }
         }

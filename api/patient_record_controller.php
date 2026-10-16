@@ -228,7 +228,8 @@ function getPatientRecord(PDO $pdo, int $patientId): void {
             $enc['diagnoses'] = $dStmt->fetchAll(PDO::FETCH_ASSOC);
 
             // Prescriptions
-            $rStmt = $pdo->prepare("SELECT p.dosage, p.frequency, p.time_to_take, p.start_date, p.end_date,
+            $rStmt = $pdo->prepare("SELECT p.prescription_id, p.medication_id, p.strength, p.dosage, p.route,
+                                           p.frequency, p.duration, p.instructions, p.time_to_take, p.start_date, p.end_date,
                                            m.name AS medication_name, m.generic_name
                                     FROM prescriptions p
                                     INNER JOIN medications m ON p.medication_id = m.medication_id

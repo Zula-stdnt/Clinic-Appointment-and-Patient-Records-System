@@ -9,7 +9,38 @@ A plain-English summary of major updates, new modules, and bug fixes across the 
 > [!info] Looking for the technical trail?
 > This note summarizes **features**. For a per-commit record (commit IDs, exact files, verification steps), see [[Development Log]].
 
-## Recent — Doctor Schedules, Form UX Constraints, and Dashboard Modernization
+## Recent — Doctor Consultation SOAP Format & Structured Prescriptions Revamp
+
+### Clinical Notes SOAP Format (Subjective, Objective, Assessment, Plan)
+- **Dedicated SOAP Clinical Panels:** Replaced the single unstructured notes textarea with 4 distinct, color-coded clinical cards:
+  - **S · Subjective:** History of present illness (HPI), patient symptoms, onset, duration, aggravating/relieving factors, and pain scale.
+  - **O · Objective:** Physical examination findings, clinical inspection, HEENT, chest, abdomen, extremities observations, with live triage vitals (BP, Temp, SpO2) referenced directly above.
+  - **A · Assessment:** Clinical impression, differential/working diagnosis synthesis, disease severity, and clinical progress.
+  - **P · Plan:** Treatment strategy, patient education, dietary/activity advice, return precautions, and follow-up timeline.
+- **Zero-Duplicate Plan Shortcut (`⚡ Summarize Prescriptions in Plan`):** Integrated a one-click shortcut in the Plan section that automatically gathers all prescribed medications and generates a formatted, itemized bulleted summary into the Plan textarea. If updated, it refreshes the summary block without overwriting custom clinical notes or requiring doctors to type prescriptions twice.
+- **Bi-directional Backward Compatibility:** Clinical notes are serialized into standardized clinical text with `SUBJECTIVE:`, `OBJECTIVE:`, `ASSESSMENT:`, `PLAN:` section tags for database storage (`consultation.notes`). Older legacy plain-text consultations seamlessly load into the *Subjective* section without data loss.
+
+### Structured Prescriptions (Rx) Section
+- **7-Field Structured Medication Orders:** Replaced the basic 3-field input with an ergonomic, structured prescription item card capturing:
+  1. **Medication Name:** Type-ahead catalog search from `medications`.
+  2. **Strength:** Specific strength concentration (e.g., `500 mg`, `250 mg/5 mL`, `10 mg`).
+  3. **Dosage:** Unit dosage (e.g., `1 tablet`, `5 mL`, `2 capsules`).
+  4. **Route:** Standardized clinical dropdown (`Oral (PO)`, `Sublingual`, `Topical`, `Inhalation`, `IM`, `IV`, `SC`, `Ophthalmic`, `Otic`, `Nasal`, `Rectal`, `Other`).
+  5. **Frequency:** Standard clinical abbreviations and frequency intervals with instant datalist autocomplete (`OD`, `BID`, `TID`, `QID`, `Q4H`, `Q8H`, `QHS`, `PRN`).
+  6. **Duration:** Treatment duration (e.g., `7 days`, `14 days`, `30 days`, `Ongoing`).
+  7. **Additional Instructions / Timing:** Patient instructions (e.g., `Take after meals with plenty of water`, `Finish all antibiotics`).
+- **Database Schema Migration (`014_structured_prescriptions.sql`):** Added `strength`, `route`, `duration`, and `instructions` to the `prescriptions` table with zero-downtime idempotent checks.
+
+### Dedicated Laboratory & Diagnostic Requests Section
+- **Dedicated Lab Card:** Retained and refined Laboratory & Diagnostic Requests as an independent section with quick-pick datalists for routine tests (e.g., `CBC with Platelet`, `FBS`, `Lipid Profile`, `Chest X-Ray`, `Urinalysis`).
+
+### Downstream Parity: Printed Slips & Longitudinal Timeline
+- **Print Prescription Slip (`print-prescription.js`):** Updated printed Rx slips to format medication strength, administration route, duration, and patient instructions.
+- **Longitudinal Patient Records (`patient-record-view.js`):** Updated encounter timeline Prescriptions table with structured columns (`Medication & Strength`, `Dosage & Route`, `Frequency & Duration`, `Instructions`) and formatted SOAP section headers in Clinical Notes.
+
+---
+
+## Doctor Schedules, Form UX Constraints, and Dashboard Modernization
 
 ### Receptionist Form UX, Schedule Warnings & Zero-Retype Protection
 - **Live Doctor Schedule Notice Badge:** Added an interactive inline `#doctor-schedule-notice` badge directly beneath the doctor selection combobox, immediately showing the assigned doctor's duty days (e.g. `Duty: Monday, Tuesday (08:00 - 17:00)`).

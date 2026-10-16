@@ -25,30 +25,47 @@ The clinical examination and charting screen. Doctors use this screen to review 
 
 ---
 
-### 2. Entering Clinical Examination Notes
+### 2. Entering Clinical Examination Notes (SOAP Format)
 * **What the doctor does:**
-  - Types medical findings into the **Clinical Notes** area following the standard SOAP structure:
-    - **Subjective:** Symptoms reported by the patient.
-    - **Objective:** Physical exam findings and vital sign observations.
-    - **Assessment:** Clinical interpretation of the condition.
-    - **Plan:** Recommended treatment, therapy, and follow-up guidance.
+  - Clinical Notes are organized into 4 distinct, color-coded clinical cards:
+    - **S · Subjective:** Patient-reported history of present illness (HPI), chief symptoms, onset, aggravating/relieving factors, and pain scale.
+    - **O · Objective:** Physical examination findings, clinical inspection, system reviews (HEENT, chest, abdomen, extremities), with triage vitals (BP, Temp, SpO2) displayed directly above for real-time reference.
+    - **A · Assessment:** Clinical impression, differential/working diagnosis synthesis, disease severity, and clinical progress.
+    - **P · Plan:** Comprehensive treatment strategy, counseling, diet/activity advice, return precautions, and follow-up timeline.
+  - **Zero-Duplicate Plan Shortcut:**
+    - Clicking the **⚡ Summarize Prescriptions in Plan** button automatically formats and syncs all prescribed medications (with strength, dosage, route, frequency, and instructions) into the Plan notes without requiring redundant typing.
+    - Re-clicking updates the itemized medication block without overwriting custom clinical advice.
 
 ---
 
 ### 3. Adding Medical Diagnoses
 * **What the doctor does:**
   1. In the **Diagnosis** card, clicks **+ Add Diagnosis** (supports multiple conditions).
-  2. Types the diagnosed illness or condition (e.g., *Acute Bronchitis*, *Type 2 Diabetes*, or *Hypertension*).
-  3. Optionally enters the international ICD-10 code (e.g., `J20.9`, `E11.9`, or `I10`).
-  4. Optionally types special notes or clinical guidance for that diagnosis.
-  5. Clicks the red remove icon if an item was added by mistake.
+  2. Types or searches the international ICD-10 code (e.g., `J20.9`, `E11.9`, or `I10`) using type-ahead catalog search. Selecting a code auto-fills the clinical diagnosis name.
+  3. Optionally enters custom clinical notes or disease specifications for that diagnosis.
+  4. Clicks the red remove icon if an item was added by mistake.
 
 ---
 
 ### 4. Prescribing Medications & Ordering Lab Tests
+
+#### A. Structured Prescriptions (Rx)
 * **What the doctor does:**
-  - **Prescriptions:** Clicks **+ Add Rx**, selects an approved medication from the menu, types dosage (e.g., `500 mg`), selects frequency (e.g., `Twice daily after meals`), and specifies dosing time instructions (`time_to_take`).
-  - **Lab Requests:** Clicks **+ Add Lab** and types diagnostic tests or imaging required (e.g., `Complete Blood Count (CBC)` or `Chest X-ray`).
+  - Clicks **+ Add Medication** to generate a structured prescription item.
+  - Documents all 7 clinical prescription attributes:
+    1. **Medication Name:** Type-ahead catalog lookup matching generic and brand names from `medications`.
+    2. **Strength:** Specific drug strength (e.g., `500 mg`, `250 mg/5 mL`, `10 mg`).
+    3. **Dosage:** Unit dosage (e.g., `1 tablet`, `5 mL`, `2 capsules`, `1 drop`).
+    4. **Route:** Standard clinical route dropdown (`Oral (PO)`, `Sublingual`, `Topical`, `Inhalation`, `Intramuscular (IM)`, `Intravenous (IV)`, `Ophthalmic`, `Otic`, `Nasal`, `Rectal`, `Other`).
+    5. **Frequency:** Standard clinical abbreviations and frequency intervals with instant datalist autocomplete (e.g., `Once daily (OD)`, `Twice daily (BID)`, `Three times daily (TID)`, `Every 8 hours (Q8H)`, `As needed (PRN)`).
+    6. **Duration:** Duration of regimen (e.g., `7 days`, `14 days`, `30 days`, `Ongoing`).
+    7. **Additional Instructions / Timing:** Patient instructions (e.g., `Take after meals with plenty of water`, `Do not crush`, `Take 30 mins before breakfast`).
+
+#### B. Dedicated Laboratory & Diagnostic Requests
+* **What the doctor does:**
+  - In the separate **Laboratory & Diagnostic Requests** card, clicks **+ Add Lab Request**.
+  - Enters the required diagnostic test or radiological procedure using datalist quick-picks (e.g., `Complete Blood Count (CBC) with Platelet`, `Fasting Blood Sugar (FBS)`, `Lipid Profile`, `Chest X-Ray (PA View)`, `Urinalysis (Routine)`, `12-Lead ECG`).
+  - Lab orders are saved and can be printed on the official CPRMS Laboratory Request Slip for patient presentation at the diagnostic facility.
 
 ---
 

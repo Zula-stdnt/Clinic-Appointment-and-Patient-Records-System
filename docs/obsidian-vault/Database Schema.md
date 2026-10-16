@@ -65,7 +65,7 @@ erDiagram
 | `consultation` | `consultation_id`, `appointment_id` (unique), `consultation_date`, `notes` | Main clinical encounter record created or updated when a doctor saves a consultation; locked upon completion |
 | `consultation_addenda` | `addendum_id`, `consultation_id` → consultation, `doctor_id` → doctors, `note` (TEXT), `created_at` | Appended timestamped addenda notes for completed encounters, preventing post-consultation alterations |
 | `diagnosis` | `diagnosis_id`, `consultation_id`, `icd10_code`, `diagnosis_name`, `notes` | Diagnosis items attached to a consultation; refreshed inside a transaction whenever the consultation is saved |
-| `prescriptions` | `prescription_id`, `consultation_id`, `medication_id`, `dosage`, `frequency`, `time_to_take`, `start_date`, `end_date` | Prescribed medicines, dosage instructions, specific times to take, and dates attached to a consultation |
+| `prescriptions` | `prescription_id`, `consultation_id`, `medication_id`, `strength`, `dosage`, `route`, `frequency`, `duration`, `instructions`, `time_to_take`, `start_date`, `end_date` | Prescribed medicines with structured clinical strength, unit dosage, administration route, dosing frequency, duration, specific instructions, and time to take |
 | `lab_requests` | `lab_request_id`, `consultation_id`, `test_name`, `status`, `request_date` | Lab tests ordered during a consultation (`'requested'`, `'in_progress'`, `'completed'`, `'cancelled'`) |
 
 ## Soft-delete / restore / hard-delete

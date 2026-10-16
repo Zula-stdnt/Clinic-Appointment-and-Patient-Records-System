@@ -1,18 +1,124 @@
 // assets/js/modules/doctor_consultation.js
-// Clinical Consultation Module
-// ITE 387 Lessons applied: 03 APIs and Database Operations/header_detail_forms (Header-Detail state arrays & nested JSON payload) & 01 JavaScript Foundations/javascript_objects_and_arrays (Factory functions for detail items & <select> display/value mapping)
+// Clinical Consultation Module with SOAP Clinical Notes and Structured Prescriptions
+// ITE 387 Lessons applied: 03 APIs and Database Operations/header_detail_forms & 01 JavaScript Foundations/javascript_objects_and_arrays
 
 import api from '../api.js?v=7';
 import { create, escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=24';
 import { SearchSelect } from '../components/search-select.js?v=1';
-import { TimePicker } from '../components/time-picker.js?v=2';
 import { printPrescription } from '../components/print-prescription.js?v=2';
 import { printLabRequest } from '../components/print-lab-request.js?v=1';
 
-// Factory functions for uniform detail-row objects (javascript_objects_and_arrays.md)
+// Standard clinical route options
+const CLINICAL_ROUTES = [
+    { value: 'Oral (PO)', label: 'Oral (PO)' },
+    { value: 'Sublingual (SL)', label: 'Sublingual (SL)' },
+    { value: 'Topical', label: 'Topical' },
+    { value: 'Inhalation', label: 'Inhalation' },
+    { value: 'Intramuscular (IM)', label: 'Intramuscular (IM)' },
+    { value: 'Intravenous (IV)', label: 'Intravenous (IV)' },
+    { value: 'Subcutaneous (SC)', label: 'Subcutaneous (SC)' },
+    { value: 'Ophthalmic (Eye)', label: 'Ophthalmic (Eye)' },
+    { value: 'Otic (Ear)', label: 'Otic (Ear)' },
+    { value: 'Nasal', label: 'Nasal' },
+    { value: 'Rectal (PR)', label: 'Rectal (PR)' },
+    { value: 'Other', label: 'Other' }
+];
+
+// Quick frequency presets for datalist autocomplete
+const FREQUENCY_PRESETS = [
+    'Once daily (OD)',
+    'Twice daily (BID)',
+    'Three times daily (TID)',
+    'Four times daily (QID)',
+    'Every 4 hours (Q4H)',
+    'Every 6 hours (Q6H)',
+    'Every 8 hours (Q8H)',
+    'Every 12 hours (Q12H)',
+    'At bedtime (QHS)',
+    'As needed (PRN)',
+    'Before meals (AC)',
+    'After meals (PC)'
+];
+
+// Common laboratory and diagnostic tests for datalist autocomplete
+const COMMON_LAB_PRESETS = [
+    'Complete Blood Count (CBC) with Platelet',
+    'Fasting Blood Sugar (FBS)',
+    'Random Blood Sugar (RBS)',
+    'Lipid Profile (Cholesterol, Triglycerides, HDL, LDL)',
+    'Serum Creatinine & BUN',
+    'Liver Function Test (SGPT/ALT, SGOT/AST)',
+    'Urinalysis (Routine)',
+    'Fecalysis (Routine)',
+    'Chest X-Ray (PA View)',
+    'Electrocardiogram (ECG 12-Lead)',
+    'HbA1c (Glycated Hemoglobin)',
+    'Serum Uric Acid',
+    'Thyroid Panel (TSH, FT3, FT4)'
+];
+
+// Factory functions for uniform detail-row objects
 const createEmptyDiagnosis = () => ({ diagnosis_name: '', icd10_code: '', icd10_description: '', notes: '' });
-const createEmptyPrescription = () => ({ medication_id: '', dosage: '', frequency: '', time_to_take: '' });
+const createEmptyPrescription = () => ({
+    medication_id: '',
+    medication_name: '',
+    strength: '',
+    dosage: '',
+    route: 'Oral (PO)',
+    frequency: '',
+    duration: '',
+    instructions: '',
+    time_to_take: '',
+    start_date: new Date().toISOString().slice(0, 10),
+    end_date: ''
+});
 const createEmptyLabRequest = () => ({ test_name: '' });
+
+// SOAP Parser & Compiler functions
+function parseSoapNotes(rawNotes) {
+    const res = { subjective: '', objective: '', assessment: '', plan: '' };
+    if (!rawNotes || typeof rawNotes !== 'string') return res;
+    const text = rawNotes.trim();
+    const regex = /(?:^|\n)\s*(?:\[?(SUBJECTIVE|OBJECTIVE|ASSESSMENT|PLAN)\]?):?\s*([\s\S]*?)(?=(?:\n\s*(?:\[?(?:SUBJECTIVE|OBJECTIVE|ASSESSMENT|PLAN)\]?):?)|$)/gi;
+    let match;
+    let foundAny = false;
+    while ((match = regex.exec(text)) !== null) {
+        const key = match[1].toLowerCase();
+        if (key in res) {
+            let val = match[2].trim();
+            if (val.toLowerCase() === 'none recorded.') val = '';
+            res[key] = val;
+            foundAny = true;
+        }
+    }
+    if (!foundAny) {
+        // Legacy plain text note without headers: place into Subjective
+        res.subjective = text;
+    }
+    return res;
+}
+
+function compileSoapNotes(soap) {
+    if (!soap) return '';
+    const s = (soap.subjective || '').trim();
+    const o = (soap.objective || '').trim();
+    const a = (soap.assessment || '').trim();
+    const p = (soap.plan || '').trim();
+    if (!s && !o && !a && !p) return '';
+    return [
+        'SUBJECTIVE:',
+        s || 'None recorded.',
+        '',
+        'OBJECTIVE:',
+        o || 'None recorded.',
+        '',
+        'ASSESSMENT:',
+        a || 'None recorded.',
+        '',
+        'PLAN:',
+        p || 'None recorded.'
+    ].join('\n');
+}
 
 export default {
     state: {
@@ -20,34 +126,44 @@ export default {
         appointment: null,
         vitals: null,
         consultation: null,
+        soap: {
+            subjective: '',
+            objective: '',
+            assessment: '',
+            plan: ''
+        },
         diagnoses: [],
         prescriptions: [],
         lab_requests: [],
+        addenda: [],
         medicationPickers: [],
-        icd10Pickers: [],
-        timePickers: []
+        icd10Pickers: []
     },
 
     async init(container, param) {
         this.container = container;
 
-        // Dispose pickers from a previous consultation; their menus live in <body>
+        // Dispose pickers from a previous consultation
         this.disposePickers();
 
-        // Reset state to prevent stale data from a previous consultation
+        // Reset state
         this.state = {
             appointmentId: param ? parseInt(param, 10) : null,
             appointment: null,
             vitals: null,
             consultation: null,
+            soap: {
+                subjective: '',
+                objective: '',
+                assessment: '',
+                plan: ''
+            },
             diagnoses: [],
             prescriptions: [],
             lab_requests: [],
             addenda: [],
             medicationPickers: [],
-            icd10Pickers: [],
-            labPickers: [],
-            timePickers: []
+            icd10Pickers: []
         };
 
         if (!this.state.appointmentId) {
@@ -65,16 +181,16 @@ export default {
 
     renderSkeleton() {
         this.container.innerHTML = `
-            <div class="card" style="padding: 2rem; text-align: center; color: var(--text-muted);">
-                Loading consultation data...
+            <div class="card" style="padding: 2.5rem; text-align: center; color: var(--text-muted);">
+                <div style="font-weight: 500; font-size: 1rem;">Loading consultation data...</div>
             </div>
         `;
     },
 
     disposePickers() {
-        ['medicationPickers', 'icd10Pickers', 'timePickers'].forEach(key => {
+        ['medicationPickers', 'icd10Pickers'].forEach(key => {
             if (this.state && Array.isArray(this.state[key])) {
-                this.state[key].forEach(picker => picker.destroy());
+                this.state[key].forEach(picker => picker && picker.destroy && picker.destroy());
                 this.state[key] = [];
             }
         });
@@ -93,8 +209,21 @@ export default {
                 this.state.lab_requests = res.data.lab_requests || [];
                 this.state.addenda = res.data.addenda || [];
                 
-                // If it's a new consultation, push one empty row for each to guide the user
-                if (!this.state.consultation) {
+                // Load SOAP notes
+                if (this.state.consultation) {
+                    if (this.state.consultation.soap) {
+                        this.state.soap = {
+                            subjective: this.state.consultation.soap.subjective || '',
+                            objective: this.state.consultation.soap.objective || '',
+                            assessment: this.state.consultation.soap.assessment || '',
+                            plan: this.state.consultation.soap.plan || ''
+                        };
+                    } else {
+                        this.state.soap = parseSoapNotes(this.state.consultation.notes || '');
+                    }
+                } else {
+                    this.state.soap = { subjective: '', objective: '', assessment: '', plan: '' };
+                    // For new encounters, seed one empty row to guide the clinician
                     this.state.diagnoses.push(createEmptyDiagnosis());
                     this.state.prescriptions.push(createEmptyPrescription());
                     this.state.lab_requests.push(createEmptyLabRequest());
@@ -114,7 +243,7 @@ export default {
             return '<p style="color: var(--text-muted); margin: 0; font-size: 0.9rem;">No addenda recorded for this encounter.</p>';
         }
         return this.state.addenda.map(a => `
-            <div style="background: var(--bg-alt, #f8fafc); border-left: 3px solid var(--primary, #3b82f6); padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 0.75rem;">
+            <div style="background: var(--bg-alt, #f8fafc); border-left: 3px solid var(--primary, #107c41); padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 0.75rem;">
                 <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.35rem;">
                     <span style="font-weight: 600; color: var(--text);">${escapeHtml(a.author_name || 'Clinician')}</span>
                     <span>${escapeHtml(a.created_at || '')}</span>
@@ -133,6 +262,7 @@ export default {
         const appt = this.state.appointment;
         const vitals = this.state.vitals;
         const cons = this.state.consultation;
+        const soap = this.state.soap || { subjective: '', objective: '', assessment: '', plan: '' };
 
         let vitalsHtml = '<p style="color: var(--text-muted); margin: 0;">No vitals recorded for this appointment.</p>';
         if (vitals) {
@@ -148,7 +278,7 @@ export default {
         const isReadOnly = !['scheduled', 'confirmed'].includes(appt.status);
 
         const allergyBannerHtml = appt.allergies_alerts ? `
-            <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
+            <div style="background: #fef2f2; border-left: 4px solid #ef4444; padding: 0.75rem 1rem; margin-bottom: 1.25rem; border-radius: 4px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem;">
                 <div style="color: #991b1b; font-weight: 600; font-size: 0.95rem; display: flex; align-items: center; gap: 0.4rem;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
                     ALLERGY ALERT: ${escapeHtml(appt.allergies_alerts)}
@@ -158,7 +288,7 @@ export default {
                 </div>
             </div>
         ` : `
-            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 0.75rem 1rem; margin-bottom: 1rem; border-radius: 4px; display: flex; align-items: center; justify-content: space-between;">
+            <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 0.75rem 1rem; margin-bottom: 1.25rem; border-radius: 4px; display: flex; align-items: center; justify-content: space-between;">
                 <div style="color: #92400e; font-weight: 500; font-size: 0.9rem; display: flex; align-items: center; gap: 0.4rem;">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
                     No allergy info recorded for this patient. Please verify with patient during intake.
@@ -169,6 +299,7 @@ export default {
         this.container.innerHTML = `
             ${allergyBannerHtml}
 
+            <!-- Patient Demographic & Intake Summary Card -->
             <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem; background: var(--surface);">
                 <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem;">
                     <div>
@@ -177,7 +308,7 @@ export default {
                     </div>
                     <div style="text-align: right;">
                         <div style="font-weight: 600;">Chief Complaint</div>
-                        <div style="color: var(--danger);">${escapeHtml(appt.chief_complaint || 'None provided')}</div>
+                        <div style="color: var(--danger); font-weight: 500;">${escapeHtml(appt.chief_complaint || 'None provided')}</div>
                     </div>
                 </div>
                 <hr style="margin: 1rem 0; border: none; border-top: 1px solid var(--border);">
@@ -187,11 +318,21 @@ export default {
                 </div>
             </div>
 
+            <!-- Datalists for rapid autocomplete -->
+            <datalist id="rx-frequency-list">
+                ${FREQUENCY_PRESETS.map(f => `<option value="${escapeHtml(f)}"></option>`).join('')}
+            </datalist>
+            <datalist id="common-labs-list">
+                ${COMMON_LAB_PRESETS.map(l => `<option value="${escapeHtml(l)}"></option>`).join('')}
+            </datalist>
+
             <form id="consultation-form">
                 <fieldset ${isReadOnly ? 'disabled' : ''} style="border: none; padding: 0; margin: 0;">
+                    
+                    <!-- 1. Allergies & Medical Alerts -->
                     <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.5rem;">
-                            <h3 style="font-size: 1.1rem; margin: 0;">Allergies &amp; Clinical Alerts</h3>
+                            <h3 style="font-size: 1.15rem; margin: 0;">Allergies &amp; Clinical Alerts</h3>
                             ${!isReadOnly ? `
                                 <div style="display: flex; gap: 0.5rem;">
                                     <button type="button" class="btn btn-secondary btn-sm" id="btn-set-nkda" style="font-size: 0.8rem;">Set NKDA</button>
@@ -204,38 +345,117 @@ export default {
                         </div>
                     </div>
 
+                    <!-- 2. Clinical Notes in SOAP Format -->
                     <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
-                        <h3 style="font-size: 1.1rem; margin-bottom: 1rem;">Clinical Notes</h3>
-                        <div class="form-group" style="margin-bottom: 0;">
-                            <textarea id="cons-notes" class="form-control" rows="5" placeholder="Subjective, Objective, Assessment, Plan (SOAP) narrative...">${escapeHtml(cons?.notes || '')}</textarea>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; flex-wrap: wrap; gap: 0.5rem;">
+                            <div>
+                                <h3 style="font-size: 1.15rem; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                                    Clinical Notes (SOAP Format)
+                                </h3>
+                                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">Standard clinical documentation of patient symptoms, examination findings, assessment, and care plan.</p>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            <!-- S: Subjective -->
+                            <div style="background: var(--bg-alt, #f8fafc); border: 1px solid var(--border); border-left: 4px solid #0284c7; border-radius: 6px; padding: 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                                    <label for="soap-subjective" style="font-weight: 700; color: #0369a1; font-size: 0.95rem; margin: 0;">
+                                        S &middot; Subjective
+                                    </label>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">Chief complaint, HPI, symptoms, onset, pain scale</span>
+                                </div>
+                                <textarea id="soap-subjective" class="form-control" rows="3" placeholder="Patient-reported symptoms, history of present illness, symptom duration, aggravating/relieving factors...">${escapeHtml(soap.subjective || '')}</textarea>
+                            </div>
+
+                            <!-- O: Objective -->
+                            <div style="background: var(--bg-alt, #f8fafc); border: 1px solid var(--border); border-left: 4px solid #16a34a; border-radius: 6px; padding: 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                                    <label for="soap-objective" style="font-weight: 700; color: #15803d; font-size: 0.95rem; margin: 0;">
+                                        O &middot; Objective
+                                    </label>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">Physical exam findings, vitals inspection, systemic observations</span>
+                                </div>
+                                <textarea id="soap-objective" class="form-control" rows="3" placeholder="Physical examination observations, vital signs check, HEENT, chest, abdomen, extremities findings...">${escapeHtml(soap.objective || '')}</textarea>
+                            </div>
+
+                            <!-- A: Assessment -->
+                            <div style="background: var(--bg-alt, #f8fafc); border: 1px solid var(--border); border-left: 4px solid #d97706; border-radius: 6px; padding: 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+                                    <label for="soap-assessment" style="font-weight: 700; color: #b45309; font-size: 0.95rem; margin: 0;">
+                                        A &middot; Assessment
+                                    </label>
+                                    <span style="font-size: 0.8rem; color: var(--text-muted);">Clinical impression, differential/working diagnosis synthesis, progress</span>
+                                </div>
+                                <textarea id="soap-assessment" class="form-control" rows="3" placeholder="Clinical synthesis, diagnosis analysis, disease severity, differential diagnoses...">${escapeHtml(soap.assessment || '')}</textarea>
+                            </div>
+
+                            <!-- P: Plan -->
+                            <div style="background: var(--bg-alt, #f8fafc); border: 1px solid var(--border); border-left: 4px solid var(--primary, #107c41); border-radius: 6px; padding: 1rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; flex-wrap: wrap; gap: 0.5rem;">
+                                    <div>
+                                        <label for="soap-plan" style="font-weight: 700; color: var(--primary, #107c41); font-size: 0.95rem; margin: 0;">
+                                            P &middot; Plan
+                                        </label>
+                                        <span style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.5rem;">Treatment strategy, lifestyle advice, counseling, follow-up timeline</span>
+                                    </div>
+                                    ${!isReadOnly ? `
+                                    <button type="button" class="btn btn-secondary btn-sm" id="btn-sync-rx-plan" style="font-size: 0.8rem; display: inline-flex; align-items: center; gap: 0.35rem; padding: 0.25rem 0.65rem;" title="Automatically sync active prescriptions into Plan without retyping">
+                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
+                                        ⚡ Summarize Prescriptions in Plan
+                                    </button>
+                                    ` : ''}
+                                </div>
+                                <textarea id="soap-plan" class="form-control" rows="4" placeholder="Treatment plan, patient counseling, dietary/activity advice, return precautions, follow-up date...">${escapeHtml(soap.plan || '')}</textarea>
+                            </div>
                         </div>
                     </div>
 
+                    <!-- 3. Diagnosis Section (ICD-10 Catalog) -->
                     <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <h3 style="font-size: 1.1rem; margin: 0;">Diagnosis</h3>
+                            <div>
+                                <h3 style="font-size: 1.15rem; margin: 0;">Diagnosis</h3>
+                                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">Select standardized ICD-10 codes or enter clinical diagnoses.</p>
+                            </div>
                             ${!isReadOnly ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-add-diagnosis">+ Add Diagnosis</button>` : ''}
                         </div>
                         <div id="diagnoses-container"></div>
                     </div>
 
+                    <!-- 4. Structured Prescriptions (Rx) Section -->
                     <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <h3 style="font-size: 1.1rem; margin: 0;">Prescriptions</h3>
-                            ${!isReadOnly ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-add-prescription">+ Add Rx</button>` : ''}
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                            <div>
+                                <h3 style="font-size: 1.15rem; margin: 0; display: flex; align-items: center; gap: 0.4rem;">
+                                    <span style="font-family: Georgia, serif; font-size: 1.35rem; font-weight: bold; color: var(--primary);">Rx</span>
+                                    Prescriptions
+                                </h3>
+                                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">Prescribe medications with complete structured clinical dosing, route, frequency, and duration.</p>
+                            </div>
+                            ${!isReadOnly ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-add-prescription">+ Add Medication</button>` : ''}
                         </div>
                         <div id="prescriptions-container"></div>
                     </div>
 
+                    <!-- 5. Dedicated Laboratory & Diagnostic Requests Section -->
                     <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                            <h3 style="font-size: 1.1rem; margin: 0;">Lab Requests</h3>
-                            ${!isReadOnly ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-add-lab">+ Add Lab</button>` : ''}
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                            <div>
+                                <h3 style="font-size: 1.15rem; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: var(--primary);"><path d="M10 2v7.31L4.89 16.5A2 2 0 0 0 6.61 19.5h10.78a2 2 0 0 0 1.72-3L14 9.31V2"></path><line x1="8.5" y1="2" x2="15.5" y2="2"></line><line x1="7" y1="14.5" x2="17" y2="14.5"></line></svg>
+                                    Laboratory &amp; Diagnostic Requests
+                                </h3>
+                                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.2rem;">Order diagnostic lab tests, clinical pathology, or radiological procedures for the patient.</p>
+                            </div>
+                            ${!isReadOnly ? `<button type="button" class="btn btn-secondary btn-sm" id="btn-add-lab">+ Add Lab Request</button>` : ''}
                         </div>
                         <div id="labs-container"></div>
                     </div>
                 </fieldset>
 
+                <!-- 6. Clinical Addenda (for locked completed visits) -->
                 ${isReadOnly && cons ? `
                 <div class="card" style="margin-bottom: 1.25rem; padding: 1.5rem;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
@@ -251,6 +471,7 @@ export default {
                 </div>
                 ` : ''}
 
+                <!-- Action Toolbar -->
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; gap: 1rem; flex-wrap: wrap;">
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
                         <button type="button" class="btn btn-secondary" id="btn-cancel-consult">${isReadOnly ? 'Back to Appointments' : 'Cancel'}</button>
@@ -273,6 +494,7 @@ export default {
                 </div>
             </form>
 
+            <!-- Modals -->
             <div class="modal" id="addendum-modal" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="addendum-title" aria-hidden="true">
                 <div class="modal-dialog">
                     <div class="modal-content">
@@ -327,7 +549,7 @@ export default {
         const container = this.container.querySelector('#diagnoses-container');
         if (!container) return;
 
-        this.state.icd10Pickers.forEach(picker => picker.destroy());
+        this.state.icd10Pickers.forEach(picker => picker && picker.destroy && picker.destroy());
         this.state.icd10Pickers = [];
         container.innerHTML = '';
         
@@ -336,7 +558,6 @@ export default {
             return;
         }
 
-        // ICD-10 catalog type-ahead: selecting a code auto-fills the diagnosis name
         const remoteIcd10 = async (query) => {
             const res = await api.get('api/icd10_controller.php', { search: query });
             const items = res.success ? ((res.data && res.data.items) ? res.data.items : []) : [];
@@ -347,24 +568,28 @@ export default {
             }));
         };
 
+        const isReadOnly = !['scheduled', 'confirmed'].includes(this.state.appointment?.status);
+
         this.state.diagnoses.forEach((diag, index) => {
             const row = create('div');
-            row.style.cssText = 'display: flex; gap: 1rem; margin-bottom: 1rem; align-items: flex-start;';
+            row.style.cssText = 'display: flex; gap: 0.75rem; margin-bottom: 0.75rem; align-items: flex-start; flex-wrap: wrap;';
             row.innerHTML = `
-                <div style="flex: 2;">
+                <div style="flex: 2; min-width: 220px;">
                     <div class="dx-icd-picker"></div>
                 </div>
-                <div style="flex: 2;">
-                    <input type="text" class="form-control" placeholder="Diagnosis (e.g. Hypertension)" value="${escapeHtml(diag.diagnosis_name || '')}" data-type="diagnosis" data-index="${index}" data-field="diagnosis_name">
+                <div style="flex: 2; min-width: 200px;">
+                    <input type="text" class="form-control" placeholder="Diagnosis (e.g. Essential Hypertension)" value="${escapeHtml(diag.diagnosis_name || '')}" data-type="diagnosis" data-index="${index}" data-field="diagnosis_name">
                 </div>
-                <div style="flex: 2;">
-                    <input type="text" class="form-control" placeholder="Notes (Optional)" value="${escapeHtml(diag.notes || '')}" data-type="diagnosis" data-index="${index}" data-field="notes">
+                <div style="flex: 2; min-width: 180px;">
+                    <input type="text" class="form-control" placeholder="Clinical notes (Optional)" value="${escapeHtml(diag.notes || '')}" data-type="diagnosis" data-index="${index}" data-field="notes">
                 </div>
+                ${!isReadOnly ? `
                 <div>
-                    <button type="button" class="btn btn-danger btn-sm" style="padding: 0.35rem 0.5rem; margin-top: 0.15rem;" data-remove-diagnosis="${index}">
+                    <button type="button" class="btn btn-danger btn-sm" style="padding: 0.4rem 0.55rem; margin-top: 0.15rem;" title="Remove diagnosis" data-remove-diagnosis="${index}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
                 </div>
+                ` : ''}
             `;
             container.appendChild(row);
 
@@ -400,11 +625,9 @@ export default {
         const container = this.container.querySelector('#prescriptions-container');
         if (!container) return;
 
-        // Dispose pickers from the previous render so their document listeners are released
-        this.state.medicationPickers.forEach(picker => picker.destroy());
+        // Dispose previous pickers
+        this.state.medicationPickers.forEach(picker => picker && picker.destroy && picker.destroy());
         this.state.medicationPickers = [];
-        this.state.timePickers.forEach(picker => picker.destroy());
-        this.state.timePickers = [];
 
         container.innerHTML = '';
 
@@ -413,42 +636,73 @@ export default {
             return;
         }
 
-        // Type-ahead medication lookup: matches name, generic name, or manufacturer
         const remoteMedications = async (query) => {
             const res = await api.get('api/medication_controller.php', { search: query });
             const items = res.success ? ((res.data && res.data.items) ? res.data.items : []) : [];
             return items.map(m => ({
                 value: m.medication_id,
                 label: `${m.name}${m.generic_name ? ` (${m.generic_name})` : ''}`,
+                name: m.name,
+                generic: m.generic_name || '',
                 meta: m.manufacturer || ''
             }));
         };
 
-        this.state.prescriptions.forEach((rx, index) => {
-            const row = create('div');
-            row.style.cssText = 'display: flex; gap: 1rem; margin-bottom: 1rem; align-items: flex-start;';
+        const isReadOnly = !['scheduled', 'confirmed'].includes(this.state.appointment?.status);
 
-            row.innerHTML = `
-                <div style="flex: 2;">
-                    <div class="rx-medication-picker"></div>
+        this.state.prescriptions.forEach((rx, index) => {
+            const card = create('div');
+            card.className = 'prescription-item-card';
+            card.style.cssText = 'background: var(--bg-alt, #f8fafc); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;';
+
+            card.innerHTML = `
+                <!-- Row 1: Medication Name, Strength, Dosage, Route -->
+                <div style="display: flex; gap: 0.75rem; align-items: flex-start; flex-wrap: wrap; margin-bottom: 0.75rem;">
+                    <div style="flex: 3; min-width: 220px;">
+                        <label style="font-size: 0.78rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Medication Name *</label>
+                        <div class="rx-medication-picker"></div>
+                    </div>
+                    <div style="flex: 1.2; min-width: 120px;">
+                        <label style="font-size: 0.78rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Strength</label>
+                        <input type="text" class="form-control" placeholder="e.g. 500mg, 10mg/mL" value="${escapeHtml(rx.strength || '')}" data-type="prescription" data-index="${index}" data-field="strength">
+                    </div>
+                    <div style="flex: 1.2; min-width: 120px;">
+                        <label style="font-size: 0.78rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Dosage *</label>
+                        <input type="text" class="form-control" placeholder="e.g. 1 tab, 5mL" value="${escapeHtml(rx.dosage || '')}" data-type="prescription" data-index="${index}" data-field="dosage">
+                    </div>
+                    <div style="flex: 1.5; min-width: 140px;">
+                        <label style="font-size: 0.78rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Route</label>
+                        <select class="form-control" data-type="prescription" data-index="${index}" data-field="route">
+                            ${CLINICAL_ROUTES.map(r => `<option value="${escapeHtml(r.value)}" ${(rx.route || 'Oral (PO)') === r.value ? 'selected' : ''}>${escapeHtml(r.label)}</option>`).join('')}
+                        </select>
+                    </div>
+                    ${!isReadOnly ? `
+                    <div style="display: flex; align-items: flex-end; padding-top: 1.5rem;">
+                        <button type="button" class="btn btn-danger btn-sm" style="padding: 0.4rem 0.55rem;" title="Remove medication" data-remove-prescription="${index}">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                        </button>
+                    </div>
+                    ` : ''}
                 </div>
-                <div style="flex: 1;">
-                    <input type="text" class="form-control" placeholder="Dosage (e.g. 500mg)" value="${escapeHtml(rx.dosage || '')}" data-type="prescription" data-index="${index}" data-field="dosage">
-                </div>
-                <div style="flex: 1;">
-                    <input type="text" class="form-control" placeholder="Freq (e.g. 1 tab BID)" value="${escapeHtml(rx.frequency || '')}" data-type="prescription" data-index="${index}" data-field="frequency">
-                </div>
-                <div style="flex: 1.4;">
-                    <div class="rx-time-picker"></div>
-                </div>
-                <div>
-                    <button type="button" class="btn btn-danger btn-sm" style="padding: 0.35rem 0.5rem; margin-top: 0.15rem;" data-remove-prescription="${index}">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-                    </button>
+
+                <!-- Row 2: Frequency, Duration, Instructions -->
+                <div style="display: flex; gap: 0.75rem; align-items: flex-start; flex-wrap: wrap;">
+                    <div style="flex: 1.8; min-width: 170px;">
+                        <label style="font-size: 0.78rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Frequency *</label>
+                        <input type="text" class="form-control" list="rx-frequency-list" placeholder="e.g. TID, Once daily" value="${escapeHtml(rx.frequency || '')}" data-type="prescription" data-index="${index}" data-field="frequency">
+                    </div>
+                    <div style="flex: 1.2; min-width: 120px;">
+                        <label style="font-size: 0.78rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Duration</label>
+                        <input type="text" class="form-control" placeholder="e.g. 7 days, 14 days" value="${escapeHtml(rx.duration || '')}" data-type="prescription" data-index="${index}" data-field="duration">
+                    </div>
+                    <div style="flex: 3; min-width: 220px;">
+                        <label style="font-size: 0.78rem; font-weight: 600; text-transform: uppercase; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">Additional Instructions / Timing</label>
+                        <input type="text" class="form-control" placeholder="e.g. Take after meals with plenty of water, do not crush" value="${escapeHtml(rx.instructions || '')}" data-type="prescription" data-index="${index}" data-field="instructions">
+                    </div>
                 </div>
             `;
 
-            container.appendChild(row);
+            container.appendChild(card);
 
             const picker = new SearchSelect({
                 placeholder: 'Type to search medication...',
@@ -457,22 +711,19 @@ export default {
                 value: rx.medication_id || '',
                 label: rx.medication_id ? (rx.medication_name || `Medication #${rx.medication_id}`) : '',
                 onChange: (item) => {
-                    this.state.prescriptions[index].medication_id = item ? item.value : '';
+                    const current = this.state.prescriptions[index];
+                    if (!current) return;
+                    if (item) {
+                        current.medication_id = item.value;
+                        current.medication_name = item.name || item.label;
+                    } else {
+                        current.medication_id = '';
+                        current.medication_name = '';
+                    }
                 }
-            }).mount(row.querySelector('.rx-medication-picker'));
+            }).mount(card.querySelector('.rx-medication-picker'));
 
             this.state.medicationPickers.push(picker);
-
-            const timePicker = new TimePicker({
-                placeholder: 'Set time...',
-                value: rx.time_to_take || '',
-                onChange: (value) => {
-                    const current = this.state.prescriptions[index];
-                    if (current) current.time_to_take = value;
-                }
-            }).mount(row.querySelector('.rx-time-picker'));
-
-            this.state.timePickers.push(timePicker);
         });
     },
 
@@ -483,36 +734,84 @@ export default {
         container.innerHTML = '';
 
         if (this.state.lab_requests.length === 0) {
-            container.innerHTML = '<p style="color: var(--text-muted); text-align: center; margin: 0; padding: 0.5rem 0;">No lab requests added.</p>';
+            container.innerHTML = '<p style="color: var(--text-muted); text-align: center; margin: 0; padding: 0.5rem 0;">No laboratory requests added.</p>';
             return;
         }
 
+        const isReadOnly = !['scheduled', 'confirmed'].includes(this.state.appointment?.status);
+
         this.state.lab_requests.forEach((lab, index) => {
             const row = create('div');
-            row.style.cssText = 'display: flex; gap: 1rem; margin-bottom: 1rem; align-items: flex-start;';
+            row.style.cssText = 'display: flex; gap: 0.75rem; margin-bottom: 0.75rem; align-items: flex-start; flex-wrap: wrap;';
             row.innerHTML = `
-                <div style="flex: 2;">
-                    <input type="text" class="form-control" placeholder="Test Name (e.g. Complete Blood Count)" value="${escapeHtml(lab.test_name || '')}" data-type="lab" data-index="${index}" data-field="test_name">
+                <div style="flex: 3; min-width: 240px;">
+                    <input type="text" class="form-control" list="common-labs-list" placeholder="Test Name (e.g. Complete Blood Count, Fasting Blood Sugar, Chest X-Ray)" value="${escapeHtml(lab.test_name || '')}" data-type="lab" data-index="${index}" data-field="test_name">
                 </div>
+                ${!isReadOnly ? `
                 <div>
-                    <button type="button" class="btn btn-danger btn-sm" style="padding: 0.35rem 0.5rem; margin-top: 0.15rem;" data-remove-lab="${index}">
+                    <button type="button" class="btn btn-danger btn-sm" style="padding: 0.4rem 0.55rem; margin-top: 0.15rem;" title="Remove lab request" data-remove-lab="${index}">
                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                     </button>
                 </div>
+                ` : ''}
             `;
             container.appendChild(row);
         });
     },
 
+    syncPrescriptionsToPlan() {
+        const planTextarea = this.container.querySelector('#soap-plan');
+        if (!planTextarea) return;
+
+        // Gather filled prescriptions
+        const validRx = this.state.prescriptions.filter(p => p.medication_id || (p.dosage && p.dosage.trim() !== ''));
+        if (validRx.length === 0) {
+            showToast('No prescribed medications to summarize. Add medications in the Prescriptions section below first.', 'info');
+            return;
+        }
+
+        const lines = validRx.map(p => {
+            const name = p.medication_name || `Medication #${p.medication_id || 'Rx'}`;
+            const strength = p.strength ? ` ${p.strength.trim()}` : '';
+            const dosage = p.dosage ? p.dosage.trim() : 'As directed';
+            const route = p.route ? `, ${p.route.trim()}` : '';
+            const freq = p.frequency ? `, ${p.frequency.trim()}` : '';
+            const dur = p.duration ? ` for ${p.duration.trim()}` : '';
+            const inst = p.instructions ? ` (${p.instructions.trim()})` : '';
+            return `• ${name}${strength} - ${dosage}${route}${freq}${dur}${inst}`;
+        });
+
+        const summaryBlock = `Prescribed Medications:\n${lines.join('\n')}`;
+
+        let currentPlan = planTextarea.value.trim();
+        const rxHeaderRegex = /Prescribed Medications:\n(?:•[^\n]+(?:\n|$))*/i;
+
+        if (rxHeaderRegex.test(currentPlan)) {
+            // Replace existing block
+            currentPlan = currentPlan.replace(rxHeaderRegex, summaryBlock);
+        } else {
+            // Append with clean spacing
+            if (currentPlan !== '') {
+                currentPlan = `${currentPlan}\n\n${summaryBlock}`;
+            } else {
+                currentPlan = summaryBlock;
+            }
+        }
+
+        planTextarea.value = currentPlan;
+        this.state.soap.plan = currentPlan;
+        showToast('Prescription details summarized in Plan.', 'success');
+        planTextarea.focus();
+    },
+
     attachEventListeners() {
         const c = this.container;
         
-        // Cancel button
+        // Navigation & helpers
         c.querySelector('#btn-cancel-consult')?.addEventListener('click', () => {
             window.navigateTo('doctor_appointments');
         });
 
-        // NKDA helper button
         c.querySelector('#btn-set-nkda')?.addEventListener('click', () => {
             const input = c.querySelector('#cons-allergies');
             if (input) {
@@ -521,11 +820,16 @@ export default {
             }
         });
 
-        // Reprint actions for an already-saved consultation
+        // SOAP Plan Prescription Summarizer shortcut
+        c.querySelector('#btn-sync-rx-plan')?.addEventListener('click', () => {
+            this.syncPrescriptionsToPlan();
+        });
+
+        // Reprint actions for saved consultations
         c.querySelector('#btn-print-rx')?.addEventListener('click', () => printPrescription(this.state.appointmentId));
         c.querySelector('#btn-print-lab')?.addEventListener('click', () => printLabRequest(this.state.appointmentId));
 
-        // Add buttons using factory functions (javascript_objects_and_arrays.md)
+        // Add detail buttons
         c.querySelector('#btn-add-diagnosis')?.addEventListener('click', () => {
             this.state.diagnoses.push(createEmptyDiagnosis());
             this.renderDiagnoses();
@@ -541,24 +845,35 @@ export default {
             this.renderLabs();
         });
 
-        // Event delegation for input changes to sync state
-        c.addEventListener('input', (e) => {
+        // Field change listener for two-way state synchronization
+        const handleSync = (e) => {
             if (e.target.matches('[data-type]')) {
                 const type = e.target.getAttribute('data-type');
                 const index = parseInt(e.target.getAttribute('data-index'), 10);
                 const field = e.target.getAttribute('data-field');
                 
-                if (type === 'diagnosis') {
+                if (type === 'diagnosis' && this.state.diagnoses[index]) {
                     this.state.diagnoses[index][field] = e.target.value;
-                } else if (type === 'prescription') {
+                } else if (type === 'prescription' && this.state.prescriptions[index]) {
                     this.state.prescriptions[index][field] = e.target.value;
-                } else if (type === 'lab') {
+                } else if (type === 'lab' && this.state.lab_requests[index]) {
                     this.state.lab_requests[index][field] = e.target.value;
                 }
+            } else if (e.target.id === 'soap-subjective') {
+                this.state.soap.subjective = e.target.value;
+            } else if (e.target.id === 'soap-objective') {
+                this.state.soap.objective = e.target.value;
+            } else if (e.target.id === 'soap-assessment') {
+                this.state.soap.assessment = e.target.value;
+            } else if (e.target.id === 'soap-plan') {
+                this.state.soap.plan = e.target.value;
             }
-        });
+        };
 
-        // Event delegation for remove buttons
+        c.addEventListener('input', handleSync);
+        c.addEventListener('change', handleSync);
+
+        // Remove row delegation
         c.addEventListener('click', (e) => {
             const btnDiag = e.target.closest('[data-remove-diagnosis]');
             if (btnDiag) {
@@ -582,24 +897,38 @@ export default {
             }
         });
 
-        // Submit form
+        // Form Submission
         const form = c.querySelector('#consultation-form');
         if (form) {
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const btnSave = c.querySelector('#btn-save-consultation');
                 btnSave.disabled = true;
-                btnSave.textContent = 'Saving...';
+                btnSave.textContent = 'Saving encounter...';
 
                 const allergiesVal = c.querySelector('#cons-allergies') ? c.querySelector('#cons-allergies').value.trim() : null;
 
+                const soapPayload = {
+                    subjective: c.querySelector('#soap-subjective') ? c.querySelector('#soap-subjective').value.trim() : '',
+                    objective: c.querySelector('#soap-objective') ? c.querySelector('#soap-objective').value.trim() : '',
+                    assessment: c.querySelector('#soap-assessment') ? c.querySelector('#soap-assessment').value.trim() : '',
+                    plan: c.querySelector('#soap-plan') ? c.querySelector('#soap-plan').value.trim() : ''
+                };
+
+                const compiledNotes = compileSoapNotes(soapPayload);
+
+                const validDiagnoses = this.state.diagnoses.filter(d => (d.diagnosis_name || '').trim() !== '');
+                const validPrescriptions = this.state.prescriptions.filter(p => p.medication_id !== '' && ((p.dosage || '').trim() !== '' || (p.frequency || '').trim() !== ''));
+                const validLabs = this.state.lab_requests.filter(l => (l.test_name || '').trim() !== '');
+
                 const payload = {
                     appointment_id: this.state.appointmentId,
-                    notes: c.querySelector('#cons-notes').value.trim(),
+                    soap: soapPayload,
+                    notes: compiledNotes,
                     allergies_alerts: allergiesVal,
-                    diagnoses: this.state.diagnoses.filter(d => d.diagnosis_name.trim() !== ''),
-                    prescriptions: this.state.prescriptions.filter(p => p.medication_id !== '' && p.dosage.trim() !== '' && p.frequency.trim() !== ''),
-                    lab_requests: this.state.lab_requests.filter(l => l.test_name.trim() !== '')
+                    diagnoses: validDiagnoses,
+                    prescriptions: validPrescriptions,
+                    lab_requests: validLabs
                 };
 
                 try {
@@ -679,8 +1008,8 @@ export default {
             return;
         }
 
-        const hasRx = this.state.prescriptions.some(p => p.medication_id && String(p.dosage).trim() !== '' && String(p.frequency).trim() !== '');
-        const hasLabs = this.state.lab_requests.some(l => String(l.test_name).trim() !== '');
+        const hasRx = this.state.prescriptions.some(p => p.medication_id && (String(p.dosage || '').trim() !== '' || String(p.frequency || '').trim() !== ''));
+        const hasLabs = this.state.lab_requests.some(l => String(l.test_name || '').trim() !== '');
 
         const rxBtn = modal.querySelector('#btn-after-print-rx');
         const labBtn = modal.querySelector('#btn-after-print-lab');

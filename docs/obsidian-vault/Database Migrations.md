@@ -70,6 +70,7 @@ Spot checks for the **Post-Migration Patient Records Schema**:
 | `patients.allergies_alerts` | `text NULL` |
 | `patients.allergies_confirmed_by_doctor` | `tinyint(1) NOT NULL DEFAULT '0'` |
 | `prescriptions.time_to_take` | `varchar(100) NULL` |
+| `prescriptions.strength, route, duration, instructions` | `varchar(100)`, `varchar(50)`, `varchar(50)`, `text` NULL |
 | `audit_logs` table | present |
 | `consultation_addenda` table | present |
 | `doctor_schedules` table | present |
@@ -106,6 +107,7 @@ For **existing databases**, inspect the specific migration file to confirm your 
 | 2026-10-10 | Applied `011_create_audit_logs.sql` | Added immutable compliance audit trail |
 | 2026-10-10 | Applied `012_clinical_safety_and_constraints.sql` | Added consultation addenda and unique appointment slot constraint |
 | 2026-10-13 | Applied `013_doctor_schedules_and_hybrid_break_glass.sql` | Configured doctor schedules and hybrid break-glass / standard access requests |
+| 2026-10-16 | Applied `014_structured_prescriptions.sql` | Added `strength`, `route`, `duration`, and `instructions` to `prescriptions` for structured medication orders |
 
 ## Related
 

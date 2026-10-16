@@ -308,23 +308,39 @@ export function renderPatientRecord(container, data, options = {}) {
                 ? `<div class="encounter-block">
                         <h5>Prescriptions</h5>
                         <table class="record-table">
-                            <thead><tr><th>Medication</th><th>Dosage</th><th>Frequency</th><th>Time to Take</th></tr></thead>
+                            <thead><tr><th>Medication</th><th>Dosage &amp; Route</th><th>Frequency &amp; Duration</th><th>Instructions</th></tr></thead>
                             <tbody>
                                 ${prescriptions.map(rx => `<tr>
-                                    <td><strong>${escapeHtml(rx.medication_name)}</strong>${rx.generic_name ? `<div class="text-muted" style="font-size: 0.78rem;">${escapeHtml(rx.generic_name)}</div>` : ''}</td>
-                                    <td>${escapeHtml(rx.dosage)}</td>
-                                    <td>${escapeHtml(rx.frequency)}</td>
-                                    <td>${escapeHtml(rx.time_to_take || '—')}</td>
+                                    <td>
+                                        <strong>${escapeHtml(rx.medication_name)}</strong>
+                                        ${rx.strength ? `<span class="badge badge-secondary" style="font-size: 0.75rem; margin-left: 0.35rem;">${escapeHtml(rx.strength)}</span>` : ''}
+                                        ${rx.generic_name ? `<div class="text-muted" style="font-size: 0.78rem;">${escapeHtml(rx.generic_name)}</div>` : ''}
+                                    </td>
+                                    <td>
+                                        ${escapeHtml(rx.dosage || '—')}
+                                        ${rx.route ? `<div class="text-muted" style="font-size: 0.78rem;">${escapeHtml(rx.route)}</div>` : ''}
+                                    </td>
+                                    <td>
+                                        ${escapeHtml(rx.frequency || '—')}
+                                        ${rx.duration ? `<div class="text-muted" style="font-size: 0.78rem;">${escapeHtml(rx.duration)}</div>` : ''}
+                                    </td>
+                                    <td>
+                                        ${rx.instructions ? escapeHtml(rx.instructions) : (rx.time_to_take ? escapeHtml(rx.time_to_take) : '<span class="text-muted">—</span>')}
+                                    </td>
                                 </tr>`).join('')}
                             </tbody>
                         </table>
                    </div>`
                 : '<div class="encounter-block"><h5>Prescriptions</h5><span class="text-muted">None prescribed.</span></div>';
 
+            const formattedNotes = enc.notes
+                ? escapeHtml(enc.notes).replace(/^(SUBJECTIVE|OBJECTIVE|ASSESSMENT|PLAN):/gm, '<strong style="color: var(--primary); font-size: 0.92rem; display: inline-block; margin-top: 0.35rem;">$1:</strong>')
+                : '';
+
             const notes = canSeeNotes && enc.notes
                 ? `<div class="encounter-block">
                         <h5>Clinical Notes</h5>
-                        <div class="record-notes">${escapeHtml(enc.notes)}</div>
+                        <div class="record-notes">${formattedNotes}</div>
                    </div>`
                 : '';
 

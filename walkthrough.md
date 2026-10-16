@@ -891,16 +891,61 @@ Empowered administrators to manage and inspect weekly physician rotas directly f
 
 ---
 
-## Section 38: System Verification Results & Test Suite Pass Rate
+---
 
-System stability, functional safety, and regression resistance across all 38 development sections are verified by five (5) automated test suites maintaining a **100% pass rate (75/75 tests passing)**:
+## Section 39: Doctor Patient Consultation Form SOAP Notes & Structured Prescriptions Revamp
+
+Modernized the Doctor Consultation module (`assets/js/modules/doctor_consultation.js`) to adhere to professional clinical documentation standards, separating unstructured narrative into structured SOAP panels, eliminating double-entry prescription typing, and expanding medication orders with 7 structured clinical attributes.
+
+### 1. Clinical Notes in SOAP Format (Subjective, Objective, Assessment, Plan)
+- **Dedicated SOAP Panels:** Replaced the legacy single textarea with 4 distinct, color-coded clinical cards:
+  - **S · Subjective:** Captures patient-reported symptoms, chief complaint onset, duration, aggravating/relieving factors, and pain scale.
+  - **O · Objective:** Captures physical examination findings, clinical inspection, HEENT, chest, abdomen, extremities observations, with triage vitals (BP, Temp, SpO2) referenced directly above.
+  - **A · Assessment:** Formulates clinical impressions, differential/working diagnosis synthesis, disease severity, and clinical progress.
+  - **P · Plan:** Documents comprehensive management strategy, patient education, dietary/activity advice, return precautions, and follow-up timeline.
+- **Bi-directional Backward Compatibility:** Clinical notes are serialized into standardized text with `SUBJECTIVE:`, `OBJECTIVE:`, `ASSESSMENT:`, `PLAN:` section tags for database storage in `consultation.notes`. Older legacy plain-text consultations automatically load into the *Subjective* section without data loss.
+
+### 2. Zero-Duplicate Plan Prescriptions Shortcut
+- Added a one-click **"⚡ Summarize Prescriptions in Plan"** shortcut button directly in the Plan panel header.
+- Automatically compiles active prescription items into a standardized bulleted summary (e.g., `• Amoxicillin 500mg - 1 capsule, Oral (PO), Three times daily (TID) for 7 days (Take after meals)`).
+- Intelligently appends or replaces the `Prescribed Medications:` block in the Plan textarea without overwriting any custom non-pharmacologic notes the physician has typed.
+- Completely eliminates redundant manual typing between the Prescriptions section and the SOAP Plan.
+
+### 3. Structured Prescriptions (Rx) Section
+- Replaced the basic 3-field input with an ergonomic, structured prescription item card capturing all 7 essential prescription attributes:
+  1. **Medication Name:** Type-ahead catalog lookup matching generic and brand names from `medications`.
+  2. **Strength:** Specific drug strength (e.g., `500 mg`, `250 mg/5 mL`, `10 mg`).
+  3. **Dosage:** Unit dosage (e.g., `1 tablet`, `5 mL`, `2 capsules`, `1 drop`).
+  4. **Route:** Standardized clinical dropdown (`Oral (PO)`, `Sublingual`, `Topical`, `Inhalation`, `IM`, `IV`, `SC`, `Ophthalmic`, `Otic`, `Nasal`, `Rectal`, `Other`).
+  5. **Frequency:** Standard clinical abbreviations and frequency intervals with instant datalist autocomplete (`OD`, `BID`, `TID`, `QID`, `Q4H`, `Q8H`, `QHS`, `PRN`).
+  6. **Duration:** Treatment duration (e.g., `7 days`, `14 days`, `30 days`, `Ongoing`).
+  7. **Additional Instructions / Timing:** Patient instructions (e.g., `Take after meals with plenty of water`, `Finish all antibiotics`).
+
+### 4. Dedicated Laboratory & Diagnostic Requests Section
+- Retained and refined Laboratory & Diagnostic Requests as an independent section with quick-pick datalists for routine tests (e.g., `CBC with Platelet`, `FBS`, `Lipid Profile`, `Chest X-Ray`, `Urinalysis`).
+
+### 5. Downstream Consumer Parity
+- **Print Prescription Slip (`print-prescription.js`):** Formats medication strength, administration route, duration, and patient instructions on the printed Rx slip handed to the patient.
+- **Longitudinal Patient Records (`patient-record-view.js`):** Updated the encounter timeline Prescriptions table with structured columns (`Medication & Strength`, `Dosage & Route`, `Frequency & Duration`, `Instructions`) and formatted SOAP section headers in Clinical Notes.
+
+### 6. Database Migration & Schema Sync
+- Created and applied `migrations/014_structured_prescriptions.sql`, safely adding `strength`, `route`, `duration`, and `instructions` to the `prescriptions` table.
+- Synchronized `setup/schema.sql`, `docs/obsidian-vault/Database Schema.md`, and `docs/obsidian-vault/Database Migrations.md`.
+
+---
+
+## Section 40: System Verification Results & Test Suite Pass Rate
+
+System stability, functional safety, and regression resistance across all 40 development sections are verified by six (6) automated test suites maintaining a **100% pass rate (80/80 tests passing)**:
 
 | Test Suite | Script | Tests | Result | Verified Scope |
 | :--- | :--- | :---: | :---: | :--- |
+| **Doctor Consultation SOAP & Rx** | `tests/verify_consultation_soap_rx.php` | 5 / 5 | **100% PASS** | Migration 014 schema, SOAP bidirectional round-trip, legacy plain-text fallback, atomic consultation saving, patient record timeline parity |
 | **Doctor Schedules & Form UX** | `tests/verify_schedule_and_form_ux.php` | 20 / 20 | **100% PASS** | Form date `min`, time bounds, schedule notices, warning banners, zero-retype draft preservation, `doctor_schedule_controller.php`, modal presets |
 | **UI & Functional Improvements** | `tests/verify_ui_functional_improvements.php` | 17 / 17 | **100% PASS** | Overview table layout, no horizontal scroll at 100% zoom, dedicated Chief Complaint column, stacked vitals, date range picker, rows per page, compact cancel icon |
 | **System Acceptance** | `tests/verify_acceptance.php` | 20 / 20 | **100% PASS** | 10-patient capacity model, operating hours (08:00–17:00), lunch pause, Sunday closure, consultation gating, allergy confirmation, audit logs |
 | **CPRMS Enhancements** | `tests/verify_cprms_enhancements.php` | 10 / 10 | **100% PASS** | Universal table sorting, 4-way gender filtering ("Other" resolution), human-readable audit logs, entity name enrichment |
 | **To-Do Improvements** | `tests/verify_todo_improvements.php` | 8 / 8 | **100% PASS** | Hybrid break-glass access, standard access requests (24h window), live multi-tab synchronization (`live-sync.js`) |
-| **Total Test Coverage** | **5 Suites** | **75 / 75** | **100% PASS** | **Zero Regressions** |
+| **Total Test Coverage** | **6 Suites** | **80 / 80** | **100% PASS** | **Zero Regressions** |
+
 

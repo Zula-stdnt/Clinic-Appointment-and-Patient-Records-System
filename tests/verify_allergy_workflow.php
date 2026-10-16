@@ -143,9 +143,9 @@ run_test("3.1: Register Walk-in patient with intake allergy note", function() us
 // 4. Schedule appointment and update intake allergy at booking
 $testApptId = 0;
 run_test("4.1: Schedule appointment and update intake allergy note (Unconfirmed)", function() use ($baseUrl, $cookieRecep, $recCsrf, &$testPatientId, &$testApptId, $pdo) {
-    // Pick an open weekday slot well in the future
-    $nextDate = new DateTime('+20 days');
-    while ((int)$nextDate->format('w') === 0) { // avoid Sunday
+    // Pick an open Monday slot well in the future when Doctor 1 is scheduled
+    $nextDate = new DateTime('+21 days');
+    while ((int)$nextDate->format('w') !== 1) { // 1 = Monday
         $nextDate->modify('+1 day');
     }
     $dateStr = $nextDate->format('Y-m-d');
