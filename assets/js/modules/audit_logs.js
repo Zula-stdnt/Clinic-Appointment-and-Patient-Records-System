@@ -4,6 +4,69 @@
 import api from '../api.js?v=7';
 import { escapeHtml, showToast } from '../ui.js?v=24';
 
+const AUDIT_ACTION_GROUPS = [
+    {
+        name: 'Appointments & Clinical',
+        actions: [
+            { value: 'CREATE_APPOINTMENT', label: 'Appointment Created' },
+            { value: 'STATUS_CHANGE', label: 'Appointment Status Changed' },
+            { value: 'RESCHEDULE_APPOINTMENT', label: 'Appointment Rescheduled' },
+            { value: 'EDIT_APPOINTMENT', label: 'Appointment Edited' },
+            { value: 'CANCEL_REQUEST', label: 'Cancellation Requested' },
+            { value: 'CANCEL_APPOINTMENT', label: 'Appointment Cancelled' },
+            { value: 'SAVE_CONSULTATION', label: 'Consultation Saved' },
+            { value: 'UPDATE_CONSULTATION', label: 'Consultation Updated' },
+            { value: 'COMPLETE_CONSULTATION', label: 'Consultation Completed' },
+            { value: 'ADD_ENCOUNTER_ADDENDUM', label: 'Encounter Addendum Appended' },
+            { value: 'UPDATE_ALLERGIES_AT_INTAKE', label: 'Allergies Updated at Intake' }
+        ]
+    },
+    {
+        name: 'Patient Records & Demographics',
+        actions: [
+            { value: 'REGISTER_PATIENT', label: 'Patient Registered' },
+            { value: 'REGISTER_WALKIN', label: 'Walk-in Registered' },
+            { value: 'VIEW_RECORD', label: 'Medical Record Viewed' },
+            { value: 'VIEW_DEMOGRAPHICS', label: 'Demographics Viewed' },
+            { value: 'EDIT_DEMOGRAPHICS', label: 'Demographics Edited' },
+            { value: 'ARCHIVE', label: 'Patient Record Archived' },
+            { value: 'RESTORE', label: 'Patient Record Restored' },
+            { value: 'PURGE', label: 'Patient Record Purged' }
+        ]
+    },
+    {
+        name: 'Security & Access Control',
+        actions: [
+            { value: 'BREAK_GLASS_ACCESS', label: 'Emergency Break-Glass Override' },
+            { value: 'REQUEST_STANDARD_ACCESS', label: 'Access Requested' },
+            { value: 'APPROVE_ACCESS_REQUEST', label: 'Access Approved' },
+            { value: 'REJECT_ACCESS_REQUEST', label: 'Access Rejected' },
+            { value: 'ACKNOWLEDGE_AUDIT_FLAG', label: 'Audit Flag Acknowledged' },
+            { value: 'VIEW_RECORD_APPROVED_ACCESS', label: 'Approved Record Viewed' },
+            { value: 'LOGIN', label: 'User Login' },
+            { value: 'LOGOUT', label: 'User Logout' },
+            { value: 'CHANGE_PASSWORD', label: 'Account Password Changed' }
+        ]
+    },
+    {
+        name: 'Administration & Staff',
+        actions: [
+            { value: 'CREATE_DOCTOR', label: 'Doctor Profile Created' },
+            { value: 'UPDATE_DOCTOR', label: 'Doctor Profile Updated' },
+            { value: 'UPDATE_DOCTOR_SCHEDULE', label: 'Doctor Schedule Updated' },
+            { value: 'ARCHIVE_DOCTOR', label: 'Doctor Profile Archived' },
+            { value: 'RESTORE_DOCTOR', label: 'Doctor Profile Restored' },
+            { value: 'PURGE_DOCTOR', label: 'Doctor Profile Purged' },
+            { value: 'CREATE_USER', label: 'User Account Created' },
+            { value: 'UPDATE_USER', label: 'User Account Updated' },
+            { value: 'ARCHIVE_USER', label: 'User Account Archived' },
+            { value: 'RESTORE_USER', label: 'User Account Restored' },
+            { value: 'PURGE_USER', label: 'User Account Purged' },
+            { value: 'UPDATE_PROFILE', label: 'User Profile Updated' }
+        ]
+    }
+];
+
 const auditLogsModule = {
     container: null,
     currentPage: 1,
@@ -26,6 +89,43 @@ const auditLogsModule = {
         this.checkPendingBadge();
     },
 
+    renderDropdownOptions() {
+        let html = `
+            <div class="custom-dropdown-item${!this.currentAction ? ' is-selected' : ''}" data-value="" data-label="All Actions" role="option">
+                <span>All Actions</span>
+                ${!this.currentAction ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
+            </div>
+        `;
+
+        AUDIT_ACTION_GROUPS.forEach(group => {
+            html += `<div class="custom-dropdown-header">${escapeHtml(group.name)}</div>`;
+            group.actions.forEach(act => {
+                const isSel = this.currentAction === act.value;
+                html += `
+                    <div class="custom-dropdown-item${isSel ? ' is-selected' : ''}" data-value="${escapeHtml(act.value)}" data-label="${escapeHtml(act.label)}" role="option">
+                        <span>${escapeHtml(act.label)}</span>
+                        ${isSel ? '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>' : ''}
+                    </div>
+                `;
+            });
+        });
+
+        return html;
+    },
+
+    renderNativeSelectOptions() {
+        let html = '';
+        AUDIT_ACTION_GROUPS.forEach(group => {
+            html += `<optgroup label="${escapeHtml(group.name)}">`;
+            group.actions.forEach(act => {
+                const isSel = this.currentAction === act.value ? ' selected' : '';
+                html += `<option value="${escapeHtml(act.value)}"${isSel}>${escapeHtml(act.label)}</option>`;
+            });
+            html += `</optgroup>`;
+        });
+        return html;
+    },
+
     render() {
         this.container.innerHTML = `
             <div class="card">
@@ -46,21 +146,24 @@ const auditLogsModule = {
                 <div id="audit-trail-section">
                     <div class="toolbar">
                         <div class="toolbar-filters">
-                            <select id="audit-action-filter" class="form-control" style="width: auto; min-width: 180px;">
-                                <option value="">All Actions</option>
-                                <option value="BREAK_GLASS_ACCESS">Emergency Break-Glass</option>
-                                <option value="VIEW_RECORD">Medical Record Views</option>
-                                <option value="VIEW_DEMOGRAPHICS">Demographics Views</option>
-                                <option value="EDIT_DEMOGRAPHICS">Demographics Edited</option>
-                                <option value="CANCEL_REQUEST">Cancellation Requests</option>
-                                <option value="CANCEL_APPOINTMENT">Cancelled Appointments</option>
-                                <option value="REGISTER_PATIENT">Patient Registrations</option>
-                                <option value="REGISTER_WALKIN">Walk-in Registrations</option>
-                                <option value="CREATE_USER">User Creations</option>
-                                <option value="UPDATE_USER">User Updates</option>
-                                <option value="ARCHIVE">Archive Events</option>
-                                <option value="RESTORE">Restore Events</option>
-                            </select>
+                            <div class="custom-dropdown-filter-wrapper">
+                                <button type="button" id="audit-action-btn" class="form-control" style="width: auto; min-width: 220px; text-align: left; display: flex; align-items: center; justify-content: space-between; cursor: pointer; background: var(--surface, #fff); padding-right: 2.25rem; position: relative;" aria-haspopup="listbox" aria-expanded="false" title="Filter by audit action">
+                                    <span id="audit-action-label" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 190px;">All Actions</span>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; right: 0.75rem; pointer-events: none;"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                                </button>
+                                <div id="audit-action-menu" class="custom-dropdown-menu" role="listbox" style="display: none; position: absolute; top: 100%; left: 0; min-width: 290px; max-width: 360px; z-index: 1050; background: var(--surface, #fff); border: 1px solid var(--border, #ced4da); border-radius: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.14); margin-top: 4px; padding: 0.25rem 0;">
+                                    <div style="padding: 0.4rem 0.5rem; position: sticky; top: 0; background: var(--surface, #fff); z-index: 2; border-bottom: 1px solid var(--border, #e2e8f0);">
+                                        <input type="text" id="audit-action-search" class="form-control form-control-sm" placeholder="Quick search actions..." style="font-size: 0.8rem; padding: 0.3rem 0.5rem; width: 100%;">
+                                    </div>
+                                    <div id="audit-action-items">
+                                        ${this.renderDropdownOptions()}
+                                    </div>
+                                </div>
+                                <select id="audit-action-filter" style="display: none;">
+                                    <option value="">All Actions</option>
+                                    ${this.renderNativeSelectOptions()}
+                                </select>
+                            </div>
 
                             <select id="audit-date-filter" class="form-control" style="width: auto; min-width: 140px;">
                                 <option value="all">All Dates</option>
@@ -154,11 +257,138 @@ const auditLogsModule = {
         `;
     },
 
+    filterActionDropdown(query) {
+        const actionMenu = this.container.querySelector('#audit-action-menu');
+        if (!actionMenu) return;
+
+        const items = actionMenu.querySelectorAll('.custom-dropdown-item');
+        const headers = actionMenu.querySelectorAll('.custom-dropdown-header');
+
+        if (!query) {
+            items.forEach(el => el.style.display = '');
+            headers.forEach(el => el.style.display = '');
+            return;
+        }
+
+        items.forEach(el => {
+            const val = (el.getAttribute('data-value') || '').toLowerCase();
+            const lbl = (el.getAttribute('data-label') || el.textContent || '').toLowerCase();
+            const match = val.includes(query) || lbl.includes(query);
+            el.style.display = match ? '' : 'none';
+        });
+
+        // Toggle category headers based on whether any child item in the group is visible
+        let currentHeader = null;
+        let headerHasVisibleChild = false;
+
+        actionMenu.querySelectorAll('.custom-dropdown-header, .custom-dropdown-item').forEach(el => {
+            if (el.classList.contains('custom-dropdown-header')) {
+                if (currentHeader) {
+                    currentHeader.style.display = headerHasVisibleChild ? '' : 'none';
+                }
+                currentHeader = el;
+                headerHasVisibleChild = false;
+            } else if (el.classList.contains('custom-dropdown-item') && el.style.display !== 'none') {
+                headerHasVisibleChild = true;
+            }
+        });
+        if (currentHeader) {
+            currentHeader.style.display = headerHasVisibleChild ? '' : 'none';
+        }
+    },
+
     attachEventListeners() {
+        const actionBtn = this.container.querySelector('#audit-action-btn');
+        const actionMenu = this.container.querySelector('#audit-action-menu');
+        const actionSearch = this.container.querySelector('#audit-action-search');
+        const actionLabel = this.container.querySelector('#audit-action-label');
         const actionFilter = this.container.querySelector('#audit-action-filter');
+
+        const closeActionMenu = () => {
+            if (actionMenu && actionMenu.style.display !== 'none') {
+                actionMenu.style.display = 'none';
+                if (actionBtn) actionBtn.setAttribute('aria-expanded', 'false');
+            }
+        };
+
+        if (actionBtn && actionMenu) {
+            actionBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = actionMenu.style.display !== 'none';
+                if (isOpen) {
+                    closeActionMenu();
+                } else {
+                    actionMenu.style.display = 'block';
+                    actionBtn.setAttribute('aria-expanded', 'true');
+                    if (actionSearch) {
+                        actionSearch.value = '';
+                        this.filterActionDropdown('');
+                        setTimeout(() => actionSearch.focus(), 50);
+                    }
+                }
+            });
+
+            if (actionSearch) {
+                actionSearch.addEventListener('click', (e) => e.stopPropagation());
+                actionSearch.addEventListener('input', (e) => {
+                    this.filterActionDropdown(e.target.value.trim().toLowerCase());
+                });
+                actionSearch.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        closeActionMenu();
+                        actionBtn.focus();
+                    }
+                });
+            }
+
+            actionMenu.addEventListener('click', (e) => {
+                const item = e.target.closest('.custom-dropdown-item');
+                if (!item) return;
+                const val = item.getAttribute('data-value') || '';
+                const lbl = item.getAttribute('data-label') || (val ? val : 'All Actions');
+
+                this.currentAction = val;
+                if (actionLabel) actionLabel.textContent = lbl;
+                if (actionFilter) actionFilter.value = val;
+
+                // Sync is-selected indicator
+                actionMenu.querySelectorAll('.custom-dropdown-item').forEach(el => {
+                    const match = el.getAttribute('data-value') === val;
+                    el.classList.toggle('is-selected', match);
+                    const check = el.querySelector('svg');
+                    if (match && !check) {
+                        el.insertAdjacentHTML('beforeend', '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>');
+                    } else if (!match && check) {
+                        check.remove();
+                    }
+                });
+
+                closeActionMenu();
+                this.currentPage = 1;
+                this.loadData();
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.custom-dropdown-filter-wrapper')) {
+                    closeActionMenu();
+                }
+            });
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    closeActionMenu();
+                }
+            });
+        }
+
         if (actionFilter) {
             actionFilter.addEventListener('change', (e) => {
-                this.currentAction = e.target.value;
+                const val = e.target.value;
+                this.currentAction = val;
+                if (actionLabel) {
+                    const opt = actionFilter.options[actionFilter.selectedIndex];
+                    actionLabel.textContent = opt ? opt.textContent : 'All Actions';
+                }
                 this.currentPage = 1;
                 this.loadData();
             });
@@ -359,10 +589,10 @@ const auditLogsModule = {
     renderRow(item) {
         let actionBadgeClass = 'badge-status-secondary';
         if (item.action.includes('BREAK_GLASS')) actionBadgeClass = 'badge-status-breakglass';
-        else if (item.action.includes('CANCEL')) actionBadgeClass = 'badge-status-critical';
-        else if (item.action.includes('CREATE') || item.action.includes('REGISTER')) actionBadgeClass = 'badge-status-active';
-        else if (item.action.includes('EDIT') || item.action.includes('UPDATE')) actionBadgeClass = 'badge-status-scheduled';
-        else if (item.action.includes('VIEW')) actionBadgeClass = 'badge-status-confirmed';
+        else if (item.action.includes('CANCEL') || item.action.includes('REJECT') || item.action.includes('PURGE')) actionBadgeClass = 'badge-status-critical';
+        else if (item.action.includes('CREATE') || item.action.includes('REGISTER') || item.action.includes('APPROVE') || item.action.includes('RESTORE')) actionBadgeClass = 'badge-status-active';
+        else if (item.action.includes('EDIT') || item.action.includes('UPDATE') || item.action.includes('RESCHEDULE')) actionBadgeClass = 'badge-status-scheduled';
+        else if (item.action.includes('VIEW') || item.action.includes('CONSULTATION') || item.action.includes('ACKNOWLEDGE')) actionBadgeClass = 'badge-status-confirmed';
 
         let entityLabel = item.entity_type ? `${escapeHtml(item.entity_type.toUpperCase())} #${escapeHtml(String(item.entity_id || ''))}` : '<span class="text-muted">—</span>';
         if (item.target_name) {
@@ -544,6 +774,19 @@ const auditLogsModule = {
             } else {
                 primaryText = `Appointment status updated to <strong>${formatStatus(newStatus || 'Updated')}</strong>`;
             }
+        } else if (action === 'RESCHEDULE_APPOINTMENT') {
+            const oldDate = oldVals ? (oldVals.appointment_date || oldVals.date) : null;
+            const newDate = newVals ? (newVals.appointment_date || newVals.date) : null;
+            const oldTime = oldVals ? (oldVals.appointment_time || oldVals.time) : null;
+            const newTime = newVals ? (newVals.appointment_time || newVals.time) : null;
+            primaryText = `Appointment rescheduled to ${escapeHtml(formatDateTime(newDate, newTime))}`;
+            if (oldDate || oldTime) {
+                additionalInfo = `Previous schedule: ${escapeHtml(formatDateTime(oldDate, oldTime))}`;
+            }
+        } else if (action === 'EDIT_APPOINTMENT') {
+            primaryText = 'Appointment details updated';
+            const diffText = formatDiff(oldVals, newVals);
+            if (diffText) additionalInfo = diffText;
         } else if (action === 'CANCEL_APPOINTMENT') {
             primaryText = 'Appointment cancelled';
             if (reason) {
@@ -555,14 +798,20 @@ const auditLogsModule = {
             if (cancelReason) {
                 additionalInfo = `Reason: "${escapeHtml(cancelReason)}"`;
             }
-        } else if (action === 'COMPLETE_CONSULTATION') {
-            primaryText = 'Doctor completed clinical consultation';
-            if (newVals && (newVals.diagnoses_count !== undefined || newVals.prescriptions_count !== undefined)) {
+        } else if (action === 'COMPLETE_CONSULTATION' || action === 'SAVE_CONSULTATION' || action === 'UPDATE_CONSULTATION') {
+            const verb = action === 'UPDATE_CONSULTATION' ? 'updated' : (action === 'COMPLETE_CONSULTATION' ? 'completed' : 'saved');
+            primaryText = `Doctor ${verb} clinical consultation`;
+            if (newVals && (newVals.diagnoses_count !== undefined || newVals.prescriptions_count !== undefined || newVals.lab_requests_count !== undefined)) {
                 const dCount = Number(newVals.diagnoses_count) || 0;
                 const pCount = Number(newVals.prescriptions_count) || 0;
-                const dLabel = dCount === 1 ? 'diagnosis' : 'diagnoses';
-                const pLabel = pCount === 1 ? 'prescription' : 'prescriptions';
-                additionalInfo = `${dCount} ${dLabel} and ${pCount} ${pLabel} recorded`;
+                const lCount = Number(newVals.lab_requests_count) || 0;
+                const parts = [];
+                parts.push(`${dCount} ${dCount === 1 ? 'diagnosis' : 'diagnoses'}`);
+                parts.push(`${pCount} ${pCount === 1 ? 'prescription' : 'prescriptions'}`);
+                if (lCount > 0) {
+                    parts.push(`${lCount} ${lCount === 1 ? 'lab request' : 'lab requests'}`);
+                }
+                additionalInfo = parts.join(' and ') + ' recorded';
             }
         } else if (action === 'ADD_ENCOUNTER_ADDENDUM') {
             primaryText = 'Clinical follow-up addendum note appended to consultation';
@@ -582,6 +831,25 @@ const auditLogsModule = {
             primaryText = 'Emergency "Break-Glass" access override granted to restricted patient record';
             if (reason) {
                 additionalInfo = `Emergency justification: "${escapeHtml(reason)}"`;
+            }
+        } else if (action === 'REQUEST_STANDARD_ACCESS') {
+            primaryText = 'Doctor requested emergency administrative access to patient medical record';
+            if (reason) additionalInfo = `Clinical reason: "${escapeHtml(reason)}"`;
+        } else if (action === 'APPROVE_ACCESS_REQUEST') {
+            primaryText = 'Administrator approved emergency record access request (24-hour window)';
+            if (reason) additionalInfo = `Administrative note: "${escapeHtml(reason)}"`;
+        } else if (action === 'REJECT_ACCESS_REQUEST') {
+            primaryText = 'Administrator rejected emergency record access request';
+            if (reason) additionalInfo = `Reason: "${escapeHtml(reason)}"`;
+        } else if (action === 'ACKNOWLEDGE_AUDIT_FLAG') {
+            primaryText = 'Administrator acknowledged and reviewed flagged emergency access event';
+            if (reason) additionalInfo = `Audit note: "${escapeHtml(reason)}"`;
+        } else if (action === 'VIEW_RECORD_APPROVED_ACCESS') {
+            primaryText = 'Accessed patient medical chart via approved administrative access window';
+        } else if (action === 'UPDATE_DOCTOR_SCHEDULE') {
+            primaryText = 'Doctor weekly availability schedule updated';
+            if (newVals && newVals.schedules_count) {
+                additionalInfo = `${newVals.schedules_count} duty day(s) configured`;
             }
         } else if (action === 'VIEW_RECORD') {
             primaryText = 'Accessed patient medical chart and consultation history';

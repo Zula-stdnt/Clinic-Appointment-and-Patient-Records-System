@@ -707,7 +707,9 @@ function createAppointment(PDO $pdo): void {
             'patient_id' => $patientId,
             'doctor_id' => $doctorId,
             'appointment_date' => $appointmentDate,
-            'appointment_time' => $normalizedTime
+            'appointment_time' => $normalizedTime,
+            'chief_complaint' => $chiefComplaint !== '' ? $chiefComplaint : null,
+            'has_vitals' => ($bloodPressure !== '' || $temperature !== '' || $oxygenSat !== '')
         ]);
         send_success('Appointment scheduled successfully.', $resData, 201);
     } catch (Exception $e) {
@@ -761,7 +763,15 @@ function cancelAppointment(PDO $pdo): void {
         send_error('This appointment can no longer be cancelled.', [], 409);
     }
 
-    log_audit($pdo, (int)$authUser['user_id'], 'CANCEL_APPOINTMENT', 'appointment', $appointmentId, ['status' => $appointment['status']], ['status' => 'cancelled'], $reason);
+    log_audit($pdo, (int)$authUser['user_id'], 'CANCEL_APPOINTMENT', 'appointment', $appointmentId, [
+        'status' => $appointment['status'],
+        'patient_id' => (int)$appointment['patient_id'],
+        'doctor_id' => (int)$appointment['doctor_id']
+    ], [
+        'status' => 'cancelled',
+        'patient_id' => (int)$appointment['patient_id'],
+        'doctor_id' => (int)$appointment['doctor_id']
+    ], $reason);
 
     send_success('Appointment cancelled. The time slot is now available for rebooking.');
 }
@@ -812,7 +822,15 @@ function requestCancelAppointment(PDO $pdo): void {
     );
     $upd->execute([$reason, $authUser['user_id'], $appointmentId]);
 
-    log_audit($pdo, (int)$authUser['user_id'], 'CANCEL_REQUEST', 'appointment', $appointmentId, null, ['cancel_request_reason' => $reason], $reason);
+    log_audit($pdo, (int)$authUser['user_id'], 'CANCEL_REQUEST', 'appointment', $appointmentId, [
+        'patient_id' => (int)$appointment['patient_id'],
+        'doctor_id' => (int)$appointment['doctor_id'],
+        'status' => $appointment['status']
+    ], [
+        'cancel_request_reason' => $reason,
+        'patient_id' => (int)$appointment['patient_id'],
+        'doctor_id' => (int)$appointment['doctor_id']
+    ], $reason);
 
     send_success('Cancellation request submitted. Receptionist will contact the patient to reschedule or cancel.');
 }
@@ -1032,17 +1050,29 @@ function updateAppointment(PDO $pdo, int $appointmentId): void {
 
         $statusChanged = ($oldStatus !== $status);
         $scheduleChanged = ($lockedAppt['appointment_date'] !== $appointmentDate || $lockedAppt['appointment_time'] !== $normalizedTime);
-        if ($statusChanged || $scheduleChanged) {
-            $actionName = $statusChanged ? 'STATUS_CHANGE' : 'RESCHEDULE_APPOINTMENT';
-            log_audit($pdo, (int)$authUser['user_id'], $actionName, 'appointment', $appointmentId, [
+        $doctorChanged = ((int)$lockedAppt['doctor_id'] !== $doctorId);
+        $patientChanged = ((int)$lockedAppt['patient_id'] !== $patientId);
+        $complaintChanged = ($lockedAppt['chief_complaint'] !== ($chiefComplaint !== '' ? $chiefComplaint : null));
+
+        if ($statusChanged || $scheduleChanged || $doctorChanged || $patientChanged || $complaintChanged || $updateVitals) {
+            $actionName = $statusChanged ? 'STATUS_CHANGE' : ($scheduleChanged ? 'RESCHEDULE_APPOINTMENT' : 'EDIT_APPOINTMENT');
+            $oldVals = [
                 'status' => $oldStatus,
-                'date' => $lockedAppt['appointment_date'],
-                'time' => $lockedAppt['appointment_time']
-            ], [
+                'appointment_date' => $lockedAppt['appointment_date'],
+                'appointment_time' => $lockedAppt['appointment_time'],
+                'doctor_id' => (int)$lockedAppt['doctor_id'],
+                'patient_id' => (int)$lockedAppt['patient_id'],
+                'chief_complaint' => $lockedAppt['chief_complaint']
+            ];
+            $newVals = [
                 'status' => $status,
-                'date' => $appointmentDate,
-                'time' => $normalizedTime
-            ]);
+                'appointment_date' => $appointmentDate,
+                'appointment_time' => $normalizedTime,
+                'doctor_id' => $doctorId,
+                'patient_id' => $patientId,
+                'chief_complaint' => $chiefComplaint !== '' ? $chiefComplaint : null
+            ];
+            log_audit($pdo, (int)$authUser['user_id'], $actionName, 'appointment', $appointmentId, $oldVals, $newVals);
         }
 
         // Patient-reported intake allergy note update if provided

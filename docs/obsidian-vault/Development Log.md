@@ -32,7 +32,43 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
-### 2026-10-14 — Admin Manage Doctors Weekly Schedule Column, Modal & Rotation Presets (`local`)
+### 2026-10-16 — Admin Audit Logs Module Improvements, Scrollable Filter & Expanded Tracking (`working tree`)
+**Type:** feat / fix / ui
+**Database / migrations:** none
+**Files changed:**
+- `assets/js/modules/audit_logs.js` — implemented custom scrollable dropdown menu with max-height 260px, thin scrollbar, 4-group categorizations (*Appointments & Clinical*, *Patient Records & Demographics*, *Security & Access Control*, *Administration & Staff*), active indicators, and real-time quick search input `#audit-action-search`; synchronized with underlying `<select id="audit-action-filter">`; expanded `formatAuditDetails()` for all 30+ actions with zero undefined artifacts.
+- `assets/css/style.css` — added `.custom-dropdown-container`, `.custom-dropdown-menu`, `.custom-dropdown-item`, and search input styles for constrained action dropdown.
+- `api/audit_log_controller.php` — joined `doctors` to `users` on `user_id` to ensure compatibility with normalized schemas where doctor names reside in `users`; added target resolution for `consultation` entities mapping to parent appointment, patient, and doctor names.
+- `api/appointment_controller.php` — added granular audit logging for `RESCHEDULE_APPOINTMENT` and `EDIT_APPOINTMENT`; enriched `CREATE_APPOINTMENT`, `CANCEL_APPOINTMENT`, and `CANCEL_REQUEST` with patient and doctor IDs, chief complaint, and clinical reasons.
+- `api/consultation_controller.php` — added `SAVE_CONSULTATION` and `UPDATE_CONSULTATION` audit logs on `consultation` entity with diagnosis, prescription, and lab request metrics; enriched `ADD_ENCOUNTER_ADDENDUM` with patient, doctor, and appointment IDs.
+- `api/doctor_schedule_controller.php` — added `UPDATE_DOCTOR_SCHEDULE` audit logging on `doctor` entity with schedule count.
+- `tests/verify_audit_logs_expansion.php` — 13-test automated verification suite covering normalized name resolution, appointment events, consultation events, API enrichment, and action filtering.
+**New IDs introduced:** `.custom-dropdown-menu`, `#audit-action-search`, action keys `SAVE_CONSULTATION`, `UPDATE_CONSULTATION`, `RESCHEDULE_APPOINTMENT`, `EDIT_APPOINTMENT`
+**How to verify:**
+- Run `php tests/verify_audit_logs_expansion.php` (13/13 PASS).
+- Log in as Administrator → navigate to Audit Logs:
+  - Click the Action Filter dropdown → verify constrained scrollable list (max 260px) with category headers.
+  - Type "Consultation" in search → verify instant filtering.
+  - Verify all row details render clear English sentences with target patient and doctor names, with no "undefined" text.
+
+### 2026-10-16 — Doctor Patient Consultation Form SOAP Notes & Structured Prescriptions Revamp (`e63d34a`)
+**Type:** feat / clinical / ui
+**Database / migrations:** `migrations/014_structured_prescriptions.sql`
+**Files changed:**
+- `assets/js/modules/doctor_consultation.js` — split consultation clinical notes into 4 distinct SOAP panels (Subjective, Objective, Assessment, Plan); added one-click "⚡ Summarize Prescriptions in Plan" button; overhauled Prescriptions into a 7-field structured card (Medication, Strength, Dosage, Route, Frequency, Duration, Instructions); maintained separate Lab Requests section.
+- `includes/clinical_notes.php` — bidirectional SOAP parser and compiler ensuring backward compatibility with legacy plain text notes.
+- `migrations/014_structured_prescriptions.sql` — added `strength`, `route`, `duration`, `instructions` columns to `prescriptions` table.
+- `api/consultation_controller.php` — persists structured prescription attributes; compiles SOAP notes atomically.
+- `assets/js/components/patient-record-view.js` — updated longitudinal encounter timeline with structured prescription table and SOAP headers.
+- `assets/js/components/print-prescription.js` — formats strength, route, duration, and patient instructions on printed Rx slip.
+- `tests/verify_consultation_soap_rx.php` — 5-test automated verification suite.
+**New IDs introduced:** `prescriptions.strength`, `prescriptions.route`, `prescriptions.duration`, `prescriptions.instructions`, `compileSoapNotes()`, `parseSoapNotes()`
+**How to verify:**
+- Run `php tests/verify_consultation_soap_rx.php` (5/5 PASS).
+- Log in as Doctor → Open active consultation:
+  - Enter SOAP notes across S, O, A, P cards.
+  - Add structured prescription item → click "⚡ Summarize Prescriptions in Plan" → verify auto-compiled bullet in Plan.
+  - Save consultation and view completed encounter in Patient Records.
 **Type:** feat
 **Database / migrations:** `migrations/013_doctor_schedules_and_hybrid_break_glass.sql`
 **Files changed:**

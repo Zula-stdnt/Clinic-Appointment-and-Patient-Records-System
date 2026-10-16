@@ -308,10 +308,28 @@ function saveConsultation(PDO $pdo) {
         // 6. Complete appointment
         $pdo->prepare("UPDATE appointments SET status = 'completed' WHERE appointment_id = ?")->execute([$appointmentId]);
 
-        log_audit($pdo, (int)$authUser['user_id'], 'COMPLETE_CONSULTATION', 'appointment', $appointmentId, null, [
+        $isConsUpdate = !empty($existingCons);
+        $consAction = $isConsUpdate ? 'UPDATE_CONSULTATION' : 'SAVE_CONSULTATION';
+        log_audit($pdo, (int)$authUser['user_id'], $consAction, 'consultation', $consultationId, $isConsUpdate ? ['consultation_id' => $consultationId] : null, [
             'consultation_id' => $consultationId,
+            'appointment_id' => $appointmentId,
+            'patient_id' => (int)$appt['patient_id'],
+            'doctor_id' => (int)$appt['doctor_id'],
             'diagnoses_count' => count($input['diagnoses'] ?? []),
-            'prescriptions_count' => count($input['prescriptions'] ?? [])
+            'prescriptions_count' => count($input['prescriptions'] ?? []),
+            'lab_requests_count' => count($input['lab_requests'] ?? [])
+        ]);
+
+        log_audit($pdo, (int)$authUser['user_id'], 'COMPLETE_CONSULTATION', 'appointment', $appointmentId, [
+            'status' => $appt['status']
+        ], [
+            'status' => 'completed',
+            'consultation_id' => $consultationId,
+            'patient_id' => (int)$appt['patient_id'],
+            'doctor_id' => (int)$appt['doctor_id'],
+            'diagnoses_count' => count($input['diagnoses'] ?? []),
+            'prescriptions_count' => count($input['prescriptions'] ?? []),
+            'lab_requests_count' => count($input['lab_requests'] ?? [])
         ]);
 
         $pdo->commit();
@@ -345,7 +363,7 @@ function saveConsultationAddendum(PDO $pdo): void {
     }
     $doctorId = (int)$doc['doctor_id'];
 
-    $stmtAppt = $pdo->prepare("SELECT a.appointment_id, a.doctor_id, a.status, c.consultation_id
+    $stmtAppt = $pdo->prepare("SELECT a.appointment_id, a.patient_id, a.doctor_id, a.status, c.consultation_id
                                FROM appointments a
                                LEFT JOIN consultation c ON a.appointment_id = c.appointment_id
                                WHERE a.appointment_id = ?");
@@ -368,7 +386,9 @@ function saveConsultationAddendum(PDO $pdo): void {
 
     log_audit($pdo, (int)$authUser['user_id'], 'ADD_ENCOUNTER_ADDENDUM', 'consultation', $consultationId, null, [
         'addendum_id' => $addendumId,
-        'appointment_id' => $appointmentId
+        'appointment_id' => $appointmentId,
+        'patient_id' => (int)$appt['patient_id'],
+        'doctor_id' => $doctorId
     ], $notes);
 
     send_success('Addendum appended to encounter successfully.', [

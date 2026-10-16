@@ -56,7 +56,7 @@ These endpoints allow administrators to inspect immutable security and access lo
 
 | Controller | Allowed Roles | Method & Query | Purpose |
 | --- | --- | --- | --- |
-| `audit_log_controller.php` | `Administrator` | `GET ?page&page_size&search&action&date_filter&sort_by&sort_order` | Returns paged immutable audit log entries (`data.items`, `data.total`), enriched with real patient names (`target_patient_name`), doctor names (`target_doctor_name`), and target entity names (`target_name`). Decodes JSON diffs for human-readable audit presentation. |
+| `audit_log_controller.php` | `Administrator` | `GET ?page&page_size&search&action&date_filter&sort_by&sort_order` | Returns paged immutable audit log entries (`data.items`, `data.total`), enriched with patient names (`target_patient_name`), doctor names (`target_doctor_name`), and target entity names (`target_name`). Seamlessly joins `doctors` to `users` for schema normalization resilience, and resolves `consultation` entities to their parent appointment and patient records. Decodes JSON diffs for human-readable audit presentation. |
 
 ## Meta lookups
 These helper requests return dropdown options for forms:

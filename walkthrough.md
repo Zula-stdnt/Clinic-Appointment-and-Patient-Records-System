@@ -934,18 +934,59 @@ Modernized the Doctor Consultation module (`assets/js/modules/doctor_consultatio
 
 ---
 
-## Section 40: System Verification Results & Test Suite Pass Rate
+## Section 41: Admin Audit Logs Module Improvements, Scrollable Action Dropdown & Expanded Event Tracking
 
-System stability, functional safety, and regression resistance across all 40 development sections are verified by six (6) automated test suites maintaining a **100% pass rate (80/80 tests passing)**:
+Enhanced the compliance and audit logging infrastructure across both backend controllers and the administrative frontend interface to capture the full clinical and appointment lifecycle while improving administrator ergonomics and data resilience.
+
+### 1. Expanded Audit Event Tracking
+- **Appointment Scheduling Events (`api/appointment_controller.php`):**
+  - **`CREATE_APPOINTMENT`**: Enhanced with patient ID, doctor ID, schedule date/time, chief complaint, and triage vitals flags in the audit payload.
+  - **`RESCHEDULE_APPOINTMENT`**: Added distinct audit logging when appointment date or time is modified during updates, capturing both previous and new schedule timestamps.
+  - **`EDIT_APPOINTMENT`**: Tracks granular field-level diffs when appointment attributes (such as chief complaint or physician assignment) change without rescheduling.
+  - **`STATUS_CHANGE`**: Records exact status transitions (`Scheduled` $\rightarrow$ `Confirmed`, `In-Consultation`, `Completed`, `Cancelled`).
+  - **`CANCEL_APPOINTMENT` & `CANCEL_REQUEST`**: Enriched with target patient ID, doctor ID, and cancellation reason.
+- **Consultation Lifecycle Events (`api/consultation_controller.php`):**
+  - **`SAVE_CONSULTATION`**: Formally records encounter documentation on `entity_type = 'consultation'`, capturing appointment ID, patient ID, attending doctor ID, and counts for diagnoses, structured prescriptions, and lab requests.
+  - **`UPDATE_CONSULTATION`**: Distinguishes updates to existing consultations, auditing modified clinical summaries.
+  - **`COMPLETE_CONSULTATION`**: Maintains encounter finalization audit trail on the appointment entity.
+  - **`ADD_ENCOUNTER_ADDENDUM`**: Enriched with appointment ID, patient ID, and doctor ID, recording clinical addendum text and justification.
+- **Staff Rota Events (`api/doctor_schedule_controller.php`):**
+  - **`UPDATE_DOCTOR_SCHEDULE`**: Logs doctor schedule rota updates with active duty days and shift hours.
+
+### 2. UI/UX Scrollable Dropdown Menu with Quick Search Filter
+- **Custom Dropdown Menu (`assets/js/modules/audit_logs.js`, `assets/css/style.css`):**
+  - Implemented an ergonomic `.custom-dropdown-menu` replacing awkward browser-native `<select>` popups.
+  - Constrained dropdown menu height with `max-height: 260px; overflow-y: auto; scrollbar-width: thin;` to prevent layout overflow on smaller viewports.
+  - Categorized over 30+ action types into 4 intuitive optgroup categories:
+    1. *Appointments & Clinical* (`CREATE_APPOINTMENT`, `RESCHEDULE_APPOINTMENT`, `STATUS_CHANGE`, `SAVE_CONSULTATION`, `ADD_ENCOUNTER_ADDENDUM`, etc.)
+    2. *Patient Records & Demographics* (`REGISTER_PATIENT`, `EDIT_DEMOGRAPHICS`, `UPDATE_ALLERGIES_AT_INTAKE`)
+    3. *Security & Access Control* (`LOGIN`, `LOGOUT`, `BREAK_GLASS_ACCESS`, `REQUEST_STANDARD_ACCESS`, `APPROVE_ACCESS_REQUEST`, `REJECT_ACCESS_REQUEST`, `ACKNOWLEDGE_AUDIT_FLAG`)
+    4. *Administration & Staff* (`ARCHIVE`, `RESTORE`, `PURGE`, `UPDATE_DOCTOR_SCHEDULE`, `UPDATE_PROFILE`)
+  - Integrated a sticky real-time search input (`#audit-action-search`) inside the dropdown menu for instant keyboard filtering of actions.
+  - Maintained full synchronization with an underlying native `<select id="audit-action-filter">` element to ensure 100% backward compatibility with automated test harnesses and screen readers.
+
+### 3. Backend Data Integrity & Schema Normalization Resilience (`api/audit_log_controller.php`)
+- **Schema Normalization Agnostic:** Resolved SQL column errors (`Unknown column 'first_name' in 'field list'`) when running on normalized database schemas where `first_name` and `last_name` reside in `users` rather than `doctors`. Replaced direct column references with `LEFT JOIN users u ON d.user_id = u.user_id` and safe name resolution `COALESCE(NULLIF(TRIM(CONCAT(u.first_name, ' ', COALESCE(u.last_name, ''))), ''), 'Doctor')`.
+- **Consultation Entity Resolution:** Added target entity resolution for `consultation` records, looking up the associated appointment, patient, and doctor to populate `target_name`, `target_patient_name`, and `target_doctor_name`.
+- **Zero Undefined Values:** Enhanced `formatAuditDetails(item)` in `assets/js/modules/audit_logs.js` to handle all 30+ event actions gracefully with natural language phrasing and zero `undefined` artifacts.
+
+---
+
+## Section 42: System Verification Results & Test Suite Pass Rate
+
+System stability, functional safety, and regression resistance across all 42 development sections are verified by eight (8) automated test suites maintaining a **100% pass rate (99/99 tests passing)**:
 
 | Test Suite | Script | Tests | Result | Verified Scope |
 | :--- | :--- | :---: | :---: | :--- |
+| **Audit Logs Expansion & Integrity** | `tests/verify_audit_logs_expansion.php` | 13 / 13 | **100% PASS** | Normalized doctor name resolution, appointment & consultation audit logging, API enrichment, action filtering |
 | **Doctor Consultation SOAP & Rx** | `tests/verify_consultation_soap_rx.php` | 5 / 5 | **100% PASS** | Migration 014 schema, SOAP bidirectional round-trip, legacy plain-text fallback, atomic consultation saving, patient record timeline parity |
 | **Doctor Schedules & Form UX** | `tests/verify_schedule_and_form_ux.php` | 20 / 20 | **100% PASS** | Form date `min`, time bounds, schedule notices, warning banners, zero-retype draft preservation, `doctor_schedule_controller.php`, modal presets |
 | **UI & Functional Improvements** | `tests/verify_ui_functional_improvements.php` | 17 / 17 | **100% PASS** | Overview table layout, no horizontal scroll at 100% zoom, dedicated Chief Complaint column, stacked vitals, date range picker, rows per page, compact cancel icon |
 | **System Acceptance** | `tests/verify_acceptance.php` | 20 / 20 | **100% PASS** | 10-patient capacity model, operating hours (08:00–17:00), lunch pause, Sunday closure, consultation gating, allergy confirmation, audit logs |
 | **CPRMS Enhancements** | `tests/verify_cprms_enhancements.php` | 10 / 10 | **100% PASS** | Universal table sorting, 4-way gender filtering ("Other" resolution), human-readable audit logs, entity name enrichment |
 | **To-Do Improvements** | `tests/verify_todo_improvements.php` | 8 / 8 | **100% PASS** | Hybrid break-glass access, standard access requests (24h window), live multi-tab synchronization (`live-sync.js`) |
-| **Total Test Coverage** | **6 Suites** | **80 / 80** | **100% PASS** | **Zero Regressions** |
+| **Allergy Workflow** | `tests/verify_allergy_workflow.php` | 6 / 6 | **100% PASS** | Patient allergy alerts, intake unconfirmed notes, doctor confirmation lifecycle |
+| **Total Test Coverage** | **8 Suites** | **99 / 99** | **100% PASS** | **Zero Regressions** |
+
 
 

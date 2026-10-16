@@ -120,6 +120,7 @@ try {
     $doctorIds = [];
     $userIds = [];
     $appointmentIds = [];
+    $consultationIds = [];
 
     foreach ($logs as $log) {
         $eType = strtolower($log['entity_type'] ?? '');
@@ -129,6 +130,7 @@ try {
             elseif ($eType === 'doctor') $doctorIds[] = $eId;
             elseif ($eType === 'user') $userIds[] = $eId;
             elseif ($eType === 'appointment') $appointmentIds[] = $eId;
+            elseif ($eType === 'consultation') $consultationIds[] = $eId;
         }
 
         if (!empty($log['new_values_parsed']['patient_id'])) {
@@ -139,6 +141,15 @@ try {
         }
         if (!empty($log['new_values_parsed']['appointment_id'])) {
             $appointmentIds[] = (int)$log['new_values_parsed']['appointment_id'];
+        }
+        if (!empty($log['new_values_parsed']['consultation_id'])) {
+            $consultationIds[] = (int)$log['new_values_parsed']['consultation_id'];
+        }
+        if (!empty($log['old_values_parsed']['patient_id'])) {
+            $patientIds[] = (int)$log['old_values_parsed']['patient_id'];
+        }
+        if (!empty($log['old_values_parsed']['doctor_id'])) {
+            $doctorIds[] = (int)$log['old_values_parsed']['doctor_id'];
         }
     }
 
@@ -157,7 +168,16 @@ try {
     if (!empty($doctorIds)) {
         $doctorIds = array_values(array_unique($doctorIds));
         $inDoc = implode(',', array_fill(0, count($doctorIds), '?'));
-        $dStmt = $pdo->prepare("SELECT doctor_id, CONCAT(first_name, ' ', last_name) AS full_name FROM doctors WHERE doctor_id IN ($inDoc)");
+        $dStmt = $pdo->prepare("
+            SELECT d.doctor_id, 
+                   COALESCE(
+                       NULLIF(TRIM(CONCAT(u.first_name, ' ', COALESCE(u.last_name, ''))), ''),
+                       'Doctor'
+                   ) AS full_name
+            FROM doctors d
+            LEFT JOIN users u ON d.user_id = u.user_id
+            WHERE d.doctor_id IN ($inDoc)
+        ");
         $dStmt->execute($doctorIds);
         while ($row = $dStmt->fetch(PDO::FETCH_ASSOC)) {
             $doctorNames[$row['doctor_id']] = trim($row['full_name']);
@@ -182,10 +202,14 @@ try {
         $aStmt = $pdo->prepare("
             SELECT a.appointment_id, a.patient_id, a.doctor_id,
                    CONCAT(p.first_name, ' ', p.last_name) AS patient_name,
-                   CONCAT(d.first_name, ' ', d.last_name) AS doctor_name
+                   COALESCE(
+                       NULLIF(TRIM(CONCAT(ud.first_name, ' ', COALESCE(ud.last_name, ''))), ''),
+                       'Doctor'
+                   ) AS doctor_name
             FROM appointments a
             LEFT JOIN patients p ON a.patient_id = p.patient_id
             LEFT JOIN doctors d ON a.doctor_id = d.doctor_id
+            LEFT JOIN users ud ON d.user_id = ud.user_id
             WHERE a.appointment_id IN ($inAppt)
         ");
         $aStmt->execute($appointmentIds);
@@ -194,10 +218,35 @@ try {
         }
     }
 
+    $consultationMap = [];
+    if (!empty($consultationIds)) {
+        $consultationIds = array_values(array_unique($consultationIds));
+        $inCons = implode(',', array_fill(0, count($consultationIds), '?'));
+        $cStmt = $pdo->prepare("
+            SELECT c.consultation_id, c.appointment_id, a.patient_id, a.doctor_id,
+                   CONCAT(p.first_name, ' ', p.last_name) AS patient_name,
+                   COALESCE(
+                       NULLIF(TRIM(CONCAT(ud.first_name, ' ', COALESCE(ud.last_name, ''))), ''),
+                       'Doctor'
+                   ) AS doctor_name
+            FROM consultation c
+            LEFT JOIN appointments a ON c.appointment_id = a.appointment_id
+            LEFT JOIN patients p ON a.patient_id = p.patient_id
+            LEFT JOIN doctors d ON a.doctor_id = d.doctor_id
+            LEFT JOIN users ud ON d.user_id = ud.user_id
+            WHERE c.consultation_id IN ($inCons)
+        ");
+        $cStmt->execute($consultationIds);
+        while ($row = $cStmt->fetch(PDO::FETCH_ASSOC)) {
+            $consultationMap[$row['consultation_id']] = $row;
+        }
+    }
+
     foreach ($logs as &$log) {
         $eType = strtolower($log['entity_type'] ?? '');
         $eId = (int)($log['entity_id'] ?? 0);
         $apptId = (int)($log['new_values_parsed']['appointment_id'] ?? ($eType === 'appointment' ? $eId : 0));
+        $consId = (int)($log['new_values_parsed']['consultation_id'] ?? ($eType === 'consultation' ? $eId : 0));
 
         $patName = null;
         $docName = null;
@@ -208,8 +257,22 @@ try {
             $docName = trim($appointmentMap[$apptId]['doctor_name'] ?? '');
         }
 
+        if ($consId && isset($consultationMap[$consId])) {
+            if (!$patName && !empty($consultationMap[$consId]['patient_name'])) {
+                $patName = trim($consultationMap[$consId]['patient_name']);
+            }
+            if (!$docName && !empty($consultationMap[$consId]['doctor_name'])) {
+                $docName = trim($consultationMap[$consId]['doctor_name']);
+            }
+        }
+
         if (!empty($log['new_values_parsed']['patient_id'])) {
             $pId = (int)$log['new_values_parsed']['patient_id'];
+            if (!empty($patientNames[$pId])) {
+                $patName = $patientNames[$pId];
+            }
+        } elseif (!empty($log['old_values_parsed']['patient_id'])) {
+            $pId = (int)$log['old_values_parsed']['patient_id'];
             if (!empty($patientNames[$pId])) {
                 $patName = $patientNames[$pId];
             }
@@ -217,6 +280,11 @@ try {
 
         if (!empty($log['new_values_parsed']['doctor_id'])) {
             $dId = (int)$log['new_values_parsed']['doctor_id'];
+            if (!empty($doctorNames[$dId])) {
+                $docName = $doctorNames[$dId];
+            }
+        } elseif (!empty($log['old_values_parsed']['doctor_id'])) {
+            $dId = (int)$log['old_values_parsed']['doctor_id'];
             if (!empty($doctorNames[$dId])) {
                 $docName = $doctorNames[$dId];
             }
@@ -230,8 +298,18 @@ try {
             if (!$docName && $targetName) $docName = $targetName;
         } elseif ($eType === 'user') {
             $targetName = $userNames[$eId] ?? null;
-        } elseif ($eType === 'appointment' && $patName) {
-            $targetName = $patName;
+        } elseif ($eType === 'appointment') {
+            if ($patName && $docName) {
+                $targetName = "{$patName} (Patient) · Dr. {$docName}";
+            } else {
+                $targetName = $patName ?: ($docName ? "Dr. {$docName}" : null);
+            }
+        } elseif ($eType === 'consultation') {
+            if ($patName && $docName) {
+                $targetName = "{$patName} (Patient) · Dr. {$docName}";
+            } else {
+                $targetName = $patName ?: ($docName ? "Dr. {$docName}" : null);
+            }
         }
 
         $log['target_name'] = $targetName;

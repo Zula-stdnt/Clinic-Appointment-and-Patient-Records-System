@@ -103,6 +103,11 @@ function saveDoctorSchedules(PDO $pdo): void {
             }
         }
 
+        log_audit($pdo, (int)$_SESSION['user_id'], 'UPDATE_DOCTOR_SCHEDULE', 'doctor', $doctorId, null, [
+            'doctor_id' => $doctorId,
+            'schedules_count' => count($schedules)
+        ]);
+
         $pdo->commit();
         send_success('Doctor schedules saved successfully.');
     } catch (Exception $e) {

@@ -2864,3 +2864,70 @@ body.modal-open {
     padding: 0.75rem 0.85rem;
 }
 
+/* Scrollable dropdown filter menu (Audit Logs & Multi-option toolbars) */
+.custom-dropdown-filter-wrapper {
+    position: relative;
+    display: inline-block;
+}
+
+.custom-dropdown-menu {
+    max-height: 260px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border, #cbd5e1) transparent;
+}
+
+.custom-dropdown-menu::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-dropdown-menu::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-dropdown-menu::-webkit-scrollbar-thumb {
+    background: var(--border, #cbd5e1);
+    border-radius: 4px;
+}
+
+.custom-dropdown-header {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-muted, #64748b);
+    padding: 0.45rem 0.75rem 0.2rem;
+    background: var(--bg-hover, #f8fafc);
+    border-top: 1px solid var(--border, #e2e8f0);
+}
+
+.custom-dropdown-header:first-of-type {
+    border-top: none;
+}
+
+.custom-dropdown-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.45rem 0.75rem;
+    font-size: 0.82rem;
+    color: var(--text, #1e293b);
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+    user-select: none;
+}
+
+.custom-dropdown-item:hover,
+.custom-dropdown-item.is-highlighted {
+    background-color: var(--primary-light, #e8f5e9);
+    color: var(--primary-dark, #1b5e20);
+}
+
+.custom-dropdown-item.is-selected {
+    font-weight: 600;
+    background-color: var(--primary-light, #e8f5e9);
+    color: var(--primary-dark, #1b5e20);
+}
+
+

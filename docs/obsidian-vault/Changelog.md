@@ -9,7 +9,25 @@ A plain-English summary of major updates, new modules, and bug fixes across the 
 > [!info] Looking for the technical trail?
 > This note summarizes **features**. For a per-commit record (commit IDs, exact files, verification steps), see [[Development Log]].
 
-## Recent — Doctor Consultation SOAP Format & Structured Prescriptions Revamp
+## Recent — Admin Audit Logs Module Improvements & Expanded Event Tracking
+
+### UI/UX Scrollable Dropdown Menu with Quick Search Filter
+- **Ergonomic Scrollable Action Filter:** Replaced default dropdown select with a responsive custom menu constrained to `max-height: 260px; overflow-y: auto;` featuring a thin scrollbar.
+- **Categorized Optgroups:** Actions are organized into 4 intuitive categories (*Appointments & Clinical*, *Patient Records & Demographics*, *Security & Access Control*, *Administration & Staff*) with visual active-state indicators.
+- **Instant Search Input:** Integrated a sticky `#audit-action-search` field at the top of the dropdown menu for real-time keystroke filtering across 30+ action options.
+- **Full DOM Synchronization:** Mirrors selections to an underlying native `<select>` element to preserve test suite compatibility and keyboard navigation accessibility.
+
+### Expanded Audit Event Tracking Across Appointments & Consultations
+- **Appointment Events (`api/appointment_controller.php`):** Added distinct tracking for `RESCHEDULE_APPOINTMENT` (capturing previous and new schedule timestamps), `EDIT_APPOINTMENT` (field diffs of appointment changes), enriched `CREATE_APPOINTMENT` with chief complaints and vitals status, and detailed `CANCEL_APPOINTMENT` and `CANCEL_REQUEST` with clinical reasons.
+- **Consultation Events (`api/consultation_controller.php`):** Logged `SAVE_CONSULTATION` and `UPDATE_CONSULTATION` on consultation entity with appointment, patient, and doctor IDs alongside clinical diagnosis, prescription, and lab request metrics. Enriched `ADD_ENCOUNTER_ADDENDUM` with patient, doctor, and encounter identifiers.
+- **Doctor Schedule Events (`api/doctor_schedule_controller.php`):** Automatically logs `UPDATE_DOCTOR_SCHEDULE` on the doctor entity with active duty days and shift hours.
+
+### Backend Data Integrity & Schema Normalization Resilience
+- **Database Normalization Agnostic:** Joined `doctors` to `users` on `user_id` using `COALESCE(NULLIF(TRIM(CONCAT(u.first_name, ' ', COALESCE(u.last_name, ''))), ''), 'Doctor')`, resolving `Unknown column 'first_name'` errors on normalized databases like `hospital_db_test`.
+- **Target Entity Resolution:** Extended `api/audit_log_controller.php` to resolve consultation entity targets (`CONSULTATION #ID`) into their associated patient and doctor names.
+- **Zero Undefined Values:** Upgraded `formatAuditDetails()` in `assets/js/modules/audit_logs.js` to render clean, readable sentences for all 30+ actions with zero `undefined` values or technical jargon.
+
+## Doctor Consultation SOAP Format & Structured Prescriptions Revamp
 
 ### Clinical Notes SOAP Format (Subjective, Objective, Assessment, Plan)
 - **Dedicated SOAP Clinical Panels:** Replaced the single unstructured notes textarea with 4 distinct, color-coded clinical cards:
