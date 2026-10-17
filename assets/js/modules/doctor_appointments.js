@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 02 DOM and UI/dom_create_and_remove_elements (Create -> Configure -> Listen -> Append row pattern) & 03 APIs and Database Operations/javascript_working_with_apis (Async/await response validation)
 
 import api from '../api.js?v=8';
-import { create, escapeHtml, showToast, openModal, closeModal, formatStatusLabel } from '../ui.js?v=24';
+import { create, escapeHtml, showToast, openModal, closeModal, formatStatusLabel } from '../ui.js?v=26';
 import { confirmDialog } from '../components/confirm-dialog.js?v=1';
 
 export default {
@@ -36,19 +36,6 @@ export default {
                         <h2 style="font-size: 1.25rem; font-weight: 700; color: var(--text);">My Appointments</h2>
                         <p class="text-muted" style="font-size: 0.85rem;">View scheduled appointments and start consultations.</p>
                     </div>
-                    <div style="display: flex; align-items: center; gap: 0.75rem;">
-                        <div style="display: flex; align-items: center; gap: 0.5rem;">
-                            <span class="text-muted" style="font-size: 0.85rem;">Rows:</span>
-                            <select id="doctor-page-size" class="form-control table-page-size">
-                                <option value="5">5</option>
-                                <option value="10" selected>10</option>
-                                <option value="25">25</option>
-                            </select>
-                        </div>
-                        <button class="btn btn-secondary" id="btn-refresh-appointments">
-                            Refresh
-                        </button>
-                    </div>
                 </div>
 
                 <div class="toolbar" style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem;">
@@ -57,12 +44,6 @@ export default {
                             <svg class="search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                             <input type="text" id="doctor-search" class="form-control" placeholder="Search patient or chief complaint...">
                         </div>
-                        <select id="doctor-date-filter" class="form-control" style="width: auto;">
-                            <option value="">All Dates</option>
-                            <option value="today">Today</option>
-                            <option value="upcoming" selected>Upcoming</option>
-                            <option value="past">Past</option>
-                        </select>
                         <select id="doctor-status-filter" class="form-control" style="width: auto;">
                             <option value="">All Statuses</option>
                             <option value="scheduled">Scheduled</option>
@@ -71,6 +52,27 @@ export default {
                             <option value="cancelled">Cancelled</option>
                             <option value="no_show">No Show</option>
                         </select>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="text-muted" style="font-size: 0.85rem;">View:</span>
+                            <select id="doctor-date-filter" class="form-control" style="width: auto;">
+                                <option value="upcoming" selected>Upcoming</option>
+                                <option value="today">Today</option>
+                                <option value="past">Past</option>
+                                <option value="">All</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="text-muted" style="font-size: 0.85rem;">Rows:</span>
+                            <select id="doctor-page-size" class="form-control table-page-size">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-secondary" id="btn-refresh-appointments" title="Refresh Appointments">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 0.25rem;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                            Refresh
+                        </button>
                     </div>
                 </div>
 
@@ -123,8 +125,17 @@ export default {
     attachEventListeners() {
         const refreshBtn = this.container.querySelector('#btn-refresh-appointments');
         if (refreshBtn) {
-            refreshBtn.addEventListener('click', () => {
-                this.loadData();
+            refreshBtn.addEventListener('click', async () => {
+                const svg = refreshBtn.querySelector('svg');
+                refreshBtn.disabled = true;
+                if (svg) svg.style.animation = 'spin 0.8s linear infinite';
+                try {
+                    await this.loadData();
+                    showToast('Refreshed appointments.', 'info');
+                } finally {
+                    refreshBtn.disabled = false;
+                    if (svg) svg.style.animation = '';
+                }
             });
         }
 
@@ -162,6 +173,7 @@ export default {
 
         const dateFilter = this.container.querySelector('#doctor-date-filter');
         if (dateFilter) {
+            dateFilter.value = this.state.dateFilter || 'upcoming';
             dateFilter.addEventListener('change', (e) => {
                 this.state.dateFilter = e.target.value;
                 this.state.page = 1;
@@ -318,8 +330,8 @@ export default {
             let actionContent = '';
             if (appt.status === 'confirmed') {
                 actionContent = `
-                    <button class="btn btn-primary btn-sm btn-start-consult" data-id="${appt.appointment_id}" style="display: inline-flex; align-items: center; gap: 0.4rem;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg> Start Consult
+                    <button class="btn btn-primary btn-sm btn-icon btn-start-consult" data-id="${appt.appointment_id}" title="Start Patient Consultation" aria-label="Start Patient Consultation">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                     </button>
                 `;
             } else if (appt.status === 'scheduled') {
@@ -328,8 +340,8 @@ export default {
                 `;
             } else if (appt.status === 'completed') {
                 actionContent = `
-                    <button class="btn btn-outline-secondary btn-sm btn-start-consult" data-id="${appt.appointment_id}" style="display: inline-flex; align-items: center; gap: 0.4rem;">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg> View Encounter
+                    <button class="btn btn-outline-secondary btn-sm btn-icon btn-start-consult" data-id="${appt.appointment_id}" title="View Completed Encounter" aria-label="View Completed Encounter">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                     </button>
                 `;
             } else {

@@ -1,8 +1,8 @@
-// assets/js/modules/account_settings.js
+﻿// assets/js/modules/account_settings.js
 // Account Settings: read-only account summary and a secure change-password form
 
-import api from '../api.js?v=7';
-import { escapeHtml, showToast } from '../ui.js?v=24';
+import api from '../api.js?v=8';
+import { escapeHtml, showToast } from '../ui.js?v=26';
 
 const PASSWORD_RULE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/;
 

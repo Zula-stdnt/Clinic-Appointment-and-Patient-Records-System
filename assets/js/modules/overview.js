@@ -1,9 +1,9 @@
-// assets/js/modules/overview.js
+﻿// assets/js/modules/overview.js
 // Administrator dashboard overview: KPI cards, quick actions, and recent patients
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays (Arrays of configuration objects mapped to UI cards) & 03 APIs and Database Operations/javascript_working_with_apis
 
-import api from '../api.js?v=7';
-import { escapeHtml } from '../ui.js?v=24';
+import api from '../api.js?v=8';
+import { escapeHtml, showToast } from '../ui.js?v=26';
 
 const STATS = [
     { key: 'patients',    label: 'Registered Patients', endpoint: 'api/patient_controller.php',   tone: 'primary',   href: '#patients' },
@@ -58,15 +58,63 @@ export default {
     async init(container) {
         this.container = container;
         this.renderStructure();
+        this.attachEventListeners();
         this.loadData();
+    },
+
+    attachEventListeners() {
+        if (this._eventsAttached) return;
+        this._eventsAttached = true;
+
+        this.container.addEventListener('click', async (e) => {
+            const refreshBtn = e.target.closest('#btn-refresh-overview');
+            if (refreshBtn) {
+                e.preventDefault();
+                await this.refreshDashboard();
+            }
+        });
+    },
+
+    async refreshDashboard() {
+        const btn = this.container.querySelector('#btn-refresh-overview');
+        const svg = btn?.querySelector('svg');
+        if (btn) btn.disabled = true;
+        if (svg) svg.style.animation = 'spin 0.8s linear infinite';
+
+        // Set stat cards into loading state
+        this.container.querySelectorAll('[data-stat-value]').forEach(el => {
+            el.classList.add('is-loading');
+        });
+
+        // Set recent patients tbody into loading state
+        const tbody = this.container.querySelector('#overview-recent-body');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted" style="padding: 2rem;">Loading recent patients...</td></tr>';
+        }
+
+        try {
+            await this.loadData();
+            showToast('Refreshed clinic overview data.', 'info');
+        } finally {
+            const newBtn = this.container.querySelector('#btn-refresh-overview');
+            const newSvg = newBtn?.querySelector('svg');
+            if (newBtn) newBtn.disabled = false;
+            if (newSvg) newSvg.style.animation = '';
+        }
     },
 
     renderStructure() {
         this.container.innerHTML = `
-            <div class="page-intro">
+            <div class="page-intro" style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
                 <div>
                     <h2 class="page-title">Clinic Overview</h2>
                     <p class="page-subtitle">A live snapshot of clinic master file records and recent patient registrations.</p>
+                </div>
+                <div>
+                    <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-overview" title="Refresh Clinic Overview">
+                        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 0.3rem;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                        Refresh
+                    </button>
                 </div>
             </div>
 

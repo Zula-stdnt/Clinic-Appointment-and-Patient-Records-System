@@ -1,9 +1,9 @@
-// assets/js/live-sync.js
+﻿// assets/js/live-sync.js
 // CPRMS Real-Time Sync Poller
 // Automatically syncs appointment changes and active queue states across open browser sessions
 // without requiring manual browser reloads.
 
-import api from './api.js?v=7';
+import api from './api.js?v=8';
 
 class LiveSyncEngine {
     constructor() {

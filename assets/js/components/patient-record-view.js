@@ -1,11 +1,11 @@
-// assets/js/components/patient-record-view.js
+﻿// assets/js/components/patient-record-view.js
 // Shared, read-only patient record screen used by the Administrator, Receptionist,
 // and Doctor portals: demographics, visit summary, searchable and collapsible
 // color-coded encounter timeline, and per-visit printing.
 // ITE 387 Lessons applied: 02 DOM and UI/dom_create_and_remove_elements (view is
 // built, replaced, and torn down by the hosting module)
 
-import { escapeHtml, formatStatusLabel } from '../ui.js?v=24';
+import { escapeHtml, formatStatusLabel } from '../ui.js?v=26';
 import { printPrescription } from './print-prescription.js?v=2';
 import { printLabRequest } from './print-lab-request.js?v=1';
 import { printAppointmentForm } from './print-appointment-form.js?v=2';
@@ -289,7 +289,7 @@ export function renderPatientRecord(container, data, options = {}) {
                 ? `<div class="encounter-block">
                         <h5>Laboratory &amp; Diagnostic Requests</h5>
                         <table class="record-table">
-                            <thead><tr><th>Test / Procedure</th><th style="width: 30%;">Status</th><th style="width: 24%;">Date</th></tr></thead>
+                            <thead><tr><th>Test / Procedure</th><th style="width: 25%;">Status</th><th style="width: 20%;">Date</th></tr></thead>
                             <tbody>
                                 ${labs.map(l => {
                                     const ls = LAB_STATUS[l.status] || { label: l.status, className: 'badge-secondary' };
@@ -308,7 +308,7 @@ export function renderPatientRecord(container, data, options = {}) {
                 ? `<div class="encounter-block">
                         <h5>Prescriptions</h5>
                         <table class="record-table">
-                            <thead><tr><th>Medication</th><th>Dosage &amp; Route</th><th>Frequency &amp; Duration</th><th>Instructions</th></tr></thead>
+                            <thead><tr><th style="width: 30%;">Medication</th><th style="width: 20%;">Dosage &amp; Route</th><th style="width: 25%;">Frequency &amp; Duration</th><th style="width: 25%;">Instructions</th></tr></thead>
                             <tbody>
                                 ${prescriptions.map(rx => `<tr>
                                     <td>
@@ -359,10 +359,9 @@ export function renderPatientRecord(container, data, options = {}) {
                 ${vitals ? `<div class="record-vitals">${vitals}</div>` : ''}
                 ${notes}
                 ${addendaHtml}
-                <div class="encounter-grid">
-                    <div>${diagnosesHtml}${labsHtml}</div>
-                    <div>${rxHtml}</div>
-                </div>`;
+                ${diagnosesHtml}
+                ${rxHtml}
+                ${labsHtml}`;
         } else {
             const message = enc.status === 'cancelled'
                 ? 'This visit was cancelled.'

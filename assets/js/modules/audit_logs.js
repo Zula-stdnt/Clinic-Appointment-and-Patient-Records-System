@@ -1,8 +1,8 @@
-// assets/js/modules/audit_logs.js
+﻿// assets/js/modules/audit_logs.js
 // Compliance & Audit Logs module for Administrator oversight
 
-import api from '../api.js?v=7';
-import { escapeHtml, showToast } from '../ui.js?v=24';
+import api from '../api.js?v=8';
+import { escapeHtml, showToast } from '../ui.js?v=26';
 
 const AUDIT_ACTION_GROUPS = [
     {
@@ -228,7 +228,10 @@ const auditLogsModule = {
                                     <option value="50">50</option>
                                 </select>
                             </div>
-                            <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-requests">Refresh</button>
+                            <button type="button" class="btn btn-secondary btn-sm" id="btn-refresh-requests" title="Refresh Access Requests">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 0.25rem;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                                Refresh
+                            </button>
                         </div>
                     </div>
 
@@ -492,8 +495,17 @@ const auditLogsModule = {
 
         const refreshReqBtn = this.container.querySelector('#btn-refresh-requests');
         if (refreshReqBtn) {
-            refreshReqBtn.addEventListener('click', () => {
-                this.loadAccessRequests();
+            refreshReqBtn.addEventListener('click', async () => {
+                const svg = refreshReqBtn.querySelector('svg');
+                refreshReqBtn.disabled = true;
+                if (svg) svg.style.animation = 'spin 0.8s linear infinite';
+                try {
+                    await this.loadAccessRequests();
+                    showToast('Refreshed access requests.', 'info');
+                } finally {
+                    refreshReqBtn.disabled = false;
+                    if (svg) svg.style.animation = '';
+                }
             });
         }
 

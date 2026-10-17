@@ -1,12 +1,12 @@
-// assets/js/modules/receptionist_overview.js
+﻿// assets/js/modules/receptionist_overview.js
 // Receptionist Front-Desk Command Center (Dashboard)
 // Features: Multi-period time horizon filtering (Today, This Week, This Month, All-Time),
 // live lobby triage & waiting board, daily clinic capacity gauge (10 max limit),
 // doctors on duty monitoring, and front-desk quick actions (including 1-click blank form printing).
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays & 03 APIs and Database Operations/javascript_working_with_apis
 
-import api from '../api.js?v=7';
-import { escapeHtml, showToast, formatStatusLabel } from '../ui.js?v=24';
+import api from '../api.js?v=8';
+import { escapeHtml, showToast, formatStatusLabel } from '../ui.js?v=26';
 import { printBlankForm } from '../components/print-appointment-form.js?v=24';
 
 const MAX_DAILY_CAPACITY = 10;
@@ -839,25 +839,49 @@ export default {
         `;
     },
 
+    async refreshDashboard() {
+        const btn = this.container.querySelector('#btn-refresh-dashboard');
+        const svg = btn?.querySelector('svg');
+        if (btn) btn.disabled = true;
+        if (svg) svg.style.animation = 'spin 0.8s linear infinite';
+        try {
+            await this.loadData();
+            showToast('Refreshed lobby status and clinic data.', 'info');
+        } finally {
+            const newBtn = this.container.querySelector('#btn-refresh-dashboard');
+            const newSvg = newBtn?.querySelector('svg');
+            if (newBtn) newBtn.disabled = false;
+            if (newSvg) newSvg.style.animation = '';
+        }
+    },
+
     attachEventListeners() {
+        if (this._eventsAttached) return;
+        this._eventsAttached = true;
         const c = this.container;
 
-        // Refresh button
-        c.querySelector('#btn-refresh-dashboard')?.addEventListener('click', () => {
-            this.loadData();
-            showToast('Refreshed lobby status and clinic data.', 'info');
-        });
+        // Delegated click handler on container
+        c.addEventListener('click', async (e) => {
+            // Refresh button
+            const refreshBtn = e.target.closest('#btn-refresh-dashboard');
+            if (refreshBtn) {
+                e.preventDefault();
+                await this.refreshDashboard();
+                return;
+            }
 
-        // Blank registration form print button
-        c.querySelector('#btn-print-blank-form')?.addEventListener('click', () => {
-            printBlankForm();
-        });
+            // Blank registration form print button
+            const printBtn = e.target.closest('#btn-print-blank-form');
+            if (printBtn) {
+                e.preventDefault();
+                printBlankForm();
+                return;
+            }
 
-        // Time horizon period switcher (Today | This Week | All-Time)
-        c.addEventListener('click', (e) => {
-            const btn = e.target.closest('.btn-period-tab');
-            if (btn) {
-                const targetPeriod = btn.getAttribute('data-period');
+            // Time horizon period switcher (Today | This Week | All-Time)
+            const periodBtn = e.target.closest('.btn-period-tab');
+            if (periodBtn) {
+                const targetPeriod = periodBtn.getAttribute('data-period');
                 if (targetPeriod && (targetPeriod !== this.state.activePeriod || targetPeriod === 'all')) {
                     this.state.activePeriod = targetPeriod;
                     if (targetPeriod === 'all') {
@@ -868,11 +892,10 @@ export default {
                     this.state.page = 1; // reset pagination
                     this.renderDashboard();
                 }
+                return;
             }
-        });
 
-        // Custom Date Range Picker Apply Button
-        c.addEventListener('click', (e) => {
+            // Custom Date Range Picker Apply Button
             if (e.target && e.target.id === 'btn-rec-apply-range') {
                 const startInput = c.querySelector('#rec-range-start');
                 const endInput = c.querySelector('#rec-range-end');
@@ -888,6 +911,7 @@ export default {
                 this.state.filter = 'all';
                 this.state.page = 1;
                 this.renderDashboard();
+                return;
             }
         });
 

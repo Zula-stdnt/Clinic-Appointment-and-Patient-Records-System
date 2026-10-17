@@ -3,13 +3,13 @@
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_modules (ES module orchestration) & javascript_fundamentals (DOMContentLoaded initialization)
 
 import { requireSession } from './session-guard.js?v=24';
-import { hideAllModals, closeSidebar } from './ui.js?v=24';
+import { hideAllModals, closeSidebar } from './ui.js?v=26';
 import { LiveSync } from './live-sync.js?v=1';
-import receptionistOverview from './modules/receptionist_overview.js?v=2';
-import receptionistAppointments from './modules/receptionist_appointments.js?v=34';
-import receptionistPatients from './modules/receptionist_patients.js?v=33';
-import settingsModule from './modules/account_settings.js?v=24';
-import profileModule from './modules/my_profile.js?v=24';
+import receptionistOverview from './modules/receptionist_overview.js?v=4';
+import receptionistAppointments from './modules/receptionist_appointments.js?v=40';
+import receptionistPatients from './modules/receptionist_patients.js?v=34';
+import settingsModule from './modules/account_settings.js?v=25';
+import profileModule from './modules/my_profile.js?v=25';
 
 const modules = {
     'receptionist_overview': {
@@ -58,6 +58,9 @@ window.navigateTo = function(route) {
         }
     });
 
+    if (modules[moduleKey]?.title) {
+        document.title = `${modules[moduleKey].title} - CPRMS`;
+    }
     const titleEl = document.getElementById('current-module-title');
     if (titleEl) {
         titleEl.textContent = modules[moduleKey].title;

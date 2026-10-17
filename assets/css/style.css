@@ -231,6 +231,73 @@ svg {
     color: #ffffff;
 }
 
+/* Outline button variations */
+.btn-outline-primary {
+    background: transparent;
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.btn-outline-primary:hover:not(:disabled) {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #ffffff;
+}
+
+.btn-outline-secondary {
+    background: transparent;
+    border-color: var(--border-strong);
+    color: var(--text-muted);
+}
+.btn-outline-secondary:hover:not(:disabled) {
+    background: var(--surface-hover);
+    border-color: var(--text-light);
+    color: var(--text);
+}
+
+.btn-outline-success {
+    background: transparent;
+    border-color: var(--success);
+    color: var(--success);
+}
+.btn-outline-success:hover:not(:disabled) {
+    background: var(--success);
+    border-color: var(--success);
+    color: #ffffff;
+}
+
+.btn-outline-danger {
+    background: transparent;
+    border-color: var(--danger);
+    color: var(--danger);
+}
+.btn-outline-danger:hover:not(:disabled) {
+    background: var(--danger);
+    border-color: var(--danger);
+    color: #ffffff;
+}
+
+.btn-outline-warning {
+    background: transparent;
+    border-color: var(--warning);
+    color: var(--warning);
+}
+.btn-outline-warning:hover:not(:disabled) {
+    background: var(--warning);
+    border-color: var(--warning);
+    color: #ffffff;
+}
+
+.btn-outline-info {
+    background: transparent;
+    border-color: #0284c7;
+    color: #0284c7;
+}
+.btn-outline-info:hover:not(:disabled) {
+    background: #0284c7;
+    border-color: #0284c7;
+    color: #ffffff;
+}
+
 .btn-sm {
     padding: 0.33rem 0.7rem;
     font-size: 0.79rem;
@@ -238,16 +305,28 @@ svg {
 }
 
 .btn-icon {
-    padding: 0.35rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
     width: 30px;
     height: 30px;
-    flex: 0 0 auto;
+    flex: 0 0 30px;
+    border-radius: var(--radius-sm);
 }
 
 .btn-icon.btn-sm {
-    padding: 0.3rem;
+    padding: 0;
     width: 28px;
     height: 28px;
+    flex: 0 0 28px;
+}
+
+.btn-icon svg {
+    width: 14px;
+    height: 14px;
+    margin: 0;
+    flex-shrink: 0;
 }
 
 .btn-block {
@@ -489,6 +568,14 @@ select.table-page-size {
 .search-select-control .search-select-input {
     padding-left: 2.3rem;
     padding-right: 2.3rem;
+}
+
+.search-select.is-disabled .search-select-input,
+.search-select-control .search-select-input:disabled {
+    background-color: var(--bg-alt, #f8fafc);
+    color: var(--text-muted);
+    cursor: not-allowed;
+    border-color: var(--border);
 }
 
 .search-select-icon {

@@ -1,9 +1,9 @@
-// assets/js/modules/archive.js
+﻿// assets/js/modules/archive.js
 // Manage Archive module for viewing, restoring, and permanently deleting archived records
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays (Entity configuration dictionary) & 03 APIs and Database Operations/mysql_update_records (Callback-driven UI refresh via confirmRestore/confirmHardDelete)
 
-import api from '../api.js?v=7';
-import { escapeHtml, showToast, confirmRestore, confirmHardDelete } from '../ui.js?v=24';
+import api from '../api.js?v=8';
+import { escapeHtml, showToast, confirmRestore, confirmHardDelete } from '../ui.js?v=26';
 
 const CONFIG = {
     'users': {
@@ -278,13 +278,11 @@ export default {
                     ${config.renderRow(item)}
                     <td>
                         <div class="actions-cell">
-                            <button class="btn btn-success btn-sm btn-restore" data-id="${id}" data-name="${escapeHtml(name)}" title="Restore Record">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="16 1 21 5 16 9"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path><polyline points="8 23 3 19 8 15"></polyline></svg>
-                                Restore
+                            <button class="btn btn-outline-success btn-sm btn-icon btn-restore" data-id="${id}" data-name="${escapeHtml(name)}" title="Restore Record" aria-label="Restore Record">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="16 1 21 5 16 9"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path><polyline points="8 23 3 19 8 15"></polyline></svg>
                             </button>
-                            <button class="btn btn-danger btn-sm btn-hard-delete" data-id="${id}" data-name="${escapeHtml(name)}" title="Permanently Delete">
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
-                                Delete
+                            <button class="btn btn-outline-danger btn-sm btn-icon btn-hard-delete" data-id="${id}" data-name="${escapeHtml(name)}" title="Permanently Delete" aria-label="Permanently Delete">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
                             </button>
                         </div>
                     </td>

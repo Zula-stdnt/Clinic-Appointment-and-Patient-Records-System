@@ -1,11 +1,11 @@
-// assets/js/components/print-lab-request.js
+﻿// assets/js/components/print-lab-request.js
 // Builds and prints the laboratory / diagnostic request slip. The doctor hands
 // it to the patient, who presents it to the laboratory or diagnostic area.
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_specific_record
 // (consultation detail fetched by appointment key) & 02 DOM and UI/dom_create_and_remove_elements
 
-import api from '../api.js?v=7';
-import { escapeHtml, showToast } from '../ui.js?v=24';
+import api from '../api.js?v=8';
+import { escapeHtml, showToast } from '../ui.js?v=26';
 import { openPrintFrame, fullName, computeAge, formatDate, formatNow, orDash, capitalize } from './print-utils.js?v=1';
 
 export async function printLabRequest(appointmentId) {

@@ -972,12 +972,85 @@ Enhanced the compliance and audit logging infrastructure across both backend con
 
 ---
 
-## Section 42: System Verification Results & Test Suite Pass Rate
+---
 
-System stability, functional safety, and regression resistance across all 42 development sections are verified by eight (8) automated test suites maintaining a **100% pass rate (99/99 tests passing)**:
+## Section 42: UI/UX Fixes, Compact Icon-Only Action Buttons, No-Show Logic & Global Navbar Cleanup
+
+Implemented comprehensive user interface optimizations across all user portals to reduce table clutter, enforce accurate front-desk arrival logic, and eliminate header duplication in the navigation bar.
+
+### 1. Receptionist Appointment Arrival & No-Show Logic
+- **Conditional No-Show Rendering (`receptionist_appointments.js`):** In the Receptionist Appointments queue, the "Mark as No Show" button is now strictly conditioned on `appt.status === 'scheduled'`. Once a patient is confirmed to have arrived at the clinic on their scheduled date (`appt.status === 'confirmed'`), the No-Show action is automatically hidden.
+- **Backend Transition Enforcement (`appointment_controller.php`):** Updated the `$validTransitions` mapping for the `confirmed` status to `['confirmed', 'cancelled']`, preventing API clients from marking checked-in patients as No-Show.
+
+### 2. Compact Icon-Only Action Buttons Across 10 Tables
+Replaced verbose text-labeled buttons with standardized, compact icon-only buttons (`.btn-sm.btn-icon`) styled with unique SVG icons, distinct color coding, and descriptive `title` / `aria-label` accessibility attributes:
+- **Admin Panel:**
+  - *Manage Users (`users.js`):* Replaced "View", "Edit", and "Archive" text buttons with Info Eye icon (`.btn-outline-info`), Primary Pencil icon (`.btn-outline-primary`), and Warning Archive icon (`.btn-outline-warning`).
+  - *Manage Patients (`patients.js`):* Replaced "Record" and "Archive" with Primary File-Text icon (`.btn-outline-primary`) and Warning Archive icon (`.btn-outline-warning`).
+  - *Manage Doctors (`doctors.js`):* Replaced "View", "Schedule", "Edit", and "Archive" with Info Eye (`.btn-outline-info`), Success Calendar (`.btn-outline-success`), Primary Pencil (`.btn-outline-primary`), and Warning Archive (`.btn-outline-warning`).
+  - *Manage Specialties (`specialties.js`):* Icon-only View (`.btn-outline-info`), Edit (`.btn-outline-primary`), and Archive (`.btn-outline-warning`).
+  - *Manage Services (`services.js`):* Icon-only View (`.btn-outline-info`), Edit (`.btn-outline-primary`), and Archive (`.btn-outline-warning`).
+  - *Manage Medications (`medications.js`):* Icon-only View (`.btn-outline-info`), Edit (`.btn-outline-primary`), and Archive (`.btn-outline-warning`).
+  - *Manage Archive (`archive.js`):* Replaced "Restore" and "Delete" with Success Undo/Restore icon (`.btn-outline-success`) and Danger Trash icon (`.btn-outline-danger`).
+- **Doctor Panel:**
+  - *My Appointments (`doctor_appointments.js`):* Replaced "Start Consult" with Primary Consultation Pen icon (`.btn-primary.btn-sm.btn-icon`) and "View Encounter" with Secondary Eye icon (`.btn-outline-secondary.btn-sm.btn-icon`).
+  - *Patient Records (`doctor_patients.js`):* Replaced "View Record" with Primary File icon (`.btn-outline-primary.btn-sm.btn-icon`) and "Break-Glass" with Danger Warning Triangle icon (`.btn-outline-danger.btn-sm.btn-icon`).
+- **Receptionist Panel:**
+  - *Patient Records (`receptionist_patients.js`):* Replaced "View" and "Edit" with Info Eye icon (`.btn-outline-info.btn-sm.btn-icon`) and Primary Edit icon (`.btn-outline-primary.btn-sm.btn-icon`).
+- **Styling Architecture (`style.css`):** Formally defined `.btn-outline-primary`, `.btn-outline-secondary`, `.btn-outline-success`, `.btn-outline-danger`, `.btn-outline-warning`, and `.btn-outline-info` with smooth hover states, and unified `.btn-icon` dimensions (`28px x 28px` with centered `14px` SVGs).
+
+### 3. Global Navbar Cleanup (Eliminate Header Redundancy)
+- **Top Navigation Bar Cleanup:** Removed `<h1 class="topbar-title" id="current-module-title">` from the top navigation bar across all three dashboard shells (`admin_dashboard.html`, `doctor_dashboard.html`, `receptionist_dashboard.html`). Page titles now appear cleanly and exclusively within the main workspace card header, completely eliminating visual redundancy.
+- **Dynamic Browser Tab Synchronization (`main.js`, `doctor_main.js`, `receptionist_main.js`):** Updated navigation scripts to dynamically update the browser window tab title (`document.title = "${moduleTitle} - CPRMS"`) upon module selection while gracefully bypassing absent DOM topbar title elements.
+
+---
+
+---
+
+## Section 44: Appointments View Dropdown Alignment, Profile Menu Race Condition Fix, Double-Cancel Elimination & Refresh Hardening
+
+### 1. View Selection Converted to Dropdown Aligned with Rows (`receptionist_appointments.js`, `doctor_appointments.js`)
+- **Eliminated Separate Tab Banner:** Removed the dedicated `.appointment-date-tabs` button row located above the appointments table in the Receptionist portal, saving significant vertical screen space and reducing visual distraction.
+- **Embedded in Main Toolbar:** Added `<select id="appointments-date-filter">` inside `.toolbar-filters`, prefaced by `<span class="text-muted">View:</span>` and positioned directly alongside `<span class="text-muted">Rows:</span>` dropdown.
+- **Dynamic Change Handler:** Binds `change` event listener updating `this.state.dateFilter`, automatically sorting upcoming/today visits ascending (`ASC`) and past/all visits descending (`DESC`), resetting pagination to page 1, and reloading the table without page refresh.
+- **Harmonized Doctor Portal:** Wrapped `#doctor-date-filter` with `<span class="text-muted">View:</span>` wrapper and placed it directly preceding `#doctor-page-size` (`Rows:`) for unified visual rhythm.
+
+### 2. Profile Dropdown & Logout Unresponsiveness Resolution (`ui.js`)
+- **Root Cause (Duplicate Listener Conflict):** Identified race condition where importing `ui.js` with differing cache query strings (`?v=25` vs `?v=24`) caused the browser ES module loader to evaluate `ui.js` twice. Both evaluations registered `document.addEventListener('click')`, causing Listener 1 to add `.show` (opening dropdown) and Listener 2 to immediately remove `.show` on the exact same click event.
+- **Idempotency Guard:** Wrapped document-level delegation listeners (`click`, `keydown`, `resize`) and `initSidebarState` in an idempotency guard:
+  ```javascript
+  if (!window.__cprms_ui_events_initialized) {
+      window.__cprms_ui_events_initialized = true;
+      // Attached strictly once per window lifecycle
+  }
+  ```
+- **Unified Query Versioning:** Harmonized all 28 `ui.js` imports across the codebase to `ui.js?v=26` and `api.js` to `api.js?v=8`.
+- **Active Modal Shared State:** Synchronized modal state on `window.__cprms_active_modal` so Escape-key handling and modal close triggers are unified.
+
+### 3. Double-Cancel Elimination & Patient Name Locking (`receptionist_appointments.js`, `ui.js`, `appointment_controller.php`)
+- **Eliminated "Cancel" / "Cancel" Modal Confusion:** Replaced ambiguous confirmation dialog buttons so primary destructive action button clearly reads "Cancel Appointment" while dismissal button reads "Keep Appointment". Added automatic safety fallback in `ui.js` and `confirm-dialog.js` resolving dismissal to "Close" whenever action text is "Cancel".
+- **Safe Patient Name Formatting:** Fixed `undefined, undefined` patient name artifact by introducing `formatPatientName()` to safely parse last and first name attributes.
+- **Immutable Patient on Appointment Edit:** Disabled patient combobox in Edit Appointment mode (`patSelect.disabled = true`, `patientPicker.setDisabled(true)`) with helper note directing users to cancel and rebook if wrong patient was chosen. Backed by HTTP 422 Unprocessable Entity protection on `api/appointment_controller.php`.
+
+### 4. Dashboard Refresh Buttons Hardening across All Panels
+- **Container Event Delegation:** Upgraded `#btn-refresh-dashboard` / `#btn-refresh-overview` across Admin (`overview.js`), Doctor (`doctor_overview.js`), and Receptionist (`receptionist_overview.js`) dashboards to use container-delegated click handling, ensuring refresh functionality persists across period tab switches (`Today`, `This Week`, `All-Time`).
+- **Animated Spinner & Toast:** Added rotating SVG animation and toast notifications on refresh.
+
+---
+
+## Section 45: System Verification Results & Test Suite Pass Rate
+
+System stability, functional safety, and regression resistance across all 44 development sections are verified by fifteen (15) automated test suites maintaining a **100% pass rate (210/210 tests passing)**:
 
 | Test Suite | Script | Tests | Result | Verified Scope |
 | :--- | :--- | :---: | :---: | :--- |
+| **View Dropdown & Toolbar Alignment** | `tests/verify_view_dropdown_alignment.php` | 18 / 18 | **100% PASS** | Receptionist banner removal, View select dropdown, options (`upcoming`/`today`/`past`/`all`), toolbar placement with Rows dropdown, doctor alignment, script versions |
+| **Profile Dropdown & Logout** | `tests/verify_profile_dropdown.php` | 36 / 36 | **100% PASS** | HTML dropdown containers, accessibility attributes, logout links, CSS visibility, idempotency guard, module query harmonization (v=26) across all 3 portals |
+| **Dropdown DOM Interaction Simulation** | `tests/verify_dropdown_interaction.js` | 9 / 9 | **100% PASS** | Node.js DOM event simulation, idempotency listener registration, button click, child avatar/caret bubbling, outside click, sign-out link navigation |
+| **Dashboard Refresh Buttons** | `tests/verify_dashboard_refresh_buttons.php` | 14 / 14 | **100% PASS** | Refresh buttons across Admin, Doctor, Receptionist overview dashboards, tab switch persistence, appointments & audit logs refresh |
+| **Confirmation Modals & Double Cancel** | `tests/verify_confirmation_modal_buttons.php` | 9 / 9 | **100% PASS** | Elimination of "Double Cancel" buttons, "Keep Appointment" dismissal, safe patient name resolution, zero "undefined, undefined" |
+| **Appointment Patient Name Lock** | `tests/verify_appointment_patient_lock.php` | 9 / 9 | **100% PASS** | Immutable patient select on edit modal, helper hint, unlocked new appointments, HTTP 422 API tamper protection |
+| **UI Fixes, No-Show Logic & Topbar** | `tests/verify_ui_fixes_and_noshow.php` | 16 / 16 | **100% PASS** | Receptionist no-show hiding/blocking, icon-only buttons across 10 tables (including medications), outline CSS, topbar title removal |
 | **Audit Logs Expansion & Integrity** | `tests/verify_audit_logs_expansion.php` | 13 / 13 | **100% PASS** | Normalized doctor name resolution, appointment & consultation audit logging, API enrichment, action filtering |
 | **Doctor Consultation SOAP & Rx** | `tests/verify_consultation_soap_rx.php` | 5 / 5 | **100% PASS** | Migration 014 schema, SOAP bidirectional round-trip, legacy plain-text fallback, atomic consultation saving, patient record timeline parity |
 | **Doctor Schedules & Form UX** | `tests/verify_schedule_and_form_ux.php` | 20 / 20 | **100% PASS** | Form date `min`, time bounds, schedule notices, warning banners, zero-retype draft preservation, `doctor_schedule_controller.php`, modal presets |
@@ -986,7 +1059,7 @@ System stability, functional safety, and regression resistance across all 42 dev
 | **CPRMS Enhancements** | `tests/verify_cprms_enhancements.php` | 10 / 10 | **100% PASS** | Universal table sorting, 4-way gender filtering ("Other" resolution), human-readable audit logs, entity name enrichment |
 | **To-Do Improvements** | `tests/verify_todo_improvements.php` | 8 / 8 | **100% PASS** | Hybrid break-glass access, standard access requests (24h window), live multi-tab synchronization (`live-sync.js`) |
 | **Allergy Workflow** | `tests/verify_allergy_workflow.php` | 6 / 6 | **100% PASS** | Patient allergy alerts, intake unconfirmed notes, doctor confirmation lifecycle |
-| **Total Test Coverage** | **8 Suites** | **99 / 99** | **100% PASS** | **Zero Regressions** |
+| **Total Test Coverage** | **15 Suites** | **210 / 210** | **100% PASS** | **Zero Regressions** |
 
 
 

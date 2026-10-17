@@ -3,14 +3,14 @@
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_modules (ES module orchestration) & javascript_fundamentals (DOMContentLoaded initialization)
 
 import { requireSession } from './session-guard.js?v=24';
-import { hideAllModals, closeSidebar } from './ui.js?v=24';
+import { hideAllModals, closeSidebar } from './ui.js?v=26';
 import { LiveSync } from './live-sync.js?v=1';
-import doctorOverview from './modules/doctor_overview.js?v=28';
-import doctorAppointments from './modules/doctor_appointments.js?v=31';
-import doctorPatients from './modules/doctor_patients.js?v=34';
-import doctorConsultation from './modules/doctor_consultation.js?v=33';
-import settingsModule from './modules/account_settings.js?v=24';
-import doctorProfile from './modules/doctor_profile.js?v=31';
+import doctorOverview from './modules/doctor_overview.js?v=30';
+import doctorAppointments from './modules/doctor_appointments.js?v=34';
+import doctorPatients from './modules/doctor_patients.js?v=35';
+import doctorConsultation from './modules/doctor_consultation.js?v=34';
+import settingsModule from './modules/account_settings.js?v=25';
+import doctorProfile from './modules/doctor_profile.js?v=32';
 
 const modules = {
     'doctor_overview': {
@@ -66,7 +66,10 @@ window.navigateTo = function(route) {
         }
     });
 
-    // Update topbar title
+    // Update browser title
+    if (modules[moduleKey]?.title) {
+        document.title = `${modules[moduleKey].title} - CPRMS`;
+    }
     const titleEl = document.getElementById('current-module-title');
     if (titleEl) {
         titleEl.textContent = modules[moduleKey].title;

@@ -1,4 +1,4 @@
-// assets/js/components/patient-register.js
+﻿// assets/js/components/patient-register.js
 // Shared "Register New Patient" modal used by the receptionist workspace
 // (Patient Register tab and the appointment booking form) so the front desk
 // never has to leave its current task to add a patient record.
@@ -6,8 +6,8 @@
 // (single-record form saved through the patient API) & 02 DOM and UI/
 // dom_apply_styles (classList toggles for validation feedback)
 
-import api from '../api.js?v=7';
-import { showToast, openModal, closeModal } from '../ui.js?v=24';
+import api from '../api.js?v=8';
+import { showToast, openModal, closeModal } from '../ui.js?v=26';
 
 let instanceSeq = 0;
 

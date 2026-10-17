@@ -135,6 +135,7 @@ export function openModal(modalId) {
     modal.setAttribute('aria-hidden', 'false');
     document.body.classList.add('modal-open');
     activeModal = modal;
+    window.__cprms_active_modal = modal;
 
     // Wait for the visibility change to apply before moving focus inside
     requestAnimationFrame(() => {
@@ -148,7 +149,7 @@ export function openModal(modalId) {
 }
 
 export function closeModal(modalId, force = false) {
-    const modal = resolveModal(modalId) || activeModal;
+    const modal = resolveModal(modalId) || window.__cprms_active_modal || activeModal || document.querySelector('.modal.show');
     if (!modal) return;
 
     if (!force) {
@@ -164,6 +165,9 @@ export function closeModal(modalId, force = false) {
 
     if (activeModal === modal) {
         activeModal = null;
+    }
+    if (window.__cprms_active_modal === modal) {
+        window.__cprms_active_modal = null;
     }
 
     if (!document.querySelector('.modal.show')) {
@@ -239,32 +243,45 @@ function bindConfirmAction(modal, confirmBtn, onConfirm) {
     return cleanClone;
 }
 
-export function confirmAction({ title, message, btnText = 'Confirm', btnClass = 'btn btn-primary', onConfirm }) {
+export function confirmAction({ title, message, btnText = 'Confirm', btnClass = 'btn btn-primary', cancelBtnText = 'Cancel', cancelBtnClass = 'btn btn-secondary', onConfirm }) {
     const modal = document.getElementById('global-confirm-modal');
     if (!modal) return;
 
     const modalTitle = modal.querySelector('.modal-title');
     const modalBody = modal.querySelector('.modal-body');
     const confirmBtn = modal.querySelector('#global-confirm-btn');
+    const cancelBtn = modal.querySelector('.modal-footer [data-dismiss="modal"]');
 
     modalTitle.textContent = title || 'Confirm Action';
-    modalBody.innerHTML = `<p>${escapeHtml(message)}</p>`;
+    modalBody.innerHTML = `<p class="mb-0">${escapeHtml(message)}</p>`;
 
     confirmBtn.className = btnClass;
     confirmBtn.textContent = btnText;
     confirmBtn.disabled = false;
 
+    if (cancelBtn) {
+        // Prevent ambiguous "Double Cancel" buttons: if the action button is "Cancel" or "Cancel Appointment"
+        // and cancelBtnText was not explicitly customized away from "Cancel", default dismissal to "Close".
+        let resolvedCancelText = cancelBtnText;
+        if (resolvedCancelText === 'Cancel' && (/^cancel/i.test(btnText.trim()) || btnText.trim().toLowerCase() === 'cancel')) {
+            resolvedCancelText = 'Close';
+        }
+        cancelBtn.textContent = resolvedCancelText || 'Cancel';
+        cancelBtn.className = cancelBtnClass || 'btn btn-secondary';
+    }
+
     bindConfirmAction(modal, confirmBtn, onConfirm);
     openModal(modal);
 }
 
-export function confirmSoftDelete({ title, message, itemName, btnText = 'Archive Record', btnClass = 'btn btn-warning', onConfirm }) {
+export function confirmSoftDelete({ title, message, itemName, btnText = 'Archive Record', btnClass = 'btn btn-warning', cancelBtnText = 'Cancel', onConfirm }) {
     const modal = document.getElementById('global-confirm-modal');
     if (!modal) return;
 
     const modalTitle = modal.querySelector('.modal-title');
     const modalBody = modal.querySelector('.modal-body');
     const confirmBtn = modal.querySelector('#global-confirm-btn');
+    const cancelBtn = modal.querySelector('.modal-footer [data-dismiss="modal"]');
 
     modalTitle.textContent = title || 'Confirm Archive';
     modalBody.innerHTML = `
@@ -278,17 +295,23 @@ export function confirmSoftDelete({ title, message, itemName, btnText = 'Archive
     confirmBtn.textContent = btnText;
     confirmBtn.disabled = false;
 
+    if (cancelBtn) {
+        cancelBtn.textContent = cancelBtnText || 'Cancel';
+        cancelBtn.className = 'btn btn-secondary';
+    }
+
     bindConfirmAction(modal, confirmBtn, onConfirm);
     openModal(modal);
 }
 
-export function confirmRestore({ title = 'Restore Record', message, itemName, btnText = 'Restore', onConfirm }) {
+export function confirmRestore({ title = 'Restore Record', message, itemName, btnText = 'Restore', cancelBtnText = 'Cancel', onConfirm }) {
     const modal = document.getElementById('global-confirm-modal');
     if (!modal) return;
 
     const modalTitle = modal.querySelector('.modal-title');
     const modalBody = modal.querySelector('.modal-body');
     const confirmBtn = modal.querySelector('#global-confirm-btn');
+    const cancelBtn = modal.querySelector('.modal-footer [data-dismiss="modal"]');
 
     modalTitle.textContent = title || 'Restore Record';
     modalBody.innerHTML = `
@@ -302,17 +325,23 @@ export function confirmRestore({ title = 'Restore Record', message, itemName, bt
     confirmBtn.textContent = btnText;
     confirmBtn.disabled = false;
 
+    if (cancelBtn) {
+        cancelBtn.textContent = cancelBtnText || 'Cancel';
+        cancelBtn.className = 'btn btn-secondary';
+    }
+
     bindConfirmAction(modal, confirmBtn, onConfirm);
     openModal(modal);
 }
 
-export function confirmHardDelete({ title, message, itemName, typeToConfirmText = 'DELETE', onConfirm }) {
+export function confirmHardDelete({ title, message, itemName, typeToConfirmText = 'DELETE', cancelBtnText = 'Cancel', onConfirm }) {
     const modal = document.getElementById('global-confirm-modal');
     if (!modal) return;
 
     const modalTitle = modal.querySelector('.modal-title');
     const modalBody = modal.querySelector('.modal-body');
     const confirmBtn = modal.querySelector('#global-confirm-btn');
+    const cancelBtn = modal.querySelector('.modal-footer [data-dismiss="modal"]');
 
     modalTitle.textContent = title || 'Confirm Permanent Delete (Hard Delete)';
     modalBody.innerHTML = `
@@ -329,6 +358,11 @@ export function confirmHardDelete({ title, message, itemName, typeToConfirmText 
     confirmBtn.className = 'btn btn-danger';
     confirmBtn.textContent = 'Permanently Delete';
     confirmBtn.disabled = true;
+
+    if (cancelBtn) {
+        cancelBtn.textContent = cancelBtnText || 'Cancel';
+        cancelBtn.className = 'btn btn-secondary';
+    }
 
     const cleanClone = bindConfirmAction(modal, confirmBtn, onConfirm);
 
@@ -388,86 +422,93 @@ function initSidebarState() {
     }
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSidebarState);
-} else {
-    initSidebarState();
-}
-
 // ---------------------------------------------------------------------------
-// Global event delegation
+// Global event delegation (Idempotent: attached once per window lifetime)
 // ---------------------------------------------------------------------------
 
-document.addEventListener('click', (e) => {
-    // Toasts
-    const toastClose = e.target.closest('[data-dismiss="toast"]');
-    if (toastClose) {
-        removeToast(toastClose.closest('.toast'));
-        return;
+if (!window.__cprms_ui_events_initialized) {
+    window.__cprms_ui_events_initialized = true;
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSidebarState);
+    } else {
+        initSidebarState();
     }
 
-    // Modals: explicit close buttons and backdrop clicks
-    const modalDismiss = e.target.closest('[data-dismiss="modal"]');
-    if (modalDismiss) {
-        closeModal(modalDismiss.closest('.modal'));
-        return;
-    }
-    if (e.target.classList && e.target.classList.contains('modal') && e.target.classList.contains('show')) {
-        closeModal(e.target);
-        return;
-    }
-
-    // Dropdown toggle
-    const dropdownToggle = e.target.closest('[data-dropdown-toggle]');
-    if (dropdownToggle) {
-        const dropdown = dropdownToggle.closest('.dropdown');
-        const isOpen = dropdown.classList.contains('show');
-        closeAllDropdowns();
-        if (!isOpen) {
-            dropdown.classList.add('show');
-            dropdownToggle.setAttribute('aria-expanded', 'true');
-        }
-        return;
-    }
-
-    // Any dropdown item click closes the menu (hash links still navigate)
-    if (e.target.closest('.dropdown-item')) {
-        closeAllDropdowns();
-        return;
-    }
-
-    if (!e.target.closest('.dropdown')) {
-        closeAllDropdowns();
-    }
-
-    // Off-canvas sidebar
-    const sidebarToggle = e.target.closest('[data-sidebar-toggle]');
-    if (sidebarToggle) {
-        toggleSidebar();
-        return;
-    }
-    if (e.target.closest('#sidebar-backdrop')) {
-        closeSidebar();
-        return;
-    }
-    if (e.target.closest('.sidebar-nav .nav-link')) {
-        closeSidebar();
-    }
-});
-
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-        if (activeModal) {
-            closeModal(activeModal);
+    document.addEventListener('click', (e) => {
+        // Toasts
+        const toastClose = e.target.closest('[data-dismiss="toast"]');
+        if (toastClose) {
+            removeToast(toastClose.closest('.toast'));
             return;
         }
-        closeAllDropdowns();
-        closeSidebar();
-    }
-});
 
-window.addEventListener('resize', () => {
-    if (window.matchMedia('(min-width: 992px)').matches) {
-        closeSidebar();
-    }
-});
+        // Modals: explicit close buttons and backdrop clicks
+        const modalDismiss = e.target.closest('[data-dismiss="modal"]');
+        if (modalDismiss) {
+            closeModal(modalDismiss.closest('.modal'));
+            return;
+        }
+        if (e.target.classList && e.target.classList.contains('modal') && e.target.classList.contains('show')) {
+            closeModal(e.target);
+            return;
+        }
+
+        // Dropdown toggle
+        const dropdownToggle = e.target.closest('[data-dropdown-toggle]');
+        if (dropdownToggle) {
+            const dropdown = dropdownToggle.closest('.dropdown');
+            if (dropdown) {
+                const isOpen = dropdown.classList.contains('show');
+                closeAllDropdowns();
+                if (!isOpen) {
+                    dropdown.classList.add('show');
+                    dropdownToggle.setAttribute('aria-expanded', 'true');
+                }
+            }
+            return;
+        }
+
+        // Any dropdown item click closes the menu (hash links still navigate)
+        if (e.target.closest('.dropdown-item')) {
+            closeAllDropdowns();
+            return;
+        }
+
+        if (!e.target.closest('.dropdown')) {
+            closeAllDropdowns();
+        }
+
+        // Off-canvas sidebar
+        const sidebarToggle = e.target.closest('[data-sidebar-toggle]');
+        if (sidebarToggle) {
+            toggleSidebar();
+            return;
+        }
+        if (e.target.closest('#sidebar-backdrop')) {
+            closeSidebar();
+            return;
+        }
+        if (e.target.closest('.sidebar-nav .nav-link')) {
+            closeSidebar();
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            const currentModal = window.__cprms_active_modal || activeModal || document.querySelector('.modal.show');
+            if (currentModal) {
+                closeModal(currentModal);
+                return;
+            }
+            closeAllDropdowns();
+            closeSidebar();
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        if (window.matchMedia('(min-width: 992px)').matches) {
+            closeSidebar();
+        }
+    });
+}

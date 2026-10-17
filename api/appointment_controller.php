@@ -921,7 +921,7 @@ function updateAppointment(PDO $pdo, int $appointmentId): void {
         $oldStatus = $lockedAppt['status'];
         $validTransitions = [
             'scheduled' => ['scheduled', 'confirmed', 'cancelled', 'no_show'],
-            'confirmed' => ['confirmed', 'cancelled', 'no_show']
+            'confirmed' => ['confirmed', 'cancelled']
         ];
         if (!isset($validTransitions[$oldStatus]) || !in_array($status, $validTransitions[$oldStatus])) {
             $errors['status'] = "Invalid status transition from {$oldStatus} to {$status}.";
@@ -944,6 +944,14 @@ function updateAppointment(PDO $pdo, int $appointmentId): void {
         if (!empty($errors)) {
             $pdo->rollBack();
             send_error('Please correct the highlighted fields.', $errors, 422);
+        }
+
+        // Enforce constraint: Patient cannot be changed on an existing appointment
+        if ((int)$lockedAppt['patient_id'] !== $patientId) {
+            $pdo->rollBack();
+            send_error('Patient cannot be changed on an existing appointment. Please cancel this appointment and create a new one.', [
+                'patient_id' => 'Patient cannot be changed on an existing appointment.'
+            ], 422);
         }
 
         // Validate FKs, allowing the existing IDs to be preserved even if they are now archived

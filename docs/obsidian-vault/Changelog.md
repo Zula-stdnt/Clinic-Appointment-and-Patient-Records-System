@@ -9,7 +9,52 @@ A plain-English summary of major updates, new modules, and bug fixes across the 
 > [!info] Looking for the technical trail?
 > This note summarizes **features**. For a per-commit record (commit IDs, exact files, verification steps), see [[Development Log]].
 
-## Recent — Admin Audit Logs Module Improvements & Expanded Event Tracking
+## 2026-10-18 — Appointments View Toolbar Alignment, Profile Dropdown Unresponsiveness Fix, Double-Cancel Elimination & Audit
+
+### Appointments Module: View Dropdown Toolbar Integration
+- **View Selection Dropdown:** Replaced the separate `.appointment-date-tabs` banner row above the appointments table with a clean `<select id="appointments-date-filter">` dropdown located directly inside `.toolbar-filters`.
+- **Aligned with Rows Selector:** Styled the View dropdown with matching `<span class="text-muted">View:</span>` label and form-control styling, positioned side-by-side with the `<span class="text-muted">Rows:</span>` dropdown across both Receptionist and Doctor portals.
+- **Dynamic Sorting & Filtering:** Selecting View options (`Upcoming`, `Today`, `Past`, `All`) seamlessly updates date filters and ordering (`ASC` for Upcoming/Today, `DESC` for Past/All) without page reload.
+
+### Authentication & Shell: Profile Dropdown & Logout Resolution
+- **Multi-Evaluation Double-Listener Fix:** Identified and resolved race condition in `assets/js/ui.js` where mismatched ES module version queries (`ui.js?v=25` vs `ui.js?v=24`) caused duplicate click event listeners, opening and instantly closing the profile menu on the same click.
+- **Idempotency Guard:** Added `window.__cprms_ui_events_initialized` so document delegation listeners (`click`, `keydown`, `resize`) are guaranteed to attach only once across any module evaluations.
+- **Unified Query Versioning:** Harmonized all 28 `ui.js` module imports across the codebase to `v=26` and all `api.js` imports to `v=8`.
+- **Active Modal Shared State:** Synchronized modal state on `window.__cprms_active_modal` for seamless Escape-key handling across components.
+
+### Receptionist Front Desk: Double-Cancel Elimination & Patient Name Locking
+- **Double-Cancel Modal Prevention:** Updated confirmation dialogs in `receptionist_appointments.js`, `ui.js`, and `confirm-dialog.js` so the primary action button explicitly reads "Cancel Appointment" while the dismissal button reads "Keep Appointment" (or "Close" via global fallback), completely eliminating "Cancel" / "Cancel" confusion.
+- **Safe Patient Name Formatting:** Fixed `undefined, undefined` patient name bug when cancelling appointments by adding `formatPatientName()` to safely parse last and first names.
+- **Immutable Patient Name on Appointment Edit:** Disabled patient selection combobox in Edit Appointment mode (`patSelect.disabled = true`, `patientPicker.setDisabled(true)`) with helper hint to cancel and rebook if wrong patient was chosen. Backed by HTTP 422 Unprocessable Entity protection on `api/appointment_controller.php`.
+
+### Dashboard Refresh Buttons Audit
+- **Full Refresh Audit across 3 Dashboards:** Verified and hardened `#btn-refresh-dashboard` / `#btn-refresh-overview` across Admin, Doctor, and Receptionist portals.
+- **Event Delegation Persistence:** Replaced brittle direct bindings with delegated click handlers on module containers so refresh listeners survive period tab switches (`Today`, `This Week`, `All-Time`).
+- **Visual Feedback:** Animated SVG spinner and toast notifications on manual refresh.
+
+### Clinical Data & Capacity Limits Seeding
+- **Daily Appointment Ceiling:** Seeded realistic test appointments maintaining the 10-patient maximum capacity limit while leaving 1 slot available (max 9 booked) for realistic front-desk testing.
+- **Status Integrity:** Ensured today's and upcoming appointments remain strictly in `scheduled` status (never completed or confirmed ahead of time).
+- **Patient History:** Seeded 4 past appointment histories across patient records for complete timeline testing.
+
+## Recent — UI/UX Fixes, Compact Icon-Only Action Buttons, No-Show Logic & Navbar Cleanup
+
+### Receptionist Appointment Arrival & No-Show Logic
+- **Arrival-Aware Action Visibility:** The "Mark as No Show" action in the Receptionist Appointments table is now hidden once a patient is confirmed to have arrived at the clinic (`appt.status === 'confirmed'`).
+- **Backend Guard:** Enforced in `api/appointment_controller.php` where confirmed visits cannot transition to `no_show`.
+
+### Compact Icon-Only Action Buttons Across 10 Tables
+- **Clutter-Free Visual Design:** Replaced text-labeled action buttons with compact, color-coded icon-only buttons (`.btn-sm.btn-icon`) with unique SVG icons and informative tooltips (`title` / `aria-label`) across:
+  - **Admin:** Manage Users, Manage Patients, Manage Doctors, Manage Specialties, Manage Services, Manage Medications, Manage Archive.
+  - **Doctor:** My Appointments, Patient Records.
+  - **Receptionist:** Patient Records.
+- **Dedicated Outline & Icon CSS:** Styled `.btn-outline-primary`, `.btn-outline-secondary`, `.btn-outline-success`, `.btn-outline-danger`, `.btn-outline-warning`, and `.btn-outline-info` with standardized 28px square hit targets in `assets/css/style.css`.
+
+### Global Navbar Cleanup (Eliminate Header Redundancy)
+- **Topbar Simplification:** Removed duplicate module titles from the top navigation bar across all three dashboard shells (`admin_dashboard.html`, `doctor_dashboard.html`, `receptionist_dashboard.html`). Headers now live cleanly within the active workspace cards.
+- **Browser Tab Sync:** Module navigation dynamically updates `document.title` to `${moduleTitle} - CPRMS`.
+
+## Admin Audit Logs Module Improvements & Expanded Event Tracking
 
 ### UI/UX Scrollable Dropdown Menu with Quick Search Filter
 - **Ergonomic Scrollable Action Filter:** Replaced default dropdown select with a responsive custom menu constrained to `max-height: 260px; overflow-y: auto;` featuring a thin scrollbar.
@@ -141,6 +186,26 @@ A plain-English summary of major updates, new modules, and bug fixes across the 
 - **Doctor Consultation Gating:** Protects clinical encounters so doctors can only open the consultation screen once the front desk confirms the appointment, displaying `Awaiting Confirmation` for scheduled visits.
 - **Accumulated Medical History:** Doctor Patient Records now dynamically compiles and displays an accumulated, reverse-chronological timeline of all past encounters, clinical notes, vital signs, and ICD-10 diagnoses for each patient.
 - **UI Polish:** Removed patient ID numbers from the appointment table rows to keep the view clean and centered on patient names, and sorted receptionist appointments nearest-first.
+
+## Recent — Dashboard & Module Refresh Button Audit & Enhancements
+- **Doctor Dashboard Resiliency:** Fixed the Doctor Dashboard Refresh button (`#btn-refresh-dashboard`), which previously lost its click event listener after switching time periods (Today / This Week / All-Time) due to DOM element replacement. Converted to delegated container event handling and guarded against duplicate listener registrations.
+- **Receptionist Dashboard Resiliency:** Fixed the Receptionist Dashboard Refresh and Print Blank Form buttons with delegated event listeners so they remain functional after changing time horizon filters or pagination.
+- **Admin Dashboard Refresh Button:** Added a matching `#btn-refresh-overview` Refresh button to the Administrator Overview Dashboard header, allowing administrators to refresh live stats and recent patient registrations without reloading the browser.
+- **Visual Feedback & Spin Animation:** Added spinning SVG icon animations (`@keyframes spin`), disabled loading states, and toast notifications across all dashboard and list Refresh buttons (`overview.js`, `doctor_overview.js`, `receptionist_overview.js`, `doctor_appointments.js`, `receptionist_appointments.js`, `audit_logs.js`).
+
+## Recent — Elimination of "Double Cancel" Confirmation Modals
+- **Distinct Action & Dismissal Labels:** Resolved the confusing "double cancel" modal where cancelling an appointment showed two adjacent buttons both labeled `Cancel`. The modal now clearly differentiates the options:
+  - Action button: `Cancel Appointment` (solid red danger button).
+  - Dismissal button: `Keep Appointment` (secondary outline button).
+- **Descriptive Titles & Context:** The status modal now displays explicit titles (e.g., `Cancel Appointment`, `Confirm Appointment Arrival`, `Mark Appointment as No Show`) and contextual messages referencing the patient's name and consequences (e.g., slot becoming available for rescheduling).
+- **Core UI Safeguard in `ui.js`:** Enhanced `confirmAction` to accept `cancelBtnText` and implemented an automatic safety check: if any caller specifies an action button starting with `Cancel`, the dismissal button automatically defaults to `Close` or the custom label instead of repeating `Cancel`.
+- **Form Discard Clarity:** Modal close confirmations for unsaved edits now feature `Keep Editing` instead of generic `Cancel` alongside `Discard`.
+
+## Recent — Receptionist Appointments Patient Immutability
+- **Patient Immutability on Edit:** In the Receptionist Edit Patient Appointment form, the patient combobox and underlying select input are locked and disabled (`is-disabled`), preventing inadvertent or unauthorized switching of the patient identity on existing visits.
+- **Contextual Guidance:** Added clear helper text under the locked patient field advising staff: *"Patient cannot be changed. If booked for the wrong patient, cancel this visit and create a new appointment."*
+- **Backend API Protection:** `api/appointment_controller.php` enforces that `PUT` updates cannot modify `patient_id` on existing appointments, returning HTTP 422 Unprocessable Entity with error message `Patient cannot be changed on an existing appointment. Please cancel this appointment and create a new one.`
+- **New Appointments Unaffected:** When scheduling a new appointment, the patient combobox and "+ Register Walk-in" buttons remain fully accessible.
 
 ## Recent — Product & Hospital Branding Update
 ### Branding & Scope Alignment

@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 03 APIs and Database Operations/header_detail_forms (appointment header + vital signs detail saved together) & 02 DOM and UI/dom_create_and_remove_elements (Create -> Configure -> Listen -> Append rows)
 
 import api from '../api.js?v=8';
-import { create, escapeHtml, showToast, openModal, closeModal, confirmAction, formatStatusLabel } from '../ui.js?v=24';
+import { create, escapeHtml, showToast, openModal, closeModal, confirmAction, formatStatusLabel } from '../ui.js?v=26';
 import { SearchSelect } from '../components/search-select.js?v=1';
 import { PatientRegisterForm } from '../components/patient-register.js?v=1';
 import { printAppointmentForm } from '../components/print-appointment-form.js?v=2';
@@ -16,12 +16,13 @@ export default {
         doctors: [],
         search: '',
         status: '',
+        dateFilter: 'upcoming',
         page: 1,
         pageSize: 10,
         total: 0,
         pages: 1,
         sortBy: 'appointment_date',
-        sortOrder: 'DESC',
+        sortOrder: 'ASC',
         activeEditId: null,
         activeEditStatus: null,
         isDirty: false,
@@ -85,16 +86,29 @@ export default {
                             <option value="cancelled">Cancelled</option>
                             <option value="no_show">No Show</option>
                         </select>
-                    </div>
 
-                    <div style="display: flex; align-items: center; gap: 0.5rem;">
-                        <span class="text-muted" style="font-size: 0.85rem;">Rows:</span>
-                        <select id="appointments-page-size" class="form-control table-page-size">
-                            <option value="5">5</option>
-                            <option value="10" selected>10</option>
-                            <option value="25">25</option>
-                        </select>
-                        <button class="btn btn-secondary" id="btn-refresh-appointments">Refresh</button>
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="text-muted" style="font-size: 0.85rem;">View:</span>
+                            <select id="appointments-date-filter" class="form-control" style="width: auto; min-width: 120px;">
+                                <option value="upcoming" selected>Upcoming</option>
+                                <option value="today">Today</option>
+                                <option value="past">Past</option>
+                                <option value="all">All</option>
+                            </select>
+                        </div>
+
+                        <div style="display: flex; align-items: center; gap: 0.5rem;">
+                            <span class="text-muted" style="font-size: 0.85rem;">Rows:</span>
+                            <select id="appointments-page-size" class="form-control table-page-size">
+                                <option value="5">5</option>
+                                <option value="10" selected>10</option>
+                                <option value="25">25</option>
+                            </select>
+                        </div>
+                        <button class="btn btn-secondary" id="btn-refresh-appointments" title="Refresh Appointments">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle; margin-right: 0.25rem;"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                            Refresh
+                        </button>
                     </div>
                 </div>
 
@@ -140,6 +154,10 @@ export default {
                                         <option value="" disabled selected>Select Patient</option>
                                     </select>
                                     <div class="invalid-feedback" id="appt-patient-error"></div>
+                                    <small class="text-muted" id="appt-patient-lock-note" style="display: none; margin-top: 0.35rem; font-size: 0.8rem; line-height: 1.35; color: var(--text-muted);">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: -1px; margin-right: 3px;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                                        Patient cannot be changed on an existing appointment. If this appointment was made under the wrong patient, please cancel this visit and schedule a new appointment.
+                                    </small>
                                 </div>
                                 <div class="form-group doctor-combobox-wrapper" style="position: relative;">
                                     <label for="doctor-select-btn">Doctor <span class="required-star">*</span></label>
@@ -480,8 +498,15 @@ export default {
     },
 
     formatPatientName(person) {
-        const mi = person.middle_initial ? ` ${person.middle_initial}.` : '';
-        return `${person.last_name}, ${person.first_name}${mi}`;
+        if (!person) return 'this patient';
+        const last = person.patient_last || person.last_name || '';
+        const first = person.patient_first || person.first_name || '';
+        const miRaw = person.patient_middle || person.middle_initial || '';
+        const mi = miRaw ? ` ${miRaw}.` : '';
+        if (last && first) {
+            return `${last}, ${first}${mi}`;
+        }
+        return last || first || 'this patient';
     },
 
     attachEventListeners() {
@@ -495,6 +520,28 @@ export default {
                 this.loadData();
             }, 300);
         });
+
+        const dateFilter = this.container.querySelector('#appointments-date-filter');
+        if (dateFilter) {
+            dateFilter.value = this.state.dateFilter || 'upcoming';
+            dateFilter.addEventListener('change', async (e) => {
+                const filter = e.target.value;
+                if (this.state.dateFilter === filter) return;
+
+                this.state.dateFilter = filter;
+
+                if (filter === 'upcoming' || filter === 'today') {
+                    this.state.sortBy = 'appointment_date';
+                    this.state.sortOrder = 'ASC';
+                } else {
+                    this.state.sortBy = 'appointment_date';
+                    this.state.sortOrder = 'DESC';
+                }
+
+                this.state.page = 1;
+                await this.loadData();
+            });
+        }
 
         this.container.querySelector('#appointments-status-filter').addEventListener('change', (e) => {
             this.state.status = e.target.value;
@@ -530,8 +577,18 @@ export default {
             closeModal(this.container.querySelector('#appointment-form-modal'));
         });
 
-        this.container.querySelector('#btn-refresh-appointments').addEventListener('click', () => {
-            this.loadData();
+        this.container.querySelector('#btn-refresh-appointments')?.addEventListener('click', async () => {
+            const btn = this.container.querySelector('#btn-refresh-appointments');
+            const svg = btn?.querySelector('svg');
+            if (btn) btn.disabled = true;
+            if (svg) svg.style.animation = 'spin 0.8s linear infinite';
+            try {
+                await this.loadData();
+                showToast('Refreshed appointments.', 'info');
+            } finally {
+                if (btn) btn.disabled = false;
+                if (svg) svg.style.animation = '';
+            }
         });
 
         // Real-time live update sync listener
@@ -593,6 +650,7 @@ export default {
                     message: 'You have unsaved changes. Are you sure you want to discard them?',
                     btnText: 'Discard',
                     btnClass: 'btn btn-danger',
+                    cancelBtnText: 'Keep Editing',
                     onConfirm: () => {
                         this.state.isDirty = false;
                         closeModal(apptModal, true);
@@ -663,6 +721,7 @@ export default {
                     message: 'You have unsaved patient information. Are you sure you want to discard it?',
                     btnText: 'Discard',
                     btnClass: 'btn btn-danger',
+                    cancelBtnText: 'Keep Editing',
                     onConfirm: () => {
                         this.state.isWalkinDirty = false;
                         closeModal(walkinModal, true);
@@ -1078,6 +1137,9 @@ export default {
             };
             if (this.state.search) params.search = this.state.search;
             if (this.state.status) params.status = this.state.status;
+            if (this.state.dateFilter && this.state.dateFilter !== 'all') {
+                params.date_filter = this.state.dateFilter;
+            }
 
             const res = await api.get('api/appointment_controller.php', params);
             if (res.success) {
@@ -1187,9 +1249,10 @@ export default {
                         <button type="button" class="btn btn-sm btn-icon btn-outline-danger" data-action="cancel" data-id="${appt.appointment_id}" data-patient="${escapeHtml(appt.patient_last + ', ' + appt.patient_first)}" title="Cancel Appointment" aria-label="Cancel appointment">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
                         </button>
+                        ${appt.status === 'scheduled' ? `
                         <button type="button" class="btn btn-sm btn-icon btn-outline-warning" data-action="noshow" data-id="${appt.appointment_id}" title="Mark as No Show" aria-label="Mark as no show">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line></svg>
-                        </button>
+                        </button>` : ''}
                     </div>
                 `;
             }
@@ -1256,23 +1319,8 @@ export default {
         }
     },
 
-    cancelAppointment(appointmentId, patientName) {
-        confirmDialog({
-            title: 'Cancel Appointment',
-            message: `Cancel the appointment for "${patientName || 'this patient'}"? They will be removed from the doctor's schedule and the time slot becomes available for rebooking.`,
-            btnText: 'Cancel Appointment',
-            btnClass: 'btn btn-danger',
-            cancelText: 'Keep Appointment',
-            onConfirm: async () => {
-                try {
-                    const res = await api.put(`api/appointment_controller.php?action=cancel&id=${appointmentId}`);
-                    showToast(res.message, 'warning');
-                    await this.loadData();
-                } catch (err) {
-                    showToast(err.response?.data?.message || err.message || 'Failed to cancel the appointment.', 'error');
-                }
-            }
-        });
+    cancelAppointment(appointmentId) {
+        this.updateStatus(appointmentId, 'cancelled');
     },
 
     async openBookModal(appt = null) {
@@ -1295,6 +1343,7 @@ export default {
         if (appt) {
             this.state.activeEditId = appt.appointment_id;
             this.state.activeEditStatus = appt.status;
+            this.state.activeEditPatientId = appt.patient_id;
             title.textContent = 'Edit Patient Appointment';
             
             const patSelect = this.container.querySelector('#appt-patient');
@@ -1307,6 +1356,7 @@ export default {
                     patSelect.appendChild(opt);
                 }
                 patSelect.value = appt.patient_id;
+                patSelect.disabled = true;
             }
             
             const docSelect = this.container.querySelector('#appt-doctor');
@@ -1334,7 +1384,11 @@ export default {
             
             if (this.patientPicker) {
                 this.patientPicker.setValue(appt.patient_id, `${appt.patient_last}, ${appt.patient_first}`);
+                this.patientPicker.setDisabled(true);
             }
+            const patLockNote = this.container.querySelector('#appt-patient-lock-note');
+            if (patLockNote) patLockNote.style.display = 'block';
+
             if (this.doctorPicker) {
                 this.doctorPicker.setValue(appt.doctor_id, `Dr. ${appt.doctor_last}, ${appt.doctor_first}`);
             }
@@ -1349,6 +1403,7 @@ export default {
         } else {
             this.state.activeEditId = null;
             this.state.activeEditStatus = null;
+            this.state.activeEditPatientId = null;
             title.textContent = 'New Patient Appointment';
             
             const allergiesInput = this.container.querySelector('#appt-allergies');
@@ -1367,8 +1422,16 @@ export default {
             if (dateInput) dateInput.min = localToday.toISOString().slice(0, 10);
 
             const patSelect = this.container.querySelector('#appt-patient');
-            if (patSelect) patSelect.value = '';
-            if (this.patientPicker) this.patientPicker.clear();
+            if (patSelect) {
+                patSelect.value = '';
+                patSelect.disabled = false;
+            }
+            if (this.patientPicker) {
+                this.patientPicker.clear();
+                this.patientPicker.setDisabled(false);
+            }
+            const patLockNote = this.container.querySelector('#appt-patient-lock-note');
+            if (patLockNote) patLockNote.style.display = 'none';
 
             const docSelect = this.container.querySelector('#appt-doctor');
             if (docSelect) docSelect.value = '';
@@ -1651,7 +1714,10 @@ export default {
     async saveAppointment() {
         const patSelect = this.container.querySelector('#appt-patient');
         const docSelect = this.container.querySelector('#appt-doctor');
-        const patientVal = (patSelect && patSelect.value) || (this.patientPicker && this.patientPicker.getValue()) || '0';
+        const patientVal = this.state.activeEditPatientId 
+            || (patSelect && patSelect.value) 
+            || (this.patientPicker && this.patientPicker.getValue()) 
+            || '0';
         const doctorVal = (docSelect && docSelect.value) || (this.doctorPicker && this.doctorPicker.getValue()) || '0';
         const allergiesInput = this.container.querySelector('#appt-allergies');
 
@@ -1736,20 +1802,42 @@ export default {
     },
     
     updateStatus(id, newStatus) {
-        const statusMap = {
-            confirmed: 'confirm',
-            cancelled: 'cancel',
-            no_show: 'mark as No Show'
-        };
-        const actionText = statusMap[newStatus];
-        
+        const appt = this.state.appointments.find(a => a.appointment_id === id);
+        const patientName = this.formatPatientName(appt);
+
+        let modalTitle = 'Confirm Status Change';
+        let modalMessage = 'Are you sure you want to update this appointment status?';
+        let confirmBtnText = 'Confirm';
+        let confirmBtnClass = 'btn btn-primary';
+        let cancelBtnText = 'Cancel';
+
+        if (newStatus === 'cancelled') {
+            modalTitle = 'Cancel Appointment';
+            modalMessage = `Are you sure you want to cancel the appointment for ${patientName}? The slot will become available for rescheduling.`;
+            confirmBtnText = 'Cancel Appointment';
+            confirmBtnClass = 'btn btn-danger';
+            cancelBtnText = 'Keep Appointment';
+        } else if (newStatus === 'confirmed') {
+            modalTitle = 'Confirm Appointment Arrival';
+            modalMessage = `Confirm arrival for ${patientName}? The patient will be marked as waiting in the clinic lobby for their doctor.`;
+            confirmBtnText = 'Confirm Arrival';
+            confirmBtnClass = 'btn btn-success';
+            cancelBtnText = 'Close';
+        } else if (newStatus === 'no_show') {
+            modalTitle = 'Mark Appointment as No Show';
+            modalMessage = `Are you sure you want to mark the appointment for ${patientName} as No Show?`;
+            confirmBtnText = 'Mark No Show';
+            confirmBtnClass = 'btn btn-danger';
+            cancelBtnText = 'Keep Appointment';
+        }
+
         confirmAction({
-            title: `Confirm Status Change`,
-            message: `Are you sure you want to ${actionText} this appointment?`,
-            btnText: actionText.charAt(0).toUpperCase() + actionText.slice(1),
-            btnClass: newStatus === 'cancelled' || newStatus === 'no_show' ? 'btn btn-danger' : 'btn btn-success',
+            title: modalTitle,
+            message: modalMessage,
+            btnText: confirmBtnText,
+            btnClass: confirmBtnClass,
+            cancelBtnText: cancelBtnText,
             onConfirm: async () => {
-                const appt = this.state.appointments.find(a => a.appointment_id === id);
                 if (!appt) return;
                 
                 const payload = {

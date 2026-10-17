@@ -1,14 +1,14 @@
-// assets/js/modules/receptionist_patients.js
+﻿// assets/js/modules/receptionist_patients.js
 // Front-desk Patient Register: search the patient directory and register new patients
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_records (paginated, filterable SELECT)
 // & mysql_insert_records (registration through the shared patient form component)
 
-import api from '../api.js?v=7';
-import { escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=24';
+import api from '../api.js?v=8';
+import { escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=26';
 import { confirmDialog } from '../components/confirm-dialog.js?v=1';
 import { PatientRegisterForm } from '../components/patient-register.js?v=1';
 import { printBlankForm } from '../components/print-appointment-form.js?v=2';
-import { renderPatientRecord } from '../components/patient-record-view.js?v=4';
+import { renderPatientRecord } from '../components/patient-record-view.js?v=5';
 
 export default {
     state: {
@@ -365,9 +365,13 @@ export default {
                     <td style="vertical-align: middle;">${escapeHtml(p.contact_no || '-')}</td>
                     <td style="vertical-align: middle;">${escapeHtml(this.formatDate(p.created_at))}</td>
                     <td style="text-align: right; vertical-align: middle;">
-                        <div class="actions-cell" style="justify-content: flex-end; display: flex; gap: 0.4rem;">
-                            <button type="button" class="btn btn-secondary btn-sm btn-view-patient" data-id="${p.patient_id}" title="View Record">View</button>
-                            <button type="button" class="btn btn-outline-primary btn-sm btn-edit-patient" data-id="${p.patient_id}" title="Edit Demographics">Edit</button>
+                        <div class="actions-cell" style="justify-content: flex-end; display: flex; gap: 0.35rem;">
+                            <button type="button" class="btn btn-outline-info btn-sm btn-icon btn-view-patient" data-id="${p.patient_id}" title="View Patient Record" aria-label="View Patient Record">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
+                            <button type="button" class="btn btn-outline-primary btn-sm btn-icon btn-edit-patient" data-id="${p.patient_id}" title="Edit Demographics" aria-label="Edit Demographics">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            </button>
                         </div>
                     </td>
                 </tr>

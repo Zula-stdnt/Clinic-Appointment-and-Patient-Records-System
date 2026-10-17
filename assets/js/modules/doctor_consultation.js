@@ -1,9 +1,9 @@
-// assets/js/modules/doctor_consultation.js
+﻿// assets/js/modules/doctor_consultation.js
 // Clinical Consultation Module with SOAP Clinical Notes and Structured Prescriptions
 // ITE 387 Lessons applied: 03 APIs and Database Operations/header_detail_forms & 01 JavaScript Foundations/javascript_objects_and_arrays
 
-import api from '../api.js?v=7';
-import { create, escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=24';
+import api from '../api.js?v=8';
+import { create, escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=26';
 import { SearchSelect } from '../components/search-select.js?v=1';
 import { printPrescription } from '../components/print-prescription.js?v=2';
 import { printLabRequest } from '../components/print-lab-request.js?v=1';

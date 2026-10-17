@@ -1,4 +1,4 @@
-// assets/js/components/print-appointment-form.js
+﻿// assets/js/components/print-appointment-form.js
 // Builds and prints the combined "Patient Registration & Appointment Form":
 // patient demographics plus the appointment details (and triage vitals) in a
 // single self-contained, print-ready A4 document rendered in a hidden iframe.
@@ -6,8 +6,8 @@
 // (single appointment fetched by primary key) & 02 DOM and UI/dom_create_and_remove_elements
 // (temporary iframe created, used, then removed)
 
-import api from '../api.js?v=7';
-import { escapeHtml, showToast } from '../ui.js?v=24';
+import api from '../api.js?v=8';
+import { escapeHtml, showToast } from '../ui.js?v=26';
 
 export async function printAppointmentForm(appointmentId) {
     try {

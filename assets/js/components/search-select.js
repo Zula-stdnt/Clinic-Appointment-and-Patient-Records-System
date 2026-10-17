@@ -113,17 +113,18 @@ export class SearchSelect {
         this.input.setAttribute('aria-controls', this.menu.id);
 
         this.input.addEventListener('focus', () => {
+            if (this.disabled) return;
             this._openMenu();
-            if (!this.disabled) {
-                this._loadItems(this.input.value === this.label ? '' : this.input.value.trim());
-            }
+            this._loadItems(this.input.value === this.label ? '' : this.input.value.trim());
         });
 
         this.input.addEventListener('click', () => {
+            if (this.disabled) return;
             this._openMenu();
         });
 
         this.input.addEventListener('input', () => {
+            if (this.disabled) return;
             // Typing diverges from the stored selection: keep the form honest
             this.value = '';
             this.label = '';
@@ -133,10 +134,14 @@ export class SearchSelect {
             this._loadItems(this.input.value.trim());
         });
 
-        this.input.addEventListener('keydown', this._onInputKeydown);
+        this.input.addEventListener('keydown', (e) => {
+            if (this.disabled) return;
+            this._onInputKeydown(e);
+        });
 
         this.clearBtn.addEventListener('click', (e) => {
             e.preventDefault();
+            if (this.disabled) return;
             this.clear();
             this.input.focus();
             this._loadItems('');
@@ -216,6 +221,8 @@ export class SearchSelect {
     setDisabled(isDisabled) {
         this.disabled = !!isDisabled;
         this.input.disabled = this.disabled;
+        if (this.root) this.root.classList.toggle('is-disabled', this.disabled);
+        this._syncClearButton();
         if (this.disabled) this._closeMenu();
     }
 
@@ -398,7 +405,7 @@ export class SearchSelect {
     }
 
     _syncClearButton() {
-        this.clearBtn.hidden = this.value === '' && this.input.value === '';
+        this.clearBtn.hidden = this.disabled || (this.value === '' && this.input.value === '');
     }
 
     // ------------------------------------------------------------------

@@ -3,19 +3,19 @@
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_modules (ES module orchestration) & javascript_fundamentals (DOMContentLoaded initialization)
 
 import { requireSession } from './session-guard.js?v=24';
-import { hideAllModals, closeSidebar } from './ui.js?v=24';
+import { hideAllModals, closeSidebar } from './ui.js?v=26';
 import { LiveSync } from './live-sync.js?v=1';
-import overviewModule from './modules/overview.js?v=24';
-import usersModule from './modules/users.js?v=24';
-import patientsModule from './modules/patients.js?v=29';
-import doctorsModule from './modules/doctors.js?v=25';
-import servicesModule from './modules/services.js?v=25';
-import medicationsModule from './modules/medications.js?v=1';
-import specialtiesModule from './modules/specialties.js?v=24';
-import archiveModule from './modules/archive.js?v=24';
-import auditLogsModule from './modules/audit_logs.js?v=2';
-import settingsModule from './modules/account_settings.js?v=24';
-import profileModule from './modules/my_profile.js?v=24';
+import overviewModule from './modules/overview.js?v=26';
+import usersModule from './modules/users.js?v=25';
+import patientsModule from './modules/patients.js?v=30';
+import doctorsModule from './modules/doctors.js?v=26';
+import servicesModule from './modules/services.js?v=26';
+import medicationsModule from './modules/medications.js?v=2';
+import specialtiesModule from './modules/specialties.js?v=25';
+import archiveModule from './modules/archive.js?v=25';
+import auditLogsModule from './modules/audit_logs.js?v=4';
+import settingsModule from './modules/account_settings.js?v=25';
+import profileModule from './modules/my_profile.js?v=25';
 
 const modules = {
     'overview': {
@@ -85,7 +85,10 @@ function navigateTo(moduleKey) {
         }
     });
 
-    // Update topbar title
+    // Update browser title
+    if (modules[moduleKey]?.title) {
+        document.title = `${modules[moduleKey].title} - CPRMS`;
+    }
     const titleEl = document.getElementById('current-module-title');
     if (titleEl) {
         titleEl.textContent = modules[moduleKey].title;

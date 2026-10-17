@@ -1,11 +1,11 @@
-// assets/js/components/print-prescription.js
+﻿// assets/js/components/print-prescription.js
 // Builds and prints the prescription (Rx) slip handed to the patient after a
 // consultation, using the saved encounter from the consultation controller.
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_specific_record
 // (consultation detail fetched by appointment key) & 02 DOM and UI/dom_create_and_remove_elements
 
-import api from '../api.js?v=7';
-import { escapeHtml, showToast } from '../ui.js?v=24';
+import api from '../api.js?v=8';
+import { escapeHtml, showToast } from '../ui.js?v=26';
 import { openPrintFrame, fullName, computeAge, formatDate, formatNow, orDash, capitalize } from './print-utils.js?v=1';
 
 export async function printPrescription(appointmentId) {

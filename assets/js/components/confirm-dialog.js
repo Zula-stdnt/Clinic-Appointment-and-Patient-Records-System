@@ -1,10 +1,10 @@
-// assets/js/components/confirm-dialog.js
+﻿// assets/js/components/confirm-dialog.js
 // Reusable confirmation dialog for destructive or irreversible actions.
 // Built on the shared modal styles and ui.js open/close helpers.
 // ITE 387 Lessons applied: 02 DOM and UI/dom_create_and_remove_elements (dialog created
 // on demand and reused) & dom_apply_styles (existing modal classes)
 
-import { escapeHtml, openModal, closeModal } from '../ui.js?v=24';
+import { escapeHtml, openModal, closeModal } from '../ui.js?v=26';
 
 let modalEl = null;
 
@@ -48,7 +48,10 @@ export function confirmDialog(options = {}) {
     const message = options.message || 'Are you sure?';
     const confirmText = options.btnText || 'Confirm';
     const confirmClass = options.btnClass || 'btn btn-danger';
-    const cancelText = options.cancelText || 'Go Back';
+    let cancelText = options.cancelText || 'Go Back';
+    if (cancelText === 'Cancel' && (/^cancel/i.test(confirmText.trim()) || confirmText.trim().toLowerCase() === 'cancel')) {
+        cancelText = 'Close';
+    }
 
     modal.querySelector('.modal-title').textContent = title;
     modal.querySelector('.modal-body').innerHTML = `<p class="mb-0">${escapeHtml(message)}</p>`;

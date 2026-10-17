@@ -32,7 +32,69 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
-### 2026-10-16 — Admin Audit Logs Module Improvements, Scrollable Filter & Expanded Tracking (`working tree`)
+### 2026-10-18 — Appointments View Toolbar Alignment, Profile Dropdown Fix, Double-Cancel Prevention & Refresh Audit (`03e32fc`)
+**Type:** fix / ui / ux / refactor
+**Database / migrations:** none
+**Files changed:**
+- `assets/js/modules/receptionist_appointments.js` — removed separate `.appointment-date-tabs` button bar row; integrated `#appointments-date-filter` dropdown labeled with `View:` directly inside `.toolbar-filters` aligned side-by-side with `#appointments-page-size` (`Rows:`); updated `attachEventListeners` for date filter `change` events; enforced immutable patient identity on edit modal (`patSelect.disabled = true`, `patientPicker.setDisabled(true)`) with helper note; resolved double-cancel modal buttons to "Cancel Appointment" vs "Keep Appointment"; fixed `undefined, undefined` patient name bug via `formatPatientName()`.
+- `assets/js/modules/doctor_appointments.js` — styled `#doctor-date-filter` with `<span class="text-muted">View:</span>` wrapper and aligned with `#doctor-page-size` (`Rows:`) in toolbar; persisted event delegation on refresh button surviving period tab switches.
+- `assets/js/ui.js` — introduced `window.__cprms_ui_events_initialized` idempotency guard preventing duplicate global event listeners when imported with differing cache queries; synchronized `window.__cprms_active_modal` across instances; added double-cancel fallback resolving `cancelBtnText` to `'Close'` when action is `'Cancel'`.
+- `assets/js/components/confirm-dialog.js` — added double-cancel fallback resolving `cancelText` to `'Close'` when action is `'Cancel'`.
+- `assets/js/modules/overview.js`, `assets/js/modules/doctor_overview.js`, `assets/js/modules/receptionist_overview.js` — audited `#btn-refresh-dashboard` / `#btn-refresh-overview`; converted direct container listeners to delegated handlers surviving period tab switches (`Today`, `This Week`, `All-Time`).
+- `assets/js/components/patient-record-view.js`, `assets/css/style.css` — fixed layout misalignment on patient medical record timeline.
+- `api/appointment_controller.php` — added tamper guard on `PUT` rejecting any payload attempting to alter `patient_id` on existing appointments with HTTP 422 Unprocessable Entity.
+- `scripts/seed_clinical_data.php` — seeded clinical test appointments strictly respecting max 10 appointments daily limit (leaving 1 slot available at 9 booked), keeping today/upcoming appointments in `scheduled` status, and adding 4 historical records per patient.
+- `assets/js/**/*.js` — harmonized all 28 `ui.js` module imports to `ui.js?v=26` and all `api.js` imports to `api.js?v=8`.
+- `receptionist_dashboard.html`, `doctor_dashboard.html`, `admin_dashboard.html` — bumped dashboard entry script queries to `v=47`, `v=48`, and `v=36`.
+- `tests/verify_appointment_patient_lock.php` — 9-test automated suite for patient name immutability and API tamper rejection.
+- `tests/verify_confirmation_modal_buttons.php` — 9-test automated suite for double-cancel elimination and safe name formatting.
+- `tests/verify_dashboard_refresh_buttons.php` — 14-test automated suite for refresh button functionality and event delegation across all dashboards.
+- `tests/verify_profile_dropdown.php` — 36-test automated suite for dropdown HTML, accessibility, logout URLs, CSS visibility, and import query harmonization.
+- `tests/verify_dropdown_interaction.js` — 9-test Node.js DOM simulation suite testing dropdown click toggling, event bubbling, and idempotency.
+- `tests/verify_view_dropdown_alignment.php` — 18-test automated suite verifying View dropdown structure, options, and toolbar alignment with Rows dropdown.
+**New IDs introduced:** `#appointments-date-filter`, `tests/verify_appointment_patient_lock.php`, `tests/verify_confirmation_modal_buttons.php`, `tests/verify_dashboard_refresh_buttons.php`, `tests/verify_profile_dropdown.php`, `tests/verify_dropdown_interaction.js`, `tests/verify_view_dropdown_alignment.php`, `scripts/seed_clinical_data.php`
+**How to verify:**
+- Run `php tests/verify_view_dropdown_alignment.php` (18/18 PASS).
+- Run `php tests/verify_profile_dropdown.php` (36/36 PASS).
+- Run `node tests/verify_dropdown_interaction.js` (9/9 PASS).
+- Run `php tests/verify_dashboard_refresh_buttons.php` (14/14 PASS).
+- Run `php tests/verify_confirmation_modal_buttons.php` (9/9 PASS).
+- Run `php tests/verify_appointment_patient_lock.php` (9/9 PASS).
+- Log in as Receptionist (`recep.jane`):
+  - In Appointments: verify View is a clean dropdown alongside Rows dropdown; select "Today" / "Upcoming" / "Past" / "All" and verify instant table reload.
+  - Click top-right user profile dropdown: verify menu opens immediately; click outside or Escape to close; click "Sign Out" to verify logout.
+  - Edit an appointment: verify Patient combobox is locked with helper note.
+  - Cancel an appointment: verify modal clearly shows "Cancel Appointment" and "Keep Appointment" with patient name.
+
+### 2026-10-17 — UI/UX Fixes, Compact Icon-Only Action Buttons, No-Show Logic & Navbar Cleanup (`working tree`)
+**Type:** fix / ui / ux
+**Database / migrations:** none
+**Files changed:**
+- `assets/js/modules/receptionist_appointments.js` — conditioned the "Mark as No Show" action button on `appt.status === 'scheduled'`, hiding it automatically once patient arrival is confirmed (`appt.status === 'confirmed'`).
+- `api/appointment_controller.php` — disallowed status transition from `confirmed` to `no_show` in `$validTransitions`.
+- `assets/js/modules/users.js` — replaced text action buttons with icon-only View (`.btn-outline-info`), Edit (`.btn-outline-primary`), and Archive (`.btn-outline-warning`) buttons with tooltips and aria-labels.
+- `assets/js/modules/patients.js` — replaced text action buttons with icon-only Record (`.btn-outline-primary`) and Archive (`.btn-outline-warning`) buttons.
+- `assets/js/modules/doctors.js` — replaced text action buttons with icon-only View (`.btn-outline-info`), Schedule (`.btn-outline-success`), Edit (`.btn-outline-primary`), and Archive (`.btn-outline-warning`) buttons.
+- `assets/js/modules/specialties.js` — replaced text action buttons with icon-only View (`.btn-outline-info`), Edit (`.btn-outline-primary`), and Archive (`.btn-outline-warning`) buttons.
+- `assets/js/modules/services.js` — replaced text action buttons with icon-only View (`.btn-outline-info`), Edit (`.btn-outline-primary`), and Archive (`.btn-outline-warning`) buttons.
+- `assets/js/modules/medications.js` — replaced text action buttons with icon-only View (`.btn-outline-info`), Edit (`.btn-outline-primary`), and Archive (`.btn-outline-warning`) buttons.
+- `assets/js/modules/archive.js` — replaced text action buttons with icon-only Restore (`.btn-outline-success`) and Delete (`.btn-outline-danger`) buttons.
+- `assets/js/modules/doctor_appointments.js` — replaced text "Start Consult" and "View Encounter" with icon-only buttons (`.btn-primary.btn-sm.btn-icon.btn-start-consult` and `.btn-outline-secondary.btn-sm.btn-icon.btn-start-consult`).
+- `assets/js/modules/doctor_patients.js` — replaced text "View Record" and "Break-Glass" with icon-only buttons (`.btn-outline-primary.btn-sm.btn-icon.btn-view-record` and `.btn-outline-danger.btn-sm.btn-icon.btn-view-record`).
+- `assets/js/modules/receptionist_patients.js` — replaced text "View" and "Edit" with icon-only buttons (`.btn-outline-info.btn-sm.btn-icon.btn-view-patient` and `.btn-outline-primary.btn-sm.btn-icon.btn-edit-patient`).
+- `assets/css/style.css` — added `.btn-outline-*` button classes and standardized `.btn-icon` and `.btn-icon.btn-sm` sizing and SVG alignments.
+- `admin_dashboard.html`, `doctor_dashboard.html`, `receptionist_dashboard.html` — removed duplicate `<h1 class="topbar-title" id="current-module-title">` from top navigation bars.
+- `assets/js/main.js`, `assets/js/doctor_main.js`, `assets/js/receptionist_main.js` — dynamically sync `document.title = "${moduleTitle} - CPRMS"`.
+- `tests/verify_ui_fixes_and_noshow.php` — 16-test automated verification suite (16/16 PASS).
+**New IDs introduced:** `.btn-outline-info`, `.btn-outline-secondary`, `tests/verify_ui_fixes_and_noshow.php`
+**How to verify:**
+- Run `php tests/verify_ui_fixes_and_noshow.php` (16/16 PASS).
+- Log in to Admin, Doctor, and Receptionist dashboards and verify:
+  - Top navigation bar has no redundant title text; title appears in the workspace card header.
+  - All 10 tables render clean, compact, color-coded icon-only buttons with hover tooltips.
+  - Confirm an appointment in Receptionist portal → observe No Show button disappears.
+
+### 2026-10-16 — Admin Audit Logs Module Improvements, Scrollable Filter & Expanded Tracking (`6d101de`)
 **Type:** feat / fix / ui
 **Database / migrations:** none
 **Files changed:**
@@ -272,6 +334,52 @@ A running, per-commit record of every change and implementation in this project,
 - Receptionist → Appointments → **Cancel** a scheduled visit → confirm: the row turns **Cancelled** and the slot can be rebooked at the same date/time.
 - Doctor → My Appointments → Cancel works on own visits; another doctor's appointment returns `403`.
 - Completed visits and repeat cancellations return `409`; anonymous requests return `401`.
+
+### 2026-10-18 — All User Panels Dashboard Refresh Buttons Audit & Enhancements
+**Type:** fix / feat
+**Database / migrations:** none
+**Files changed:**
+- `assets/js/modules/overview.js` — added `#btn-refresh-overview` button, `refreshDashboard()` method with card skeleton loading, and toast notification on the Administrator Overview Dashboard.
+- `assets/js/modules/doctor_overview.js` — converted direct listener to delegated container click handler so `#btn-refresh-dashboard` continues working after period tab switches (Today / This Week / All-Time); added listener guard preventing duplicate container listeners; added `refreshDashboard()` with SVG spinning animation and toast feedback.
+- `assets/js/modules/receptionist_overview.js` — converted direct listeners for `#btn-refresh-dashboard` and `#btn-print-blank-form` to delegated container click handlers to survive period switches; added listener guard; added `refreshDashboard()` with SVG spinning animation and toast feedback.
+- `assets/js/modules/doctor_appointments.js`, `receptionist_appointments.js`, `audit_logs.js` — added SVG refresh icons, spinning loading animations, and toast notifications.
+- `assets/js/main.js`, `assets/js/doctor_main.js`, `assets/js/receptionist_main.js`, `admin_dashboard.html`, `doctor_dashboard.html`, `receptionist_dashboard.html` — bumped cache-busting version strings.
+- `tests/verify_dashboard_refresh_buttons.php` — automated verification suite for all dashboard refresh buttons.
+**How to verify:**
+- Log in to each portal (Admin `admin.john`, Doctor `dr.smith`, Receptionist `recep.jane`).
+- On each dashboard, click the Refresh button: observe the spinning icon, disabled state during loading, updated statistics, and toast feedback.
+- On Doctor and Receptionist dashboards, click between time period tabs (This Week, All-Time, Today) and then click Refresh: confirm the button continues to work reliably without page reloads.
+- Run `php tests/verify_dashboard_refresh_buttons.php` (14/14 tests pass).
+
+### 2026-10-17 — Elimination of "Double Cancel" Confirmation Modal
+**Type:** fix / ux
+**Database / migrations:** none
+**Files changed:**
+- `assets/js/ui.js` — updated `confirmAction` to accept `cancelBtnText` and `cancelBtnClass`, with an automatic safeguard resolving dismissal text from `Cancel` to `Close` if the action button text starts with `Cancel`. Reset dismissal button to `Cancel` in `confirmSoftDelete`, `confirmRestore`, and `confirmHardDelete`.
+- `assets/js/components/confirm-dialog.js` — added safeguard in `confirmDialog` preventing `cancelText` and `confirmText` from both being `Cancel`.
+- `assets/js/modules/receptionist_appointments.js` — refactored `updateStatus` to provide explicit titles, descriptive context including patient name, distinct action buttons (`Cancel Appointment` vs `Keep Appointment`, `Confirm Arrival` vs `Close`, `Mark No Show` vs `Keep Appointment`), and updated dirty-close dialogs to use `Keep Editing` vs `Discard`.
+- `assets/js/receptionist_main.js`, `receptionist_dashboard.html` — bumped cache-busting versions.
+- `tests/verify_confirmation_modal_buttons.php` — automated verification suite for modal button clarity.
+**How to verify:**
+- Log in as Receptionist (`recep.jane`).
+- Go to Appointments → click the Cancel button (red cross/icon) on any scheduled appointment.
+- Observe the modal: Title is `Cancel Appointment`, Left button is `Keep Appointment`, Right button is `Cancel Appointment`.
+- Run `php tests/verify_confirmation_modal_buttons.php` to verify all 7 assertions pass.
+
+### 2026-10-17 — Receptionist Appointment Edit Patient Immutability
+**Type:** feat / fix
+**Database / migrations:** none
+**Files changed:**
+- `assets/js/components/search-select.js` — added `setDisabled(isDisabled)` method that hides the clear button, disables the underlying text input, sets the `.is-disabled` CSS class, and intercepts all keyboard/mouse interaction when disabled.
+- `assets/css/style.css` — added disabled styling for `.search-select.is-disabled .search-select-input` and `:disabled` state with muted cursor and background.
+- `assets/js/modules/receptionist_appointments.js` — locked `patientPicker` and `patSelect` on edit (`appt !== null`), displayed contextual help note `#appt-patient-lock-note`, ensured `saveAppointment()` passes the original patient ID, and kept new appointment booking fully unlocked.
+- `api/appointment_controller.php` — added backend validation on `PUT`: rejects any payload attempting to alter `patient_id` with HTTP 422 Unprocessable Entity.
+- `tests/verify_appointment_patient_lock.php` — automated verification suite covering UI locks, helper notes, and live API PUT tamper rejection.
+**How to verify:**
+- Log in as Receptionist (`recep.jane`).
+- Go to Appointments → click Edit on any scheduled appointment: the Patient combobox is greyed out and cannot be typed into or clicked, the clear button is hidden, and a note indicates to cancel and re-create if the wrong patient was chosen.
+- Click "+ New Appointment": the Patient combobox and "+ Register Walk-in" button remain completely unlocked and functional.
+- Run `php tests/verify_appointment_patient_lock.php` to verify all 9 automated assertions pass.
 
 ### 2026-10-05 — Searchable, collapsible patient record timeline (`1152f50`)
 **Type:** feat

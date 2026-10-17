@@ -1,9 +1,9 @@
-// assets/js/modules/users.js
+﻿// assets/js/modules/users.js
 // Manage Users module (Strictly restricted to Receptionist)
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays (Dynamic <select> option population from lookup arrays) & 03 APIs and Database Operations/mysql_insert_records / mysql_update_records
 
-import api from '../api.js?v=7';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=24';
+import api from '../api.js?v=8';
+import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=26';
 
 export default {
     state: {
@@ -467,9 +467,8 @@ export default {
                 : '<span class="badge badge-status-active">Active</span>';
 
             const archiveBtn = !user.deleted_at ? `
-                <button class="btn btn-warning btn-sm btn-archive" data-id="${user.user_id}" data-name="${escapeHtml(user.full_name)}" title="Archive">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align: middle;"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
-                    Archive
+                <button class="btn btn-outline-warning btn-sm btn-icon btn-archive" data-id="${user.user_id}" data-name="${escapeHtml(user.full_name)}" title="Archive User" aria-label="Archive User">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
                 </button>
             ` : '';
 
@@ -481,8 +480,12 @@ export default {
                     <td>${statusBadge}</td>
                     <td>
                         <div class="actions-cell">
-                            <button class="btn btn-secondary btn-sm btn-view" data-id="${user.user_id}" title="View Details">View</button>
-                            <button class="btn btn-secondary btn-sm btn-edit" data-id="${user.user_id}" title="Edit User">Edit</button>
+                            <button class="btn btn-outline-info btn-sm btn-icon btn-view" data-id="${user.user_id}" title="View Details" aria-label="View Details">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                            </button>
+                            <button class="btn btn-outline-primary btn-sm btn-icon btn-edit" data-id="${user.user_id}" title="Edit User" aria-label="Edit User">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                            </button>
                             ${archiveBtn}
                         </div>
                     </td>

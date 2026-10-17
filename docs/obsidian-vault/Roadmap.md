@@ -7,6 +7,10 @@ tags: [roadmap]
 This note tracks recently completed milestones and upcoming features planned for the system.
 
 ## Completed recently
+- **Appointments View Dropdown Alignment:** Replaced the separate date tab banner with a clean View select dropdown embedded directly into `.toolbar-filters`, aligned with the Rows per page selector in Receptionist and Doctor portals.
+- **Top-Bar Profile Menu & Multi-Instance Guard:** Added an idempotency guard in `assets/js/ui.js` and harmonized module version queries, ensuring the top-right user profile menu and Sign Out dropdown toggle reliably on all portals.
+- **Appointment Edit Patient Locking & Double-Cancel Fix:** Enforced immutable patient identities on appointment edit forms with HTTP 422 API protection; eliminated double-cancel modal ambiguity with explicit "Cancel Appointment" vs "Keep Appointment" action labeling.
+- **Universal Dashboard Refresh Auditing:** Hardened manual refresh buttons with container event delegation surviving period tab switches and animated feedback across all 3 portals.
 - **Receptionist Overview & Lobby Queue:** Operational landing dashboard (`receptionist_overview.js`) featuring real-time KPI counters, 10-patient daily capacity gauge, interactive lobby queue table, date range pickers, and multi-tab live sync.
 - **Proactive Form UX & Zero-Retype Schedule Protection:** Receptionist booking form with live duty notice badge, calendar date `min` boundary, 08:00–17:00 operating time bounds, live schedule validation warning banner, and zero form reset on validation errors.
 - **Admin Doctor Weekly Schedule Rota:** Weekly Schedule column in Manage Doctors table, 7-day schedule configuration modal, and 1-click presets for Dr. House, Dr. Grey, Dr. Strange, and Full Week rotas (`doctor_schedule_controller.php`).
@@ -18,11 +22,11 @@ This note tracks recently completed milestones and upcoming features planned for
 - **Human-Readable Compliance & Audit Trail:** Enriched audit logging with natural English translations and technical JSON diff toggles.
 
 ## In progress / next
-- **Automated Verification Parity:** Maintained 75/75 automated test pass rate across 5 test suites.
+- **Automated Verification Parity:** Maintained 100% automated test pass rate across 15 test suites.
 - **Documentation Synchronization:** Complete documentation and Obsidian vault sync reflecting all recent features.
 
 ## UI backlog
-- **Top navigation bar upgrades:** Global search bar, notification bell, user profile dropdown menu, and breadcrumb navigation links.
+- **Top navigation bar upgrades:** Global search bar, notification bell, and breadcrumb navigation links.
 - **Table loading placeholders:** Animated shimmer rows for module tables while data loads (currently shown as text placeholders).
 - **Image optimization:** Compress `logo.png` and add a browser tab icon (`favicon`).
 
