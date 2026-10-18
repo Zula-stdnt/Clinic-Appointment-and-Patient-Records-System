@@ -354,9 +354,35 @@ export default {
     },
 
     handleHardDelete(id, name, config) {
+        const isPatient = (this.state.currentEntity === 'patients');
+        let warningHtml = '';
+
+        if (isPatient) {
+            warningHtml = `
+                <div class="alert alert-warning mb-3" style="font-size: 0.82rem; line-height: 1.45; border-left: 4px solid var(--warning, #f59e0b); background-color: rgba(245, 158, 11, 0.08); color: var(--text-color, #1f2937); text-align: left;">
+                    <div style="font-weight: 700; color: #b45309; margin-bottom: 0.4rem; display: flex; align-items: center; gap: 0.4rem; font-size: 0.88rem;">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                        <span>Statutory & Regulatory Retention Warning</span>
+                    </div>
+                    <div style="margin-bottom: 0.45rem;">
+                        <strong>Republic Act No. 10173 (Data Privacy Act of 2012):</strong>
+                        Patient health records contain sensitive personal information (SPI) protected under Philippine privacy law. Premature, unauthorized, or arbitrary destruction without legal authorization violates statutory data protection standards.
+                    </div>
+                    <div style="margin-bottom: 0.45rem;">
+                        <strong>DOH Department Circular No. 2021-0226:</strong>
+                        Under DOH national retention standards (<em>Guidelines on the Retention and Disposal of Medical Records in All Health Facilities</em>), clinical records are subject to mandatory retention schedules (at least <strong>10 to 15 years</strong> from the date of last patient encounter, or permanent retention for medicolegal and pediatric cases) before lawful disposition.
+                    </div>
+                    <div style="margin-top: 0.45rem; padding-top: 0.45rem; border-top: 1px dashed rgba(245, 158, 11, 0.4); font-size: 0.78rem; color: #92400e; font-style: italic;">
+                        <strong>Academic Project Notice:</strong> To support classroom evaluation and testing, deletion is <u>not restricted</u>. Typing <code>DELETE</code> and confirming will permanently purge this patient along with all linked appointments, vital signs, and clinical encounter history.
+                    </div>
+                </div>
+            `;
+        }
+
         confirmHardDelete({
             itemName: name,
             typeToConfirmText: 'DELETE',
+            warningHtml: warningHtml,
             onConfirm: async () => {
                 try {
                     const res = await api.delete(`${config.endpoint}?action=hard_delete&id=${id}`);

@@ -517,7 +517,7 @@ export const confirmRestore = ({ title = 'Restore Record', message, itemName, bt
     openModal(modal);
 };
 
-export const confirmHardDelete = ({ title, message, itemName, typeToConfirmText = 'DELETE', cancelBtnText = 'Cancel', onConfirm }) => {
+export const confirmHardDelete = ({ title, message, itemName, typeToConfirmText = 'DELETE', cancelBtnText = 'Cancel', warningHtml = '', onConfirm }) => {
     const modal = ensureGlobalConfirmModal();
     if (!modal) return;
 
@@ -531,6 +531,7 @@ export const confirmHardDelete = ({ title, message, itemName, typeToConfirmText 
         <div class="alert alert-danger mb-3">
             <strong>Danger:</strong> This action cannot be undone! The record will be permanently purged from the database.
         </div>
+        ${warningHtml ? `<div class="mb-3">${warningHtml}</div>` : ''}
         <p class="mb-3">${escapeHtml(message || `You are about to permanently delete "${itemName}".`)}</p>
         <div class="form-group mb-0">
             <label for="hard-delete-input">To confirm, type <strong class="text-danger font-monospace">${escapeHtml(typeToConfirmText)}</strong> below:</label>

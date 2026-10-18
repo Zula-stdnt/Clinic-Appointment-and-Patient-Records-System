@@ -433,15 +433,44 @@ function hardDeletePatient(PDO $pdo): void {
     $input = get_json_input();
     $id = (int)($_GET['id'] ?? ($input['patient_id'] ?? 0));
 
-    $stmt = $pdo->prepare("DELETE FROM patients WHERE patient_id = :id");
-    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-    $stmt->execute();
-
-    if ($stmt->rowCount() === 0) {
-        send_error('Patient not found.', [], 404);
+    if ($id <= 0) {
+        send_error('Invalid patient ID.', [], 400);
     }
 
-    log_audit($pdo, (int)$_SESSION['user_id'], 'PURGE', 'patient', $id);
-    send_success('Patient permanently deleted.');
+    $pdo->beginTransaction();
+    try {
+        // In this academic demonstration project, hard deletion is unrestricted upon confirmation.
+        // Clean up linked appointments (which cascades consultations, vitals, prescriptions, etc.),
+        // patient allergies, and access requests within the transaction
+        $delAppt = $pdo->prepare("DELETE FROM appointments WHERE patient_id = :id");
+        $delAppt->bindParam(':id', $id, PDO::PARAM_INT);
+        $delAppt->execute();
+
+        $delAllergies = $pdo->prepare("DELETE FROM patient_allergies WHERE patient_id = :id");
+        $delAllergies->bindParam(':id', $id, PDO::PARAM_INT);
+        $delAllergies->execute();
+
+        $delAccess = $pdo->prepare("DELETE FROM record_access_requests WHERE patient_id = :id");
+        $delAccess->bindParam(':id', $id, PDO::PARAM_INT);
+        $delAccess->execute();
+
+        $stmt = $pdo->prepare("DELETE FROM patients WHERE patient_id = :id");
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        if ($stmt->rowCount() === 0) {
+            $pdo->rollBack();
+            send_error('Patient not found.', [], 404);
+        }
+
+        log_audit($pdo, (int)$_SESSION['user_id'], 'PURGE', 'patient', $id);
+        $pdo->commit();
+        send_success('Patient permanently deleted.');
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        send_error('Failed to permanently delete patient: ' . $e->getMessage(), [], 500);
+    }
 }
 

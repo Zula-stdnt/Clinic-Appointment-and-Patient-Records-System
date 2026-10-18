@@ -615,9 +615,28 @@ function hardDeleteUser(PDO $pdo): void {
             send_error('User not found.', [], 404);
         }
 
-        $delDoc = $pdo->prepare("DELETE FROM doctors WHERE user_id = :userId");
-        $delDoc->bindParam(':userId', $userId, PDO::PARAM_INT);
-        $delDoc->execute();
+        // If user is a doctor, clean up doctor relationships first
+        $docStmt = $pdo->prepare("SELECT doctor_id FROM doctors WHERE user_id = :userId");
+        $docStmt->bindParam(':userId', $userId, PDO::PARAM_INT);
+        $docStmt->execute();
+        $docId = $docStmt->fetchColumn();
+        if ($docId) {
+            $pdo->prepare("DELETE FROM appointments WHERE doctor_id = ?")->execute([$docId]);
+            $pdo->prepare("DELETE FROM consultation_addenda WHERE doctor_id = ?")->execute([$docId]);
+            $pdo->prepare("DELETE FROM doctor_schedules WHERE doctor_id = ?")->execute([$docId]);
+            $pdo->prepare("DELETE FROM doctor_specialty WHERE doctor_id = ?")->execute([$docId]);
+            $pdo->prepare("DELETE FROM record_access_requests WHERE doctor_id = ?")->execute([$docId]);
+            $pdo->prepare("DELETE FROM doctors WHERE doctor_id = ?")->execute([$docId]);
+        }
+
+        // Clear appointment creator/cancellation references
+        $updAppt = $pdo->prepare("UPDATE appointments SET created_by = NULL WHERE created_by = :userId");
+        $updAppt->bindParam(':userId', $userId, PDO::PARAM_INT);
+        $updAppt->execute();
+
+        $updCancel = $pdo->prepare("UPDATE appointments SET cancel_requested_by = NULL WHERE cancel_requested_by = :userId");
+        $updCancel->bindParam(':userId', $userId, PDO::PARAM_INT);
+        $updCancel->execute();
 
         $delUser = $pdo->prepare("DELETE FROM users WHERE user_id = :userId");
         $delUser->bindParam(':userId', $userId, PDO::PARAM_INT);
@@ -627,8 +646,10 @@ function hardDeleteUser(PDO $pdo): void {
         log_audit($pdo, (int)$_SESSION['user_id'], 'PURGE_USER', 'user', $userId);
         send_success('User permanently deleted.');
     } catch (Exception $e) {
-        $pdo->rollBack();
-        throw $e;
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        send_error('Failed to permanently delete user: ' . $e->getMessage(), [], 500);
     }
 }
 

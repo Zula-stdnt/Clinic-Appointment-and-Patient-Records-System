@@ -147,7 +147,7 @@ Rather than a high-volume general hospital with rotating shifts or open wards, t
    * Doctors have direct chart access only to patients who have an active appointment scheduled with them.
    * If an unassigned patient enters the clinic in an emergency, the attending physician must execute an audited **Break-Glass Override**, providing an emergency category and a mandatory justification ($\ge 10$ characters), which is permanently recorded in the administrative compliance audit log.
 6. **Centralized Soft-Delete Lifecycle ("Recycle Bin"):**
-   * Records across patients, doctors, services, specialties, and users are never deleted outright from active screens. They receive a `deleted_at` timestamp and are relocated to **Manage Archive**, where administrators can safely **Restore** or verify foreign key constraints before **Hard Delete**.
+   * Records across patients, doctors, services, specialties, and users are never deleted outright from active screens. They receive a `deleted_at` timestamp and are relocated to **Manage Archive**, where administrators can safely **Restore** or permanently **Hard Delete** them with statutory compliance notices (RA 10173 & DOH DC 2021-0226).
 
 ---
 
@@ -254,31 +254,26 @@ To ensure patient safety while maintaining clinical standards, the system employ
 ## System Features by Role
 
 - **Role-Based Access Control (RBAC — permissions based on a staff member's job role):**
-  - **Clinical Access & Privacy Rule:** Clinical medical charts and encounter histories are strictly readable only by doctors who have an active treating relationship (a non-cancelled appointment) with the patient, or an approved standard 24-hour access window. All other doctor access requires an audited Break-Glass Emergency Override with a mandatory clinical justification. Administrators review access and compliance logs, not patient clinical contents. A patient-facing self-service portal is intentionally out of scope.
-  - **Administrator:** Full administrative governance over staff accounts, doctors, weekly schedule rotas, access request approvals, services, clinical specialties, compliance audit logs, and the **Central Archive**. Administrators inspect access logs for compliance and do not directly register or edit patient clinical charts.
-  - **Doctor:** A dedicated clinical workspace with appointment queue management, date range pickers, consultation charting (clinical notes, ICD-10 diagnoses, prescriptions, and lab requests), longitudinal medical history timelines, dated encounter addenda, hybrid access requests, and cancellation requests. Doctors request appointment cancellations with a clinical reason, while receptionists manage appointment statuses.
-  - **Receptionist:** A dedicated front-desk portal that lands directly on the **Overview Dashboard** upon login. Features include an operational overview with KPI counters, a 10-patient capacity gauge, lobby queue table, walk-in and scheduled patient registration, updating demographic details with pre-populated forms, booking patient appointments with live doctor schedule duty notices and zero-retype draft preservation, capturing allergy alerts, recording triage vital signs, and managing appointment lifecycle statuses. Clinical histories are blocked to protect patient privacy.
-- **Master Files & Operational Governance (Administrator):**
+  - **Clinical Access & Privacy Rule:** Clinical medical charts and encounter histories are strictly readable only by doctors who have an active treating relationship (a non-cancelled appointment) with the patient. All other doctor access requires an audited Break-Glass Emergency Override with a mandatory clinical justification. Administrators review access and compliance logs, not patient clinical contents. A patient-facing self-service portal is intentionally out of scope.
+  - **Administrator:** Full administrative governance over staff accounts, doctors, services, clinical specialties, compliance audit logs, and the **Central Archive**. Administrators inspect access logs for compliance and do not directly register or edit patient clinical charts.
+  - **Doctor:** A dedicated clinical workspace with appointment queue management, consultation charting (clinical notes, ICD-10 diagnoses, prescriptions, and lab requests), longitudinal medical history timelines, dated encounter addenda, and cancellation requests. Doctors request appointment cancellations with a clinical reason, while receptionists manage appointment statuses.
+  - **Receptionist:** A dedicated front-desk portal that lands directly on the **Overview Dashboard** upon login. Features include registering walk-in and scheduled patients, updating demographic details with pre-populated forms, booking patient appointments, capturing allergy alerts, recording triage vital signs, and managing appointment lifecycle statuses. Clinical histories are blocked to protect patient privacy.
+- **Master Files Management (Administrator):**
   - **Users:** Create, view, edit, and archive staff login accounts. Creating a Doctor user automatically creates a matching clinical profile.
   - **Patients (Governance):** View patient registration directory and manage archive status. Direct registration and demographic edits are handled by front-desk Receptionists.
-  - **Doctors & Weekly Schedule Rota:** Manage doctor profiles, contact numbers, assigned multiple specialties, and weekly 7-day availability rotas (`doctor_schedules`). Includes an interactive schedule modal (`#doctor-schedule-modal`) with 1-click rotation presets aligned with the clinic's 3 attending physicians (`Dr. House Rotation (Mon, Tue)`, `Dr. Grey Rotation (Wed, Thu)`, `Dr. Strange Rotation (Fri, Sat)`, `Full Week`, `Clear All`).
-  - **Access Request Review Queue:** Administrators review and approve standard 24-hour record access requests and acknowledge emergency break-glass overrides submitted by doctors.
-  - **Compliance & Audit Logs:** Review immutable system audit logs presented in clear, human-readable English for non-coders and hospital administrators rather than raw technical code, tracking Break-Glass emergency access, doctor schedule updates, access requests, patient demographic edits, appointment lifecycles, and staff logins, with an on-demand collapsible technical diff viewer.
+  - **Compliance & Audit Logs:** Review immutable system audit logs presented in clear, human-readable English for non-coders and hospital administrators rather than raw technical code, tracking Break-Glass emergency access, patient demographic edits, appointment lifecycles, and staff logins, with an on-demand collapsible technical diff viewer.
+  - **Doctors:** Manage doctor profiles, contact numbers, and one or more assigned medical specialties. Doctor legal names and genders remain administrator-managed.
   - **Services:** Maintain a catalog of hospital procedures, consultations, lab tests, and imaging services.
   - **Specialties:** Organize medical departments and clinical specialties (such as Cardiology or Pediatrics).
 - **Doctor Clinical Portal:**
-  - **Dashboard / Today:** Shows live counters for today's total appointments, pending consultations, and completed visits, with an interactive queue table, quick period filter pills (`All Time`, `Today`, `This Week`, `This Month`), custom Start/End date range pickers, and rows per page selector (10, 25, 50).
-  - **Appointments & Cancellation Requests:** Doctors can view their scheduled appointments with triage vital signs. When an appointment cannot proceed, doctors click the compact red ✕ icon button to submit a cancellation request with clinical justification.
+  - **Dashboard / Today:** Shows live counters for today's total appointments and pending consultations.
+  - **Appointments & Cancellation Requests:** Doctors can view their scheduled appointments and triage vital signs. When a doctor cannot attend an appointment, they submit a cancellation request with a reason for the receptionist to process. Direct cancellation by doctors is blocked.
   - **Consultation & Dated Addenda:** Doctors record clinical SOAP notes, ICD-10 diagnoses, prescriptions, and lab test orders. Completed visits are locked to prevent tampering; any subsequent modifications must be recorded as dated, attributed clinical addenda.
-  - **Patient Records & Hybrid Access Control:** Browse patients with non-cancelled appointments. For unassigned patients, doctors can submit a **Standard Access Request** (granting 24-hour approved access upon admin review) or activate an emergency **Break-Glass Override** for urgent trauma care, immediately unlocking the chart and logging the event to compliance logs.
+  - **Patient Records & Break-Glass:** Browse patients with non-cancelled appointments. If an unassigned patient requires urgent care, the doctor can access the chart using an emergency **Break-Glass Override**, selecting a category and providing an audited clinical justification.
   - **My Profile:** View assigned specialty badges and update contact number, username, and password with current password verification. Legal identity remains admin-managed.
-- **Receptionist Front-Desk Portal:**
-  - **Receptionist Overview Dashboard:** Landing screen featuring real-time KPI counter cards, a visual 10-patient daily capacity gauge, and a responsive lobby queue table designed for 100% zoom with no horizontal scrolling, dedicated clamped Chief Complaint column, stacked Triage Vitals chips, and custom Date Range Picker.
-  - **Appointment Booking & Zero-Retype UX:** Interactive booking modal with live `#doctor-schedule-notice` duty badge, doctor dropdown schedule previews, HTML5 date `min="YYYY-MM-DD"` boundary, time bounds (08:00–17:00 excluding lunch), real-time schedule warning banner (`#appt-schedule-warning-banner`), and zero-retype protection ensuring typed drafts are never wiped on error.
-  - **Live Multi-Tab State Synchronization:** Integrated with `live-sync.js` to automatically refresh queues and capacity gauges via `cprms:sync` custom events across workstations.
 - **Centralized Archive ("Recycle Bin"):**
   - Deleting a record from any main table performs a **soft delete**—instead of erasing the data right away, the system hides it from active lists and moves it to **Manage Archive**.
-  - From the Archive, an Administrator can **Restore** a record back to active use or **Hard Delete** it (permanently erase it from the database, as long as no medical or appointment history depends on it).
+  - From the Archive, an Administrator can **Restore** a record back to active use or **Hard Delete** it (permanently erase it from the database). When hard deleting a patient record, a prominent statutory warning highlights **Republic Act No. 10173 (Data Privacy Act of 2012)** and **DOH Department Circular No. 2021-0226** (mandatory 10–15 year medical records retention schedules), while allowing unrestricted deletion for academic demonstration purposes.
 - **Security & Validation:**
   - **PDO Prepared Statements:** Keeps user input separate from database commands to block **SQL injection** (attempts to trick the database using specially crafted text).
   - **CSRF (Cross-Site Request Forgery) Protection:** Attaches a secret security token to every save or delete action to confirm the request came from the real hospital dashboard.
@@ -409,29 +404,26 @@ Here is how the files and folders are organized inside the project:
 
 ```text
 ├── api/                     # Server-side PHP scripts (API controllers) that process data requests
-│   ├── access_request_controller.php   # Hybrid Break-Glass & Standard access approvals
-│   ├── appointment_controller.php      # Appointment bookings, schedule guards & sync_state
+│   ├── appointment_controller.php
 │   ├── appointment_patient_controller.php
-│   ├── audit_log_controller.php        # Human-readable compliance audit trail
-│   ├── auth_controller.php             # Login, logout, session probe (401-safe)
-│   ├── consultation_controller.php     # SOAP charting, locked encounters & addenda
-│   ├── doctor_controller.php           # Doctor profiles & schedule enrichment
-│   ├── doctor_patients_controller.php  # Universal directory & emergency break-glass
-│   ├── doctor_profile_controller.php   # Doctor self-service profile
-│   ├── doctor_schedule_controller.php  # Weekly duty rota management
+│   ├── audit_log_controller.php
+│   ├── auth_controller.php
+│   ├── consultation_controller.php
+│   ├── doctor_controller.php
+│   ├── doctor_patients_controller.php
+│   ├── doctor_profile_controller.php
 │   ├── medication_controller.php
 │   ├── patient_controller.php
-│   ├── patient_record_controller.php   # Patient profile pre-population & role gating
+│   ├── patient_record_controller.php
 │   ├── service_controller.php
 │   ├── specialty_controller.php
 │   ├── user_controller.php
 │   └── walkin_patient_controller.php
 ├── assets/                  # Browser files (styles, scripts, and images)
 │   ├── css/
-│   │   └── style.css        # Hospital Green visual theme, badge tokens & responsive layouts
+│   │   └── style.css        # Hospital Green visual theme and responsive layout rules
 │   └── js/
-│       ├── api.js           # Axios helper with automated CSRF token attachment
-│       ├── live-sync.js     # Real-time multi-tab state sync (cprms:sync event bus)
+│       ├── api.js           # Central helper that sends requests to api/ and attaches security tokens
 │       ├── login.js         # Login page controller with 401-safe session probe
 │       ├── main.js          # Administrator dashboard navigation router
 │       ├── doctor_main.js   # Doctor portal navigation router
@@ -449,17 +441,12 @@ Here is how the files and folders are organized inside the project:
 │   ├── auth.php             # Login session checks, role permissions, and CSRF token verification
 │   ├── patient_validation.php # Unified patient input validation
 │   └── response.php         # Standardized JSON response helpers
-├── migrations/              # Database migration history SQL files (001 through 013)
+├── migrations/              # Database migration history SQL files
 ├── setup/                   # Fresh installation schema, seeds, and admin bootstrap script
 │   ├── bootstrap_admin.php
 │   ├── schema.sql
 │   └── seeds.sql
-├── tests/                   # Automated PHP verification test suites (75/75 PASS)
-│   ├── verify_schedule_and_form_ux.php
-│   ├── verify_ui_functional_improvements.php
-│   ├── verify_acceptance.php
-│   ├── verify_cprms_enhancements.php
-│   └── verify_todo_improvements.php
+├── tests/                   # Automated PHP and UI verification scripts
 ├── admin_dashboard.html     # Main Administrator workspace page
 ├── doctor_dashboard.html    # Main Doctor clinical portal page
 ├── receptionist_dashboard.html # Receptionist workspace page
@@ -468,30 +455,6 @@ Here is how the files and folders are organized inside the project:
 ├── logout.php               # Ends the user's login session
 ├── walkthrough.md           # Step-by-step history of features and fixes built in the project
 └── README.md                # Main project guide (this file)
-```
-
----
-
-## Automated Verification & Test Results
-
-The CPRMS codebase is verified through five (5) comprehensive automated test suites executed via CLI, maintaining a **100% pass rate (75/75 tests passing)**:
-
-| Test Suite | File | Tests | Status | Key Coverage |
-| :--- | :--- | :---: | :---: | :--- |
-| **Doctor Schedules & Form UX** | `tests/verify_schedule_and_form_ux.php` | 20 / 20 | **PASS** | HTML5 date `min`, operating time bounds, doctor duty badges, `validateAppointmentScheduleLive()`, warning banner, zero-retype draft preservation, `doctor_schedule_controller.php`, modal presets |
-| **UI & Functional Improvements** | `tests/verify_ui_functional_improvements.php` | 17 / 17 | **PASS** | Overview table responsiveness, 100% zoom layout, dedicated Chief Complaint column, stacked Triage Vitals badges, date range filter, rows per page, compact cancel button, `patient-record-view.js` bug fix |
-| **System Acceptance** | `tests/verify_acceptance.php` | 20 / 20 | **PASS** | Clinic capacity limits (10/day), operating hours (08:00–17:00), lunch pause, Sunday closure, consultation gating, allergy confirmation, audit logging |
-| **CPRMS Enhancements** | `tests/verify_cprms_enhancements.php` | 10 / 10 | **PASS** | Universal table sorting, 4-way gender filtering ("Other" resolution), human-readable audit logs, entity name enrichment, demographic privacy separation |
-| **To-Do Improvements** | `tests/verify_todo_improvements.php` | 8 / 8 | **PASS** | Hybrid break-glass access control, standard access requests (24h window), live multi-tab synchronization (`live-sync.js`) |
-| **Total Test Coverage** | **5 Suites** | **75 / 75** | **100% PASS** | **Zero Regressions** |
-
-To execute the test suites locally:
-```bash
-php tests/verify_schedule_and_form_ux.php
-php tests/verify_ui_functional_improvements.php
-php tests/verify_acceptance.php
-php tests/verify_cprms_enhancements.php
-php tests/verify_todo_improvements.php
 ```
 
 ---

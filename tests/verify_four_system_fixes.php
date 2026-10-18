@@ -265,9 +265,36 @@ try {
     $archQuery->execute([$patId]);
     $archRow = $archQuery->fetch(PDO::FETCH_ASSOC);
     assertCheck('3.6', 'Soft-deleted patient is returned by archive query (deleted_at IS NOT NULL)', !empty($archRow['deleted_at']));
+
+    // Test unrestricted hard delete of patient with appointment & clinical records
+    $delAppt = $pdo->prepare("DELETE FROM appointments WHERE patient_id = :id");
+    $delAppt->bindParam(':id', $patId, PDO::PARAM_INT);
+    $delAppt->execute();
+
+    $delPatient = $pdo->prepare("DELETE FROM patients WHERE patient_id = :id");
+    $delPatient->bindParam(':id', $patId, PDO::PARAM_INT);
+    $delPatient->execute();
+
+    $chkPurged = $pdo->prepare("SELECT COUNT(*) FROM patients WHERE patient_id = ?");
+    $chkPurged->execute([$patId]);
+    assertCheck('3.7', 'Patient with appointment history is permanently deleted without FK restriction', (int)$chkPurged->fetchColumn() === 0);
 } finally {
     $pdo->rollBack();
 }
+
+assertCheck(
+    '3.8',
+    'archive.js includes RA 10173 and DOH Department Circular 2021-0226 warning on patient hard delete',
+    str_contains($archiveJs, 'Republic Act No. 10173') &&
+    str_contains($archiveJs, 'DOH Department Circular No. 2021-0226') &&
+    str_contains($archiveJs, 'Academic Project Notice')
+);
+
+assertCheck(
+    '3.9',
+    'ui.js confirmHardDelete accepts and renders warningHtml',
+    str_contains($uiJs, "warningHtml = ''") && str_contains($uiJs, "\${warningHtml ? `<div class=\"mb-3\">\${warningHtml}</div>` : ''}")
+);
 
 // =========================================================================
 // GROUP 4: Hard Delete Failure for Archived Medications (Admin Panel)

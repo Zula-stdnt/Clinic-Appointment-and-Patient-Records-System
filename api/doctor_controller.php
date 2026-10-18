@@ -484,12 +484,32 @@ function hardDeleteDoctor(PDO $pdo): void {
     $input = get_json_input();
     $id = (int)($_GET['id'] ?? ($input['doctor_id'] ?? 0));
 
+    if ($id <= 0) {
+        send_error('Invalid doctor ID.', [], 400);
+    }
+
     $chk = $pdo->prepare("SELECT user_id FROM doctors WHERE doctor_id = ?");
     $chk->execute([$id]);
     $userId = $chk->fetchColumn();
 
     $pdo->beginTransaction();
     try {
+        // Clean up doctor-associated appointments, addenda, schedules, and specialty links
+        $delAppt = $pdo->prepare("DELETE FROM appointments WHERE doctor_id = ?");
+        $delAppt->execute([$id]);
+
+        $delAddenda = $pdo->prepare("DELETE FROM consultation_addenda WHERE doctor_id = ?");
+        $delAddenda->execute([$id]);
+
+        $delSched = $pdo->prepare("DELETE FROM doctor_schedules WHERE doctor_id = ?");
+        $delSched->execute([$id]);
+
+        $delSpec = $pdo->prepare("DELETE FROM doctor_specialty WHERE doctor_id = ?");
+        $delSpec->execute([$id]);
+
+        $delReq = $pdo->prepare("DELETE FROM record_access_requests WHERE doctor_id = ?");
+        $delReq->execute([$id]);
+
         // Hard delete doctor
         $stmt = $pdo->prepare("DELETE FROM doctors WHERE doctor_id = ?");
         $stmt->execute([$id]);
@@ -508,8 +528,10 @@ function hardDeleteDoctor(PDO $pdo): void {
         log_audit($pdo, (int)$_SESSION['user_id'], 'PURGE_DOCTOR', 'doctor', $id);
         send_success('Doctor and user account permanently deleted.');
     } catch (Exception $e) {
-        $pdo->rollBack();
-        throw $e;
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        send_error('Failed to permanently delete doctor: ' . $e->getMessage(), [], 500);
     }
 }
 
