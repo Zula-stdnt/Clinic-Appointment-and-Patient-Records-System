@@ -1868,6 +1868,11 @@ td.actions-cell {
     transition: opacity var(--transition);
 }
 
+#global-confirm-modal,
+#shared-confirm-modal {
+    z-index: calc(var(--modal-z) + 30);
+}
+
 .modal-dialog {
     position: relative;
     width: 100%;

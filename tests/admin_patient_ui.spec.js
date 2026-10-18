@@ -51,8 +51,10 @@ test.describe('Admin Patient Management UI', () => {
         await expect(miInput).not.toHaveClass(/is-invalid/);
         await expect(miError).toHaveText('');
 
-        // Close modal
+        // Close modal (dirty check prompts confirmation)
         await page.click('#patient-form-modal [data-close-modal]');
+        await expect(page.locator('#global-confirm-modal')).toHaveClass(/active/);
+        await page.click('#global-confirm-btn');
         await expect(page.locator('#patient-form-modal')).not.toHaveClass(/active/);
     });
 });

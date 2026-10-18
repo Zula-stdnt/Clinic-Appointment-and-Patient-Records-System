@@ -1,9 +1,9 @@
-﻿// assets/js/modules/patients.js
+// assets/js/modules/patients.js
 // Manage Patients module
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_specific_record (Reusable View/Edit modals populated by ID) & mysql_update_records (Reflexive UI refresh on save)
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=26';
+import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmRestore, confirmHardDelete } from '../ui.js?v=27';
 import { renderPatientRecord } from '../components/patient-record-view.js?v=5';
 
 export default {
@@ -205,7 +205,11 @@ export default {
                 <button class="btn btn-outline-warning btn-sm btn-icon btn-archive" data-id="${p.patient_id}" data-name="${escapeHtml(fullName)}" title="Archive Patient" aria-label="Archive Patient">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line></svg>
                 </button>
-            ` : '';
+            ` : `
+                <button class="btn btn-outline-success btn-sm btn-icon btn-restore" data-id="${p.patient_id}" data-name="${escapeHtml(fullName)}" title="Restore Patient" aria-label="Restore Patient">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11V9a4 4 0 0 1 4-4h14"></path><polyline points="16 1 21 5 16 9"></polyline><path d="M21 13v2a4 4 0 0 1-4 4H3"></path><polyline points="8 23 3 19 8 15"></polyline></svg>
+                </button>
+            `;
 
             return `
                 <tr>
@@ -232,8 +236,9 @@ export default {
         tbody.querySelectorAll('.btn-archive').forEach(btn => {
             btn.addEventListener('click', () => this.handleSoftDelete(btn.getAttribute('data-id'), btn.getAttribute('data-name')));
         });
-        
-        
+        tbody.querySelectorAll('.btn-restore').forEach(btn => {
+            btn.addEventListener('click', () => this.handleRestore(btn.getAttribute('data-id'), btn.getAttribute('data-name')));
+        });
     },
 
     renderPagination(data) {
@@ -303,18 +308,38 @@ export default {
     handleSoftDelete(id, name) {
         confirmSoftDelete({
             itemName: name,
-            message: `Are you sure you want to deactivate patient record for "${name}"?`,
+            message: `Are you sure you want to archive patient record for "${name}"?`,
             onConfirm: async () => {
-                const res = await api.put(`api/patient_controller.php?action=soft_delete&id=${id}`);
-                showToast(res.message, 'warning');
-                this.loadData();
+                try {
+                    const res = await api.put(`api/patient_controller.php?action=soft_delete&id=${id}`);
+                    showToast(res.message, 'warning');
+                    this.loadData();
+                } catch (err) {
+                    showToast(err.response?.data?.message || err.message || 'Failed to archive patient record.', 'danger');
+                    throw err;
+                }
             }
         });
     },
 
-    
-
-    
+    handleRestore(id, name) {
+        confirmRestore({
+            title: 'Restore Patient Record',
+            itemName: name,
+            message: `Are you sure you want to restore patient record for "${name}"?`,
+            btnText: 'Restore',
+            onConfirm: async () => {
+                try {
+                    const res = await api.put(`api/patient_controller.php?action=restore&id=${id}`);
+                    showToast(res.message, 'success');
+                    this.loadData();
+                } catch (err) {
+                    showToast(err.response?.data?.message || err.message || 'Failed to restore patient record.', 'danger');
+                    throw err;
+                }
+            }
+        });
+    }
 };
 
 

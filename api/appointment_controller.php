@@ -344,7 +344,7 @@ function getAppointmentById(PDO $pdo, int $id) {
         $stmtDoc = $pdo->prepare("SELECT doctor_id FROM doctors WHERE user_id = ? LIMIT 1");
         $stmtDoc->execute([$authUser['user_id']]);
         $doc = $stmtDoc->fetch(PDO::FETCH_ASSOC);
-        if (!$doc || $appointment['doctor_id'] != $doc['doctor_id']) {
+        if (!$doc || !is_doctor_authorized_for_appointment($pdo, (int)$doc['doctor_id'], $appointment)) {
              send_error('Unauthorized access to this appointment.', [], 403);
         }
     }

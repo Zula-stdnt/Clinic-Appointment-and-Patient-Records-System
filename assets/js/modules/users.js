@@ -1,9 +1,9 @@
-﻿// assets/js/modules/users.js
+// assets/js/modules/users.js
 // Manage Users module (Strictly restricted to Receptionist)
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays (Dynamic <select> option population from lookup arrays) & 03 APIs and Database Operations/mysql_insert_records / mysql_update_records
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=26';
+import { escapeHtml, showToast, openModal, closeModal, confirmAction, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=26';
 
 export default {
     state: {
@@ -710,35 +710,47 @@ export default {
             password: password
         };
 
-        const saveBtn = this.container.querySelector('#btn-save-user');
-        saveBtn.disabled = true;
+        const isEdit = Boolean(id);
+        confirmAction({
+            title: isEdit ? 'Confirm User Update' : 'Confirm User Creation',
+            message: isEdit
+                ? `Are you sure you want to save changes to user account "${username}"?`
+                : `Are you sure you want to create user account "${username}" (${roleName || 'User'})?`,
+            btnText: isEdit ? 'Save Changes' : 'Create User',
+            btnClass: 'btn btn-primary',
+            cancelBtnText: 'Keep Editing',
+            onConfirm: async () => {
+                const saveBtn = this.container.querySelector('#btn-save-user');
+                saveBtn.disabled = true;
 
-        try {
-            let res;
-            if (id) {
-                res = await api.put(`api/user_controller.php?id=${id}`, payload);
-            } else {
-                res = await api.post('api/user_controller.php', payload);
-            }
+                try {
+                    let res;
+                    if (id) {
+                        res = await api.put(`api/user_controller.php?id=${id}`, payload);
+                    } else {
+                        res = await api.post('api/user_controller.php', payload);
+                    }
 
-            if (res.success) {
-                showToast(res.message, 'success');
-                closeModal('user-form-modal');
-                this.loadData();
-            } else {
-                throw new Error(res.message);
-            }
-        } catch (err) {
-            const data = err.response?.data;
-            if (data?.errors) {
-                for (const [f, msg] of Object.entries(data.errors)) {
-                    this.showFieldError(`user-${f.replace('_', '-')}`, msg);
+                    if (res.success) {
+                        showToast(res.message, 'success');
+                        closeModal('user-form-modal', true);
+                        this.loadData();
+                    } else {
+                        throw new Error(res.message);
+                    }
+                } catch (err) {
+                    const data = err.response?.data;
+                    if (data?.errors) {
+                        for (const [f, msg] of Object.entries(data.errors)) {
+                            this.showFieldError(`user-${f.replace('_', '-')}`, msg);
+                        }
+                    }
+                    showToast(data?.message || err.message, 'danger');
+                } finally {
+                    saveBtn.disabled = false;
                 }
             }
-            showToast(data?.message || err.message, 'danger');
-        } finally {
-            saveBtn.disabled = false;
-        }
+        });
     },
 
     showFieldError(fieldId, message) {

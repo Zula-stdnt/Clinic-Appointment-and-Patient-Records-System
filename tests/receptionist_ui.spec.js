@@ -33,8 +33,10 @@ test.describe('Receptionist UI', () => {
         await page.fill('#walkin-dob', '1995-05-05');
         await page.fill('#walkin-contact', '09170000000');
 
-        // Submit Walk-in form
+        // Submit Walk-in form and confirm modal
         await page.click('#btn-save-walkin');
+        await expect(page.locator('#global-confirm-modal')).toHaveClass(/active/);
+        await page.click('#global-confirm-btn');
 
         // Verify toast appears
         await expect(page.locator('.toast-success').first()).toBeVisible({ timeout: 10000 });
@@ -47,11 +49,13 @@ test.describe('Receptionist UI', () => {
         const selectedLabel = await page.locator('#appt-patient option:checked').textContent();
         expect(selectedLabel).toContain('TestPat, UI');
 
-        // Schedule appointment
+        // Schedule appointment and confirm modal
         await page.selectOption('#appt-doctor', '1');
         await page.fill('#appt-date', '2026-12-12');
         await page.fill('#appt-time', '09:00');
         await page.click('#btn-save-appointment');
+        await expect(page.locator('#global-confirm-modal')).toHaveClass(/active/);
+        await page.click('#global-confirm-btn');
 
         // Verify success
         await expect(page.locator('.toast-success', { hasText: 'Appointment scheduled successfully' })).toBeVisible({ timeout: 10000 });
@@ -82,9 +86,11 @@ test.describe('Receptionist UI', () => {
         await page.click('#btn-save-walkin');
         await expect(page.locator('#walkin-middle-error')).toContainText('Middle initial must be a single letter (A-Z).');
 
-        // Fix it
+        // Fix it and confirm update modal
         await page.fill('#walkin-middle', 'Z');
         await page.click('#btn-save-walkin');
+        await expect(page.locator('#global-confirm-modal')).toHaveClass(/active/);
+        await page.click('#global-confirm-btn');
 
         // Verify success
         await expect(page.locator('.toast-success').last()).toContainText('Patient details updated successfully');

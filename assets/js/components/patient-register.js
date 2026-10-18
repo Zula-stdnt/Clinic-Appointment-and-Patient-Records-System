@@ -1,4 +1,4 @@
-﻿// assets/js/components/patient-register.js
+// assets/js/components/patient-register.js
 // Shared "Register New Patient" modal used by the receptionist workspace
 // (Patient Register tab and the appointment booking form) so the front desk
 // never has to leave its current task to add a patient record.
@@ -7,7 +7,7 @@
 // dom_apply_styles (classList toggles for validation feedback)
 
 import api from '../api.js?v=8';
-import { showToast, openModal, closeModal } from '../ui.js?v=26';
+import { showToast, openModal, closeModal, confirmAction } from '../ui.js?v=26';
 
 let instanceSeq = 0;
 
@@ -213,6 +213,9 @@ export class PatientRegisterForm {
         const errors = {};
         if (!payload.first_name) errors.first_name = 'First name is required.';
         if (!payload.last_name) errors.last_name = 'Last name is required.';
+        if (payload.middle_initial && !/^[A-Za-z]$/.test(payload.middle_initial)) {
+            errors.middle_initial = 'Middle initial must be a single letter (A-Z).';
+        }
         if (!payload.gender) errors.gender = 'Please select a gender.';
         if (!payload.date_of_birth) errors.date_of_birth = 'Date of birth is required.';
 
@@ -261,30 +264,39 @@ export class PatientRegisterForm {
 
         if (!this.validate(payload)) return;
 
-        this.busy = true;
-        this.saveBtn.disabled = true;
+        confirmAction({
+            title: 'Confirm Patient Registration',
+            message: `Are you sure you want to register new patient "${firstName} ${lastName}"?`,
+            btnText: 'Register Patient',
+            btnClass: 'btn btn-primary',
+            cancelBtnText: 'Keep Editing',
+            onConfirm: async () => {
+                this.busy = true;
+                this.saveBtn.disabled = true;
 
-        try {
-            const res = await api.post('api/patient_controller.php', payload);
-            if (res.success) {
-                showToast(this.successMessage, 'success');
-                closeModal(this.modalId);
-                this.onRegistered({
-                    ...payload,
-                    patient_id: res.data ? res.data.patient_id : null
-                });
-            } else {
-                this.showErrors(res.errors || {});
-                showToast(res.message || 'Failed to register patient.', 'error');
+                try {
+                    const res = await api.post('api/patient_controller.php', payload);
+                    if (res.success) {
+                        showToast(this.successMessage, 'success');
+                        closeModal(this.modalId, true);
+                        this.onRegistered({
+                            ...payload,
+                            patient_id: res.data ? res.data.patient_id : null
+                        });
+                    } else {
+                        this.showErrors(res.errors || {});
+                        showToast(res.message || 'Failed to register patient.', 'error');
+                    }
+                } catch (err) {
+                    const data = err.response?.data || {};
+                    this.showErrors(data.errors || {});
+                    showToast(data.message || 'Failed to register patient.', 'error');
+                } finally {
+                    this.busy = false;
+                    this.saveBtn.disabled = false;
+                }
             }
-        } catch (err) {
-            const data = err.response?.data || {};
-            this.showErrors(data.errors || {});
-            showToast(data.message || 'Failed to register patient.', 'error');
-        } finally {
-            this.busy = false;
-            this.saveBtn.disabled = false;
-        }
+        });
     }
 }
 

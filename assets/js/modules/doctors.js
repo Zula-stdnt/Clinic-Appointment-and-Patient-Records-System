@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays (Mapping specialty objects to <option> text/value) & 03 APIs and Database Operations/mysql_update_records
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=26';
+import { escapeHtml, showToast, openModal, closeModal, confirmAction, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=26';
 
 export default {
     state: {
@@ -745,48 +745,60 @@ export default {
             password: password
         };
 
-        const saveBtn = this.container.querySelector('#btn-save-doctor');
-        saveBtn.disabled = true;
+        const isEdit = Boolean(id);
+        confirmAction({
+            title: isEdit ? 'Confirm Doctor Update' : 'Confirm Doctor Registration',
+            message: isEdit
+                ? `Are you sure you want to save changes to Dr. ${firstName} ${lastName}'s profile?`
+                : `Are you sure you want to register Dr. ${firstName} ${lastName}?`,
+            btnText: isEdit ? 'Save Changes' : 'Register Doctor',
+            btnClass: 'btn btn-primary',
+            cancelBtnText: 'Keep Editing',
+            onConfirm: async () => {
+                const saveBtn = this.container.querySelector('#btn-save-doctor');
+                saveBtn.disabled = true;
 
-        try {
-            let res;
-            if (id) {
-                res = await api.put(`api/doctor_controller.php?id=${id}`, payload);
-            } else {
-                res = await api.post('api/doctor_controller.php', payload);
-            }
+                try {
+                    let res;
+                    if (id) {
+                        res = await api.put(`api/doctor_controller.php?id=${id}`, payload);
+                    } else {
+                        res = await api.post('api/doctor_controller.php', payload);
+                    }
 
-            if (res.success) {
-                showToast(res.message, 'success');
-                closeModal('doctor-form-modal');
-                this.loadData();
-            } else {
-                throw new Error(res.message);
-            }
-        } catch (err) {
-            const data = err.response?.data;
-            if (data?.errors) {
-                const fieldMap = {
-                    contact_no: 'doctor-contact',
-                    first_name: 'doctor-first-name',
-                    middle_initial: 'doctor-middle-initial',
-                    last_name: 'doctor-last-name',
-                    gender: 'doctor-gender',
-                    custom_gender: 'doctor-custom-gender',
-                    specialty_id: 'doctor-specialty-id',
-                    specialty_ids: 'doctor-specialty-id',
-                    username: 'doctor-username',
-                    password: 'doctor-password'
-                };
-                for (const [f, msg] of Object.entries(data.errors)) {
-                    const targetId = fieldMap[f] || `doctor-${f.replace(/_/g, '-')}`;
-                    this.showFieldError(targetId, msg);
+                    if (res.success) {
+                        showToast(res.message, 'success');
+                        closeModal('doctor-form-modal', true);
+                        this.loadData();
+                    } else {
+                        throw new Error(res.message);
+                    }
+                } catch (err) {
+                    const data = err.response?.data;
+                    if (data?.errors) {
+                        const fieldMap = {
+                            contact_no: 'doctor-contact',
+                            first_name: 'doctor-first-name',
+                            middle_initial: 'doctor-middle-initial',
+                            last_name: 'doctor-last-name',
+                            gender: 'doctor-gender',
+                            custom_gender: 'doctor-custom-gender',
+                            specialty_id: 'doctor-specialty-id',
+                            specialty_ids: 'doctor-specialty-id',
+                            username: 'doctor-username',
+                            password: 'doctor-password'
+                        };
+                        for (const [f, msg] of Object.entries(data.errors)) {
+                            const targetId = fieldMap[f] || `doctor-${f.replace(/_/g, '-')}`;
+                            this.showFieldError(targetId, msg);
+                        }
+                    }
+                    showToast(data?.message || err.message, 'danger');
+                } finally {
+                    saveBtn.disabled = false;
                 }
             }
-            showToast(data?.message || err.message, 'danger');
-        } finally {
-            saveBtn.disabled = false;
-        }
+        });
     },
 
     showFieldError(fieldId, message) {
@@ -988,29 +1000,38 @@ export default {
             }
         });
 
-        try {
-            saveBtn.disabled = true;
-            saveBtn.textContent = 'Saving...';
+        confirmAction({
+            title: 'Confirm Schedule Update',
+            message: 'Are you sure you want to save this weekly duty schedule for the doctor?',
+            btnText: 'Save Schedule',
+            btnClass: 'btn btn-primary',
+            cancelBtnText: 'Keep Editing',
+            onConfirm: async () => {
+                try {
+                    saveBtn.disabled = true;
+                    saveBtn.textContent = 'Saving...';
 
-            const res = await api.post('api/doctor_schedule_controller.php', {
-                doctor_id: doctorId,
-                schedules: schedules
-            });
+                    const res = await api.post('api/doctor_schedule_controller.php', {
+                        doctor_id: doctorId,
+                        schedules: schedules
+                    });
 
-            if (res.success) {
-                showToast(res.message || 'Doctor schedule updated successfully.', 'success');
-                closeModal('doctor-schedule-modal');
-                await this.loadData();
-            } else {
-                throw new Error(res.message || 'Failed to update schedule.');
+                    if (res.success) {
+                        showToast(res.message || 'Doctor schedule updated successfully.', 'success');
+                        closeModal('doctor-schedule-modal', true);
+                        await this.loadData();
+                    } else {
+                        throw new Error(res.message || 'Failed to update schedule.');
+                    }
+                } catch (err) {
+                    console.error('Failed to save doctor schedule', err);
+                    showToast(err.response?.data?.message || err.message || 'Failed to save schedule.', 'danger');
+                } finally {
+                    saveBtn.disabled = false;
+                    saveBtn.textContent = 'Save Schedule';
+                }
             }
-        } catch (err) {
-            console.error('Failed to save doctor schedule', err);
-            showToast(err.response?.data?.message || err.message || 'Failed to save schedule.', 'danger');
-        } finally {
-            saveBtn.disabled = false;
-            saveBtn.textContent = 'Save Schedule';
-        }
+        });
     }
 };
 

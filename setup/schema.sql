@@ -140,7 +140,9 @@ CREATE TABLE `patient_allergies` (
 CREATE TABLE `prescriptions` (
   `prescription_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `consultation_id` int(10) unsigned NOT NULL,
-  `medication_id` int(10) unsigned NOT NULL,
+  `medication_id` int(10) unsigned DEFAULT NULL,
+  `medication_name` varchar(150) DEFAULT NULL,
+  `generic_name` varchar(150) DEFAULT NULL,
   `strength` varchar(100) DEFAULT NULL,
   `dosage` varchar(100) NOT NULL,
   `route` varchar(50) DEFAULT NULL,
@@ -156,7 +158,7 @@ CREATE TABLE `prescriptions` (
   KEY `fk_prescriptions_consultation` (`consultation_id`),
   KEY `fk_prescriptions_medication` (`medication_id`),
   CONSTRAINT `fk_prescriptions_consultation` FOREIGN KEY (`consultation_id`) REFERENCES `consultation` (`consultation_id`) ON DELETE CASCADE ON UPDATE CASCADE,
-  CONSTRAINT `fk_prescriptions_medication` FOREIGN KEY (`medication_id`) REFERENCES `medications` (`medication_id`) ON UPDATE CASCADE
+  CONSTRAINT `fk_prescriptions_medication` FOREIGN KEY (`medication_id`) REFERENCES `medications` (`medication_id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `roles` (

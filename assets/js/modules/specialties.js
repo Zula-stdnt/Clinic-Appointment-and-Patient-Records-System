@@ -1,9 +1,9 @@
-﻿// assets/js/modules/specialties.js
+// assets/js/modules/specialties.js
 // Manage Specialties module
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_records, mysql_insert_records & mysql_update_records (Modular CRUD and DOM container reset before re-render)
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=26';
+import { escapeHtml, showToast, openModal, closeModal, confirmAction, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=26';
 
 export default {
     state: {
@@ -346,40 +346,53 @@ export default {
         }
 
         const payload = { specialty_name: name };
-        const saveBtn = this.container.querySelector('#btn-save-specialty');
-        saveBtn.disabled = true;
+        const isEdit = Boolean(id);
 
-        try {
-            let res;
-            if (id) {
-                res = await api.put(`api/specialty_controller.php?id=${id}`, payload);
-            } else {
-                res = await api.post('api/specialty_controller.php', payload);
-            }
+        confirmAction({
+            title: isEdit ? 'Confirm Specialty Update' : 'Confirm New Specialty',
+            message: isEdit
+                ? `Are you sure you want to save changes to specialty "${name}"?`
+                : `Are you sure you want to create the specialty "${name}"?`,
+            btnText: isEdit ? 'Save Changes' : 'Create Specialty',
+            btnClass: 'btn btn-primary',
+            cancelBtnText: 'Keep Editing',
+            onConfirm: async () => {
+                const saveBtn = this.container.querySelector('#btn-save-specialty');
+                saveBtn.disabled = true;
 
-            if (res.success) {
-                showToast(res.message, 'success');
-                closeModal('specialty-form-modal');
-                this.loadData();
-            } else {
-                throw new Error(res.message);
-            }
-        } catch (err) {
-            const data = err.response?.data;
-            if (data?.errors) {
-                const fieldMap = {
-                    specialty_name: 'specialty-name',
-                    description: 'specialty-description'
-                };
-                for (const [f, msg] of Object.entries(data.errors)) {
-                    const targetId = fieldMap[f] || `specialty-${f.replace(/_/g, '-')}`;
-                    this.showFieldError(targetId, msg);
+                try {
+                    let res;
+                    if (id) {
+                        res = await api.put(`api/specialty_controller.php?id=${id}`, payload);
+                    } else {
+                        res = await api.post('api/specialty_controller.php', payload);
+                    }
+
+                    if (res.success) {
+                        showToast(res.message, 'success');
+                        closeModal('specialty-form-modal', true);
+                        this.loadData();
+                    } else {
+                        throw new Error(res.message);
+                    }
+                } catch (err) {
+                    const data = err.response?.data;
+                    if (data?.errors) {
+                        const fieldMap = {
+                            specialty_name: 'specialty-name',
+                            description: 'specialty-description'
+                        };
+                        for (const [f, msg] of Object.entries(data.errors)) {
+                            const targetId = fieldMap[f] || `specialty-${f.replace(/_/g, '-')}`;
+                            this.showFieldError(targetId, msg);
+                        }
+                    }
+                    showToast(data?.message || err.message, 'danger');
+                } finally {
+                    saveBtn.disabled = false;
                 }
             }
-            showToast(data?.message || err.message, 'danger');
-        } finally {
-            saveBtn.disabled = false;
-        }
+        });
     },
 
     showFieldError(fieldId, message) {

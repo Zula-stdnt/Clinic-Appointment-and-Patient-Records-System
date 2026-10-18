@@ -107,7 +107,7 @@ function listPatients(PDO $pdo): void {
 
     if ($status === 'active') {
         $where[] = 'deleted_at IS NULL';
-    } elseif ($status === 'deleted') {
+    } elseif ($status === 'deleted' || $status === 'archived') {
         $where[] = 'deleted_at IS NOT NULL';
     }
 
@@ -381,36 +381,36 @@ function softDeletePatient(PDO $pdo): void {
     $input = get_json_input();
     $id = (int)($_GET['id'] ?? ($input['patient_id'] ?? 0));
 
-    // Priority 5: Archival business rule guards
-    // 1. Check upcoming active appointments
-    $upStmt = $pdo->prepare(
-        "SELECT COUNT(*) FROM appointments 
-         WHERE patient_id = :id AND status IN ('scheduled', 'confirmed') AND appointment_date >= CURRENT_DATE"
-    );
-    $upStmt->bindParam(':id', $id, PDO::PARAM_INT);
-    $upStmt->execute();
-    if ((int)$upStmt->fetchColumn() > 0) {
-        send_error('Cannot archive patient: active upcoming appointments are scheduled. Cancel or complete them first.', [], 409);
+    $pdo->beginTransaction();
+    try {
+        // Cancel any upcoming scheduled/confirmed appointments when archiving a patient
+        $cancelStmt = $pdo->prepare(
+            "UPDATE appointments 
+             SET status = 'cancelled' 
+             WHERE patient_id = :id AND status IN ('scheduled', 'confirmed') AND appointment_date >= CURRENT_DATE"
+        );
+        $cancelStmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $cancelStmt->execute();
+
+        $stmt = $pdo->prepare("UPDATE patients SET deleted_at = NOW() WHERE patient_id = :id AND deleted_at IS NULL");
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        if ($stmt->rowCount() === 0) {
+            $pdo->rollBack();
+            send_error('Patient not found or already archived.', [], 404);
+        }
+
+        log_audit($pdo, (int)$_SESSION['user_id'], 'ARCHIVE', 'patient', $id);
+        $pdo->commit();
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
     }
 
-    // 2. Check completed medical encounters
-    $compStmt = $pdo->prepare("SELECT COUNT(*) FROM appointments WHERE patient_id = :id AND status = 'completed'");
-    $compStmt->bindParam(':id', $id, PDO::PARAM_INT);
-    $compStmt->execute();
-    if ((int)$compStmt->fetchColumn() > 0) {
-        send_error('Cannot archive patient: completed medical consultations exist. Inactive status should be used instead of archiving clinical history.', [], 409);
-    }
-
-    $stmt = $pdo->prepare("UPDATE patients SET deleted_at = NOW() WHERE patient_id = :id AND deleted_at IS NULL");
-    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-    $stmt->execute();
-
-    if ($stmt->rowCount() === 0) {
-        send_error('Patient not found or already deactivated.', [], 404);
-    }
-
-    log_audit($pdo, (int)$_SESSION['user_id'], 'ARCHIVE', 'patient', $id);
-    send_success('Patient deactivated (soft-deleted) successfully.');
+    send_success('Patient archived (soft-deleted) successfully.');
 }
 
 function restorePatient(PDO $pdo): void {

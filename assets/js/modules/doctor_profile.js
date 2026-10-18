@@ -1,9 +1,9 @@
-﻿// assets/js/modules/doctor_profile.js
+// assets/js/modules/doctor_profile.js
 // Doctor My Profile Module
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_update_records (Pre-populated update form, ternary selected state, reflexive UI refresh) & 02 DOM and UI/dom_apply_styles (Safe classList.add/remove for validation feedback)
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast } from '../ui.js?v=26';
+import { escapeHtml, showToast, confirmAction } from '../ui.js?v=26';
 
 function showValidationErrors(errors, container) {
     for (const [fieldId, msg] of Object.entries(errors)) {
@@ -259,9 +259,6 @@ export default {
                 c.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
 
                 const btn = c.querySelector('#btn-save-profile');
-                btn.disabled = true;
-                btn.textContent = 'Saving...';
-
                 const payload = {
                     contact_no: c.querySelector('#prof-contact-no').value.trim(),
                     username: c.querySelector('#prof-username').value.trim(),
@@ -270,49 +267,61 @@ export default {
                     confirm_password: c.querySelector('#prof-confirm-password').value
                 };
 
-                try {
-                    const res = await api.put('api/doctor_profile_controller.php', payload);
-                    
-                    if (res.success) {
-                        showToast(res.message || 'Profile updated successfully.', 'success');
-                        
-                        // Clear password fields
-                        c.querySelector('#prof-current-password').value = '';
-                        c.querySelector('#prof-new-password').value = '';
-                        c.querySelector('#prof-confirm-password').value = '';
+                confirmAction({
+                    title: 'Confirm Profile Update',
+                    message: 'Are you sure you want to save these changes to your physician account profile?',
+                    btnText: 'Save Changes',
+                    btnClass: 'btn btn-primary',
+                    cancelBtnText: 'Keep Editing',
+                    onConfirm: async () => {
+                        btn.disabled = true;
+                        btn.textContent = 'Saving...';
 
-                        // Reload profile to refresh banner
-                        await this.loadProfile();
+                        try {
+                            const res = await api.put('api/doctor_profile_controller.php', payload);
+                            
+                            if (res.success) {
+                                showToast(res.message || 'Profile updated successfully.', 'success');
+                                
+                                // Clear password fields
+                                c.querySelector('#prof-current-password').value = '';
+                                c.querySelector('#prof-new-password').value = '';
+                                c.querySelector('#prof-confirm-password').value = '';
 
-                    } else {
-                        if (res.errors) {
-                            const mappedErrors = {};
-                            for (const [key, msg] of Object.entries(res.errors)) {
-                                mappedErrors[`prof-${key.replace(/_/g, '-')}`] = msg;
+                                // Reload profile to refresh banner
+                                await this.loadProfile();
+
+                            } else {
+                                if (res.errors) {
+                                    const mappedErrors = {};
+                                    for (const [key, msg] of Object.entries(res.errors)) {
+                                        mappedErrors[`prof-${key.replace(/_/g, '-')}`] = msg;
+                                    }
+                                    showValidationErrors(mappedErrors, c);
+                                    showToast('Please correct the highlighted errors.', 'error');
+                                } else {
+                                    showToast(res.message || 'Failed to update profile.', 'error');
+                                }
                             }
-                            showValidationErrors(mappedErrors, c);
-                            showToast('Please correct the highlighted errors.', 'error');
-                        } else {
-                            showToast(res.message || 'Failed to update profile.', 'error');
+                        } catch (err) {
+                            console.error('Error saving profile', err);
+                            if (err.response?.status === 422 && err.response?.data?.errors) {
+                                const mappedErrors = {};
+                                for (const [key, msg] of Object.entries(err.response.data.errors)) {
+                                    mappedErrors[`prof-${key.replace(/_/g, '-')}`] = msg;
+                                }
+                                showValidationErrors(mappedErrors, c);
+                                showToast('Please correct the highlighted errors.', 'error');
+                            } else {
+                                const msg = err.response?.data?.message || 'An error occurred while saving.';
+                                showToast(msg, 'error');
+                            }
+                        } finally {
+                            btn.disabled = false;
+                            btn.textContent = 'Save Changes';
                         }
                     }
-                } catch (err) {
-                    console.error('Error saving profile', err);
-                    if (err.response?.status === 422 && err.response?.data?.errors) {
-                        const mappedErrors = {};
-                        for (const [key, msg] of Object.entries(err.response.data.errors)) {
-                            mappedErrors[`prof-${key.replace(/_/g, '-')}`] = msg;
-                        }
-                        showValidationErrors(mappedErrors, c);
-                        showToast('Please correct the highlighted errors.', 'error');
-                    } else {
-                        const msg = err.response?.data?.message || 'An error occurred while saving.';
-                        showToast(msg, 'error');
-                    }
-                } finally {
-                    btn.disabled = false;
-                    btn.textContent = 'Save Changes';
-                }
+                });
             });
         }
     }

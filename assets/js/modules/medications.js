@@ -1,9 +1,9 @@
-﻿// assets/js/modules/medications.js
+// assets/js/modules/medications.js
 // Manage Medications module (formulary used by the Doctor consultation Rx picker)
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_records, mysql_insert_records & mysql_update_records (Async Axios CRUD with semantic hook classes .btn-view / .btn-edit / .btn-archive)
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete } from '../ui.js?v=26';
+import { escapeHtml, showToast, openModal, closeModal, confirmAction, confirmSoftDelete } from '../ui.js?v=26';
 
 export default {
     state: {
@@ -370,42 +370,54 @@ export default {
             generic_name: generic,
             manufacturer
         };
+        const isEdit = Boolean(id);
 
-        const saveBtn = this.container.querySelector('#btn-save-medication');
-        saveBtn.disabled = true;
+        confirmAction({
+            title: isEdit ? 'Confirm Medication Update' : 'Confirm New Medication',
+            message: isEdit
+                ? `Are you sure you want to save changes to medication "${name}"?`
+                : `Are you sure you want to add "${name}" to the medication formulary?`,
+            btnText: isEdit ? 'Save Changes' : 'Add Medication',
+            btnClass: 'btn btn-primary',
+            cancelBtnText: 'Keep Editing',
+            onConfirm: async () => {
+                const saveBtn = this.container.querySelector('#btn-save-medication');
+                saveBtn.disabled = true;
 
-        try {
-            let res;
-            if (id) {
-                res = await api.put(`api/medication_controller.php?id=${id}`, payload);
-            } else {
-                res = await api.post('api/medication_controller.php', payload);
-            }
+                try {
+                    let res;
+                    if (id) {
+                        res = await api.put(`api/medication_controller.php?id=${id}`, payload);
+                    } else {
+                        res = await api.post('api/medication_controller.php', payload);
+                    }
 
-            if (res.success) {
-                showToast(res.message, 'success');
-                closeModal('medication-form-modal');
-                this.loadData();
-            } else {
-                throw new Error(res.message);
-            }
-        } catch (err) {
-            const data = err.response?.data;
-            if (data?.errors) {
-                const fieldMap = {
-                    name: 'medication-name',
-                    generic_name: 'medication-generic',
-                    manufacturer: 'medication-manufacturer'
-                };
-                for (const [f, msg] of Object.entries(data.errors)) {
-                    const targetId = fieldMap[f] || `medication-${f.replace(/_/g, '-')}`;
-                    this.showFieldError(targetId, msg);
+                    if (res.success) {
+                        showToast(res.message, 'success');
+                        closeModal('medication-form-modal', true);
+                        this.loadData();
+                    } else {
+                        throw new Error(res.message);
+                    }
+                } catch (err) {
+                    const data = err.response?.data;
+                    if (data?.errors) {
+                        const fieldMap = {
+                            name: 'medication-name',
+                            generic_name: 'medication-generic',
+                            manufacturer: 'medication-manufacturer'
+                        };
+                        for (const [f, msg] of Object.entries(data.errors)) {
+                            const targetId = fieldMap[f] || `medication-${f.replace(/_/g, '-')}`;
+                            this.showFieldError(targetId, msg);
+                        }
+                    }
+                    showToast(data?.message || err.message, 'danger');
+                } finally {
+                    saveBtn.disabled = false;
                 }
             }
-            showToast(data?.message || err.message, 'danger');
-        } finally {
-            saveBtn.disabled = false;
-        }
+        });
     },
 
     showFieldError(fieldId, message) {

@@ -1,8 +1,8 @@
-﻿// assets/js/modules/account_settings.js
+// assets/js/modules/account_settings.js
 // Account Settings: read-only account summary and a secure change-password form
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast } from '../ui.js?v=26';
+import { escapeHtml, showToast, confirmAction } from '../ui.js?v=26';
 
 const PASSWORD_RULE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/;
 
@@ -87,7 +87,28 @@ export default {
             e.preventDefault();
             this.savePassword();
         });
-        form.addEventListener('reset', () => this.clearErrors());
+        const resetBtn = this.container.querySelector('#btn-reset-password');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', (e) => {
+                const hasInput = Array.from(form.querySelectorAll('input')).some(inp => inp.value.length > 0);
+                if (hasInput) {
+                    e.preventDefault();
+                    confirmAction({
+                        title: 'Discard Unsaved Changes?',
+                        message: 'Are you sure you want to clear the password fields?',
+                        btnText: 'Clear Form',
+                        btnClass: 'btn btn-danger',
+                        cancelBtnText: 'Keep Editing',
+                        onConfirm: () => {
+                            form.reset();
+                            this.clearErrors();
+                        }
+                    });
+                } else {
+                    this.clearErrors();
+                }
+            });
+        }
     },
 
     async loadAccount() {
@@ -169,31 +190,40 @@ export default {
 
         if (!valid) return;
 
-        const saveBtn = this.container.querySelector('#btn-save-password');
-        saveBtn.disabled = true;
+        confirmAction({
+            title: 'Confirm Password Update',
+            message: 'Are you sure you want to update your account password?',
+            btnText: 'Update Password',
+            btnClass: 'btn btn-primary',
+            cancelBtnText: 'Keep Editing',
+            onConfirm: async () => {
+                const saveBtn = this.container.querySelector('#btn-save-password');
+                saveBtn.disabled = true;
 
-        try {
-            const res = await api.post('api/auth_controller.php?action=change_password', {
-                current_password: currentPassword,
-                new_password: newPassword,
-                confirm_password: confirmPassword
-            });
+                try {
+                    const res = await api.post('api/auth_controller.php?action=change_password', {
+                        current_password: currentPassword,
+                        new_password: newPassword,
+                        confirm_password: confirmPassword
+                    });
 
-            if (!res.success) throw new Error(res.message);
+                    if (!res.success) throw new Error(res.message);
 
-            showToast(res.message || 'Password updated successfully.', 'success');
-            this.container.querySelector('#change-password-form').reset();
-            this.clearErrors();
-        } catch (err) {
-            const data = err.response?.data;
-            if (data?.errors) {
-                for (const [field, message] of Object.entries(data.errors)) {
-                    this.showFieldError(field.replace(/_/g, '-'), message);
+                    showToast(res.message || 'Password updated successfully.', 'success');
+                    this.container.querySelector('#change-password-form').reset();
+                    this.clearErrors();
+                } catch (err) {
+                    const data = err.response?.data;
+                    if (data?.errors) {
+                        for (const [field, message] of Object.entries(data.errors)) {
+                            this.showFieldError(field.replace(/_/g, '-'), message);
+                        }
+                    }
+                    showToast(data?.message || err.message, 'danger');
+                } finally {
+                    saveBtn.disabled = false;
                 }
             }
-            showToast(data?.message || err.message, 'danger');
-        } finally {
-            saveBtn.disabled = false;
-        }
+        });
     }
 };

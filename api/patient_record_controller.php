@@ -237,9 +237,10 @@ function getPatientRecord(PDO $pdo, int $patientId): void {
             // Prescriptions
             $rStmt = $pdo->prepare("SELECT p.prescription_id, p.medication_id, p.strength, p.dosage, p.route,
                                            p.frequency, p.duration, p.instructions, p.time_to_take, p.start_date, p.end_date,
-                                           m.name AS medication_name, m.generic_name
+                                           COALESCE(m.name, p.medication_name, 'Discontinued Medication') AS medication_name,
+                                           COALESCE(m.generic_name, p.generic_name) AS generic_name
                                     FROM prescriptions p
-                                    INNER JOIN medications m ON p.medication_id = m.medication_id
+                                    LEFT JOIN medications m ON p.medication_id = m.medication_id
                                     WHERE p.consultation_id = ?
                                     ORDER BY p.prescription_id ASC");
             $rStmt->execute([$cid]);

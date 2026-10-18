@@ -286,13 +286,45 @@ function hardDeleteMedication(PDO $pdo): void {
     $input = get_json_input();
     $id = (int)($_GET['id'] ?? ($input['medication_id'] ?? 0));
 
-    $stmt = $pdo->prepare("DELETE FROM medications WHERE medication_id = :id");
-    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
-    $stmt->execute();
+    $chk = $pdo->prepare("SELECT medication_id, name, generic_name, manufacturer, deleted_at FROM medications WHERE medication_id = :id LIMIT 1");
+    $chk->bindParam(':id', $id, PDO::PARAM_INT);
+    $chk->execute();
+    $med = $chk->fetch(PDO::FETCH_ASSOC);
 
-    if ($stmt->rowCount() === 0) {
+    if (!$med) {
         send_error('Medication not found.', [], 404);
+    }
+
+    $pdo->beginTransaction();
+    try {
+        // Preserve clinical history: ensure any linked prescriptions retain the medication name snapshot before unlinking
+        $medName = $med['name'];
+        $medGeneric = $med['generic_name'];
+        $updRx = $pdo->prepare(
+            "UPDATE prescriptions
+             SET medication_name = COALESCE(medication_name, :medName),
+                 generic_name = COALESCE(generic_name, :medGeneric),
+                 medication_id = NULL
+             WHERE medication_id = :id"
+        );
+        $updRx->bindParam(':medName', $medName);
+        $updRx->bindParam(':medGeneric', $medGeneric);
+        $updRx->bindParam(':id', $id, PDO::PARAM_INT);
+        $updRx->execute();
+
+        $stmt = $pdo->prepare("DELETE FROM medications WHERE medication_id = :id");
+        $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+        $stmt->execute();
+
+        log_audit($pdo, (int)($_SESSION['user_id'] ?? 0), 'PURGE', 'medication', $id, $med, null);
+        $pdo->commit();
+    } catch (Exception $e) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $e;
     }
 
     send_success('Medication permanently deleted.');
 }
+

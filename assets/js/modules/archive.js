@@ -1,4 +1,4 @@
-﻿// assets/js/modules/archive.js
+// assets/js/modules/archive.js
 // Manage Archive module for viewing, restoring, and permanently deleting archived records
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays (Entity configuration dictionary) & 03 APIs and Database Operations/mysql_update_records (Callback-driven UI refresh via confirmRestore/confirmHardDelete)
 
@@ -341,9 +341,14 @@ export default {
             message: `Are you sure you want to restore "${name}"? It will become active again in the system.`,
             btnText: 'Restore',
             onConfirm: async () => {
-                const res = await api.put(`${config.endpoint}?action=restore&id=${id}`);
-                showToast(res.message, 'success');
-                this.loadData();
+                try {
+                    const res = await api.put(`${config.endpoint}?action=restore&id=${id}`);
+                    showToast(res.message, 'success');
+                    this.loadData();
+                } catch (err) {
+                    showToast(err.response?.data?.message || err.message || 'Failed to restore record.', 'danger');
+                    throw err;
+                }
             }
         });
     },
@@ -354,11 +359,12 @@ export default {
             typeToConfirmText: 'DELETE',
             onConfirm: async () => {
                 try {
-                    const res = await api.delete(`${config.endpoint}?id=${id}`);
+                    const res = await api.delete(`${config.endpoint}?action=hard_delete&id=${id}`);
                     showToast(res.message, 'success');
                     this.loadData();
                 } catch (err) {
-                    showToast(err.response?.data?.message || 'Failed to permanently delete record.', 'danger');
+                    showToast(err.response?.data?.message || err.message || 'Failed to permanently delete record.', 'danger');
+                    throw err;
                 }
             }
         });

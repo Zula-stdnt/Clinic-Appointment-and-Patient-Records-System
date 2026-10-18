@@ -90,12 +90,14 @@ function getConsultationDetails(PDO $pdo, int $appointmentId) {
     $stmtDoc->bindParam(':userId', $authUserId, PDO::PARAM_INT);
     $stmtDoc->execute();
     $doc = $stmtDoc->fetch(PDO::FETCH_ASSOC);
-    if (!$doc || $appointment['doctor_id'] != $doc['doctor_id']) {
+    if (!$doc || !is_doctor_authorized_for_appointment($pdo, (int)$doc['doctor_id'], $appointment)) {
         send_error('Unauthorized access to this appointment.', [], 403);
     }
 
-    // Gating: Doctor must not load an editable consultation while Scheduled
-    if ($appointment['status'] === 'scheduled') {
+    $isDirectAttendingDoctor = ((int)$appointment['doctor_id'] === (int)$doc['doctor_id']);
+
+    // Gating: Doctor must not load an editable consultation while Scheduled (unless viewing completed history)
+    if ($appointment['status'] === 'scheduled' && $isDirectAttendingDoctor) {
         send_error('Cannot consult an appointment that is scheduled. Appointment must be confirmed first.', ['status' => 'scheduled'], 409);
     }
     if (in_array($appointment['status'], ['cancelled', 'no_show']) && $appointment['status'] !== 'completed') {
@@ -142,11 +144,13 @@ function getConsultationDetails(PDO $pdo, int $appointmentId) {
         $stmtDiag->execute();
         $diagnoses = $stmtDiag->fetchAll(PDO::FETCH_ASSOC);
 
-        $stmtRx = $pdo->prepare("SELECT p.prescription_id, p.medication_id, m.name as medication_name, m.generic_name as medication_generic,
+        $stmtRx = $pdo->prepare("SELECT p.prescription_id, p.medication_id,
+                                        COALESCE(m.name, p.medication_name, 'Discontinued Medication') as medication_name,
+                                        COALESCE(m.generic_name, p.generic_name) as medication_generic,
                                         p.strength, p.dosage, p.route, p.frequency, p.duration, p.instructions,
                                         p.time_to_take, p.start_date, p.end_date 
                                  FROM prescriptions p
-                                 INNER JOIN medications m ON p.medication_id = m.medication_id
+                                 LEFT JOIN medications m ON p.medication_id = m.medication_id
                                  WHERE p.consultation_id = :consId
                                  ORDER BY p.prescription_id ASC");
         $stmtRx->bindParam(':consId', $consId, PDO::PARAM_INT);
@@ -314,6 +318,8 @@ function saveConsultation(PDO $pdo) {
 
         if (!empty($input['prescriptions']) && is_array($input['prescriptions'])) {
             $medId = 0;
+            $medName = null;
+            $medGeneric = null;
             $strength = null;
             $dosage = 'As directed';
             $route = null;
@@ -324,12 +330,17 @@ function saveConsultation(PDO $pdo) {
             $startDate = date('Y-m-d');
             $endDate = null;
 
+            $stmtMedLookup = $pdo->prepare("SELECT name, generic_name FROM medications WHERE medication_id = :medId LIMIT 1");
+            $stmtMedLookup->bindParam(':medId', $medId, PDO::PARAM_INT);
+
             $stmtRx = $pdo->prepare(
-                "INSERT INTO prescriptions (consultation_id, medication_id, strength, dosage, route, frequency, duration, instructions, time_to_take, start_date, end_date)
-                 VALUES (:consId, :medId, :strength, :dosage, :route, :frequency, :duration, :instructions, :timeToTake, :startDate, :endDate)"
+                "INSERT INTO prescriptions (consultation_id, medication_id, medication_name, generic_name, strength, dosage, route, frequency, duration, instructions, time_to_take, start_date, end_date)
+                 VALUES (:consId, :medId, :medName, :medGeneric, :strength, :dosage, :route, :frequency, :duration, :instructions, :timeToTake, :startDate, :endDate)"
             );
             $stmtRx->bindParam(':consId', $consultationId, PDO::PARAM_INT);
             $stmtRx->bindParam(':medId', $medId, PDO::PARAM_INT);
+            $stmtRx->bindParam(':medName', $medName);
+            $stmtRx->bindParam(':medGeneric', $medGeneric);
             $stmtRx->bindParam(':strength', $strength);
             $stmtRx->bindParam(':dosage', $dosage);
             $stmtRx->bindParam(':route', $route);
@@ -343,6 +354,11 @@ function saveConsultation(PDO $pdo) {
             foreach ($input['prescriptions'] as $p) {
                 if (!empty($p['medication_id']) && (!empty($p['dosage']) || !empty($p['frequency']))) {
                     $medId = (int)$p['medication_id'];
+                    $stmtMedLookup->execute();
+                    $medRow = $stmtMedLookup->fetch(PDO::FETCH_ASSOC);
+                    $medName = $medRow['name'] ?? (trim((string)($p['medication_name'] ?? '')) ?: null);
+                    $medGeneric = $medRow['generic_name'] ?? (trim((string)($p['generic_name'] ?? '')) ?: null);
+
                     $strength = trim((string)($p['strength'] ?? '')) ?: null;
                     $dosage = trim((string)($p['dosage'] ?? '')) ?: 'As directed';
                     $route = trim((string)($p['route'] ?? '')) ?: null;

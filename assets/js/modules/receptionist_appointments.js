@@ -1739,66 +1739,78 @@ export default {
 
         if (!this.validateForm(payload) || !this.validateAppointmentScheduleLive()) return;
 
-        const saveBtn = this.container.querySelector('#btn-save-appointment');
-        saveBtn.disabled = true;
+        const isEdit = Boolean(this.state.activeEditId);
+        confirmAction({
+            title: isEdit ? 'Confirm Appointment Update' : 'Confirm Appointment Scheduling',
+            message: isEdit
+                ? 'Are you sure you want to save changes to this patient appointment?'
+                : 'Are you sure you want to schedule this patient appointment?',
+            btnText: isEdit ? 'Update Appointment' : 'Schedule Appointment',
+            btnClass: 'btn btn-primary',
+            cancelBtnText: 'Keep Editing',
+            onConfirm: async () => {
+                const saveBtn = this.container.querySelector('#btn-save-appointment');
+                saveBtn.disabled = true;
 
-        try {
-            let res;
-            if (this.state.activeEditId) {
-                res = await api.put(`api/appointment_controller.php?id=${this.state.activeEditId}`, payload);
-            } else {
-                res = await api.post('api/appointment_controller.php', payload);
-            }
-            
-            if (res.success) {
-                const newAppointmentId = res.data ? res.data.appointment_id : null;
-                let patientLabel = '';
-                if (patSelect && patSelect.selectedIndex >= 0 && patSelect.value) {
-                    patientLabel = patSelect.options[patSelect.selectedIndex]?.textContent || '';
-                } else if (this.patientPicker) {
-                    patientLabel = this.patientPicker.getLabel() || '';
-                }
-                this.state.isDirty = false;
-                showToast(this.state.activeEditId ? 'Appointment updated successfully.' : 'Appointment scheduled successfully.', 'success');
-                
-                const alertBox = this.container.querySelector('#appointments-capacity-alert');
-                const alertMsg = this.container.querySelector('#appointments-capacity-alert-message');
-                if (res.data && res.data.warning) {
-                    if (alertBox && alertMsg) {
-                        alertMsg.textContent = res.data.warning;
-                        alertBox.style.display = 'flex';
+                try {
+                    let res;
+                    if (this.state.activeEditId) {
+                        res = await api.put(`api/appointment_controller.php?id=${this.state.activeEditId}`, payload);
+                    } else {
+                        res = await api.post('api/appointment_controller.php', payload);
                     }
-                } else {
-                    if (alertBox) alertBox.style.display = 'none';
-                }
+                    
+                    if (res.success) {
+                        const newAppointmentId = res.data ? res.data.appointment_id : null;
+                        let patientLabel = '';
+                        if (patSelect && patSelect.selectedIndex >= 0 && patSelect.value) {
+                            patientLabel = patSelect.options[patSelect.selectedIndex]?.textContent || '';
+                        } else if (this.patientPicker) {
+                            patientLabel = this.patientPicker.getLabel() || '';
+                        }
+                        this.state.isDirty = false;
+                        showToast(this.state.activeEditId ? 'Appointment updated successfully.' : 'Appointment scheduled successfully.', 'success');
+                        
+                        const alertBox = this.container.querySelector('#appointments-capacity-alert');
+                        const alertMsg = this.container.querySelector('#appointments-capacity-alert-message');
+                        if (res.data && res.data.warning) {
+                            if (alertBox && alertMsg) {
+                                alertMsg.textContent = res.data.warning;
+                                alertBox.style.display = 'flex';
+                            }
+                        } else {
+                            if (alertBox) alertBox.style.display = 'none';
+                        }
 
-                this.container.querySelector('#appointment-form').reset();
-                if (this.patientPicker) this.patientPicker.clear();
-                if (this.doctorPicker) this.doctorPicker.clear();
-                this.clearFormErrors();
-                const docSelect = this.container.querySelector('#appt-doctor');
-                if (docSelect) docSelect.value = '';
-                this.syncDoctorComboboxFromSelect();
-                closeModal('appointment-form-modal');
-                await this.loadData();
+                        this.container.querySelector('#appointment-form').reset();
+                        if (this.patientPicker) this.patientPicker.clear();
+                        if (this.doctorPicker) this.doctorPicker.clear();
+                        this.clearFormErrors();
+                        const docSelect = this.container.querySelector('#appt-doctor');
+                        if (docSelect) docSelect.value = '';
+                        this.syncDoctorComboboxFromSelect();
+                        closeModal('appointment-form-modal', true);
+                        await this.loadData();
 
-                if (newAppointmentId && !this.state.activeEditId) {
-                    this.pendingPrintId = newAppointmentId;
-                    const promptEl = this.container.querySelector('#print-prompt-patient');
-                    if (promptEl) promptEl.textContent = patientLabel || 'this patient';
-                    openModal('print-prompt-modal');
+                        if (newAppointmentId && !this.state.activeEditId) {
+                            this.pendingPrintId = newAppointmentId;
+                            const promptEl = this.container.querySelector('#print-prompt-patient');
+                            if (promptEl) promptEl.textContent = patientLabel || 'this patient';
+                            openModal('print-prompt-modal');
+                        }
+                    } else {
+                        this.showFormErrors(res.errors || {});
+                        showToast(res.message || (this.state.activeEditId ? 'Failed to update appointment.' : 'Failed to schedule appointment.'), 'error');
+                    }
+                } catch (err) {
+                    const data = err.response?.data || {};
+                    this.showFormErrors(data.errors || {});
+                    showToast(data.message || (this.state.activeEditId ? 'Failed to update appointment.' : 'Failed to schedule appointment.'), 'error');
+                } finally {
+                    saveBtn.disabled = false;
                 }
-            } else {
-                this.showFormErrors(res.errors || {});
-                showToast(res.message || (this.state.activeEditId ? 'Failed to update appointment.' : 'Failed to schedule appointment.'), 'error');
             }
-        } catch (err) {
-            const data = err.response?.data || {};
-            this.showFormErrors(data.errors || {});
-            showToast(data.message || (this.state.activeEditId ? 'Failed to update appointment.' : 'Failed to schedule appointment.'), 'error');
-        } finally {
-            saveBtn.disabled = false;
-        }
+        });
     },
     
     updateStatus(id, newStatus) {
@@ -2002,6 +2014,9 @@ export default {
         let gender = form.querySelector('#walkin-gender').value;
         const customGender = form.querySelector('#walkin-custom-gender').value.trim();
 
+        this.clearWalkinErrors();
+        this.setWalkinStatus('');
+
         if (gender === 'Other') {
             if (!customGender) {
                 this.showWalkinErrors({ custom_gender: 'Please specify the custom gender.' });
@@ -2022,113 +2037,134 @@ export default {
             allergies_alerts: allergiesInput ? allergiesInput.value.trim() : null
         };
 
-        this.clearWalkinErrors();
-        this.setWalkinStatus('');
-        this.setWalkinPending(true);
-        let outcome = 'failed';
+        const clientErrors = {};
+        if (!payload.first_name) clientErrors.first_name = 'First name is required.';
+        if (!payload.last_name) clientErrors.last_name = 'Last name is required.';
+        if (payload.middle_initial && !/^[A-Za-z]$/.test(payload.middle_initial)) {
+            clientErrors.middle_initial = 'Middle initial must be a single letter (A-Z).';
+        }
+        if (!payload.gender) clientErrors.gender = 'Please select a gender.';
+        if (!payload.date_of_birth) clientErrors.date_of_birth = 'Date of birth is required.';
 
-        try {
-            if (this.state.activeEditId) {
-                const res = await api.put(`api/appointment_patient_controller.php?appointment_id=${this.state.activeEditId}`, payload, { timeout: 15000 });
-                if (res && res.success) {
-                    outcome = 'updated';
-                    const updatedId = res.data.patient_id;
-                    
-                    // Update patient in select options
-                    const pIndex = this.state.patients.findIndex(p => Number(p.patient_id) === Number(updatedId));
-                    if (pIndex !== -1) {
-                        this.state.patients[pIndex].first_name = payload.first_name;
-                        this.state.patients[pIndex].middle_initial = payload.middle_initial;
-                        this.state.patients[pIndex].last_name = payload.last_name;
-                        this.state.patients[pIndex].allergies_alerts = payload.allergies_alerts;
-                        this.state.patients[pIndex].allergies_confirmed_by_doctor = 0;
-                    }
-                    
-                    const patSelect = this.container.querySelector('#appt-patient');
-                    this.renderSelect(patSelect, this.state.patients, (p) => this.patientOption(p), 'Select Patient');
-                    patSelect.value = String(updatedId);
-
-                    const apptAllergiesInput = this.container.querySelector('#appt-allergies');
-                    if (apptAllergiesInput) apptAllergiesInput.value = payload.allergies_alerts || '';
-                    this.renderAllergyBadge(payload.allergies_alerts || '', 0);
-                    
-                    showToast(`Patient details updated successfully.`, 'success');
-                    this.state.isWalkinDirty = false;
-                } else {
-                    outcome = 'uncertain';
-                }
-            } else {
-                const res = await api.post('api/walkin_patient_controller.php', payload, { timeout: 15000 });
-                const newId = res && res.success && res.data ? parseInt(res.data.patient_id, 10) : 0;
-                if (newId > 0) {
-                    outcome = 'created';
-                    this.walkinRegisteredId = newId;
-
-                    // Add only this newly created patient (returned by ID) to the appointment options.
-                    if (!this.state.patients.some(p => Number(p.patient_id) === newId)) {
-                        this.state.patients.push({
-                            patient_id: newId,
-                            first_name: payload.first_name,
-                            middle_initial: payload.middle_initial,
-                            last_name: payload.last_name,
-                            allergies_alerts: payload.allergies_alerts,
-                            allergies_confirmed_by_doctor: 0
-                        });
-                    }
-                    const patSelect = this.container.querySelector('#appt-patient');
-                    this.renderSelect(patSelect, this.state.patients, (p) => this.patientOption(p), 'Select Patient');
-                    patSelect.value = String(newId);
-                    patSelect.classList.remove('is-invalid');
-                    if (this.patientPicker) {
-                        this.patientPicker.setValue(newId, `${payload.last_name}, ${payload.first_name}`);
-                        this.patientPicker.setInvalid(false);
-                    }
-                    const patErr = this.container.querySelector('#appt-patient-error');
-                    if (patErr) patErr.textContent = '';
-
-                    const apptAllergiesInput = this.container.querySelector('#appt-allergies');
-                    if (apptAllergiesInput) apptAllergiesInput.value = payload.allergies_alerts || '';
-                    this.renderAllergyBadge(payload.allergies_alerts || '', 0);
-
-                    showToast('Walk-in patient registered and selected. Review the appointment, then schedule it.', 'success');
-                    this.state.isWalkinDirty = false;
-                } else {
-                    // A 2xx without a patient ID: the server answered but we cannot tell what happened.
-                    outcome = 'uncertain';
-                }
-            }
-        } catch (err) {
-            if (!err.response) {
-                // Network failure/timeout: the request may or may not have reached the server.
-                outcome = 'uncertain';
-            } else {
-                const data = err.response.data || {};
-                this.showWalkinErrors(data.errors || {});
-                showToast(data.message || 'Failed to register patient.', 'danger');
-            }
-        } finally {
-            this.setWalkinPending(false);
+        if (Object.keys(clientErrors).length > 0) {
+            this.showWalkinErrors(clientErrors);
+            return;
         }
 
-        const saveBtn = this.container.querySelector('#btn-save-walkin');
-        if (outcome === 'created') {
-            saveBtn.textContent = 'Register & Select';
-            // Closing triggers the observer, which reopens the appointment form with the draft intact.
-            closeModal('walkin-form-modal');
-        } else if (outcome === 'updated') {
-            saveBtn.textContent = 'Save Changes';
-            closeModal('walkin-form-modal');
-        } else if (outcome === 'uncertain') {
-            this.walkinUncertain = true;
-            saveBtn.textContent = 'Retry Request';
-            this.setWalkinStatus(
-                'The connection failed before the server confirmed the request. ' +
-                'Please verify with an Administrator if you are unsure before proceeding.'
-            );
-            showToast('Request outcome unknown. Proceed with caution.', 'warning');
-        } else {
-            saveBtn.textContent = this.walkinUncertain ? 'Retry Request' : (this.state.activeEditId ? 'Save Changes' : 'Register & Select');
-        }
+        const isEdit = Boolean(this.state.activeEditId);
+        confirmAction({
+            title: isEdit ? 'Confirm Patient Details Update' : 'Confirm Walk-in Registration',
+            message: isEdit
+                ? `Are you sure you want to save changes to patient "${payload.first_name} ${payload.last_name}"?`
+                : `Are you sure you want to register walk-in patient "${payload.first_name} ${payload.last_name}"?`,
+            btnText: isEdit ? 'Save Changes' : 'Register & Select',
+            btnClass: 'btn btn-primary',
+            cancelBtnText: 'Keep Editing',
+            onConfirm: async () => {
+                this.setWalkinPending(true);
+                let outcome = 'failed';
+
+                try {
+                    if (this.state.activeEditId) {
+                        const res = await api.put(`api/appointment_patient_controller.php?appointment_id=${this.state.activeEditId}`, payload, { timeout: 15000 });
+                        if (res && res.success) {
+                            outcome = 'updated';
+                            const updatedId = res.data.patient_id;
+                            
+                            // Update patient in select options
+                            const pIndex = this.state.patients.findIndex(p => Number(p.patient_id) === Number(updatedId));
+                            if (pIndex !== -1) {
+                                this.state.patients[pIndex].first_name = payload.first_name;
+                                this.state.patients[pIndex].middle_initial = payload.middle_initial;
+                                this.state.patients[pIndex].last_name = payload.last_name;
+                                this.state.patients[pIndex].allergies_alerts = payload.allergies_alerts;
+                                this.state.patients[pIndex].allergies_confirmed_by_doctor = 0;
+                            }
+                            
+                            const patSelect = this.container.querySelector('#appt-patient');
+                            this.renderSelect(patSelect, this.state.patients, (p) => this.patientOption(p), 'Select Patient');
+                            patSelect.value = String(updatedId);
+
+                            const apptAllergiesInput = this.container.querySelector('#appt-allergies');
+                            if (apptAllergiesInput) apptAllergiesInput.value = payload.allergies_alerts || '';
+                            this.renderAllergyBadge(payload.allergies_alerts || '', 0);
+                            
+                            showToast(`Patient details updated successfully.`, 'success');
+                            this.state.isWalkinDirty = false;
+                        } else {
+                            outcome = 'uncertain';
+                        }
+                    } else {
+                        const res = await api.post('api/walkin_patient_controller.php', payload, { timeout: 15000 });
+                        const newId = res && res.success && res.data ? parseInt(res.data.patient_id, 10) : 0;
+                        if (newId > 0) {
+                            outcome = 'created';
+                            this.walkinRegisteredId = newId;
+
+                            // Add only this newly created patient (returned by ID) to the appointment options.
+                            if (!this.state.patients.some(p => Number(p.patient_id) === newId)) {
+                                this.state.patients.push({
+                                    patient_id: newId,
+                                    first_name: payload.first_name,
+                                    middle_initial: payload.middle_initial,
+                                    last_name: payload.last_name,
+                                    allergies_alerts: payload.allergies_alerts,
+                                    allergies_confirmed_by_doctor: 0
+                                });
+                            }
+                            const patSelect = this.container.querySelector('#appt-patient');
+                            this.renderSelect(patSelect, this.state.patients, (p) => this.patientOption(p), 'Select Patient');
+                            patSelect.value = String(newId);
+                            patSelect.classList.remove('is-invalid');
+                            if (this.patientPicker) {
+                                this.patientPicker.setValue(newId, `${payload.last_name}, ${payload.first_name}`);
+                                this.patientPicker.setInvalid(false);
+                            }
+                            const patErr = this.container.querySelector('#appt-patient-error');
+                            if (patErr) patErr.textContent = '';
+
+                            const apptAllergiesInput = this.container.querySelector('#appt-allergies');
+                            if (apptAllergiesInput) apptAllergiesInput.value = payload.allergies_alerts || '';
+                            this.renderAllergyBadge(payload.allergies_alerts || '', 0);
+
+                            showToast('Walk-in patient registered and selected. Review the appointment, then schedule it.', 'success');
+                            this.state.isWalkinDirty = false;
+                        } else {
+                            outcome = 'uncertain';
+                        }
+                    }
+                } catch (err) {
+                    if (!err.response) {
+                        outcome = 'uncertain';
+                    } else {
+                        const data = err.response.data || {};
+                        this.showWalkinErrors(data.errors || {});
+                        showToast(data.message || 'Failed to register patient.', 'danger');
+                    }
+                } finally {
+                    this.setWalkinPending(false);
+                }
+
+                const saveBtn = this.container.querySelector('#btn-save-walkin');
+                if (outcome === 'created') {
+                    saveBtn.textContent = 'Register & Select';
+                    closeModal('walkin-form-modal', true);
+                } else if (outcome === 'updated') {
+                    saveBtn.textContent = 'Save Changes';
+                    closeModal('walkin-form-modal', true);
+                } else if (outcome === 'uncertain') {
+                    this.walkinUncertain = true;
+                    saveBtn.textContent = 'Retry Request';
+                    this.setWalkinStatus(
+                        'The connection failed before the server confirmed the request. ' +
+                        'Please verify with an Administrator if you are unsure before proceeding.'
+                    );
+                    showToast('Request outcome unknown. Proceed with caution.', 'warning');
+                } else {
+                    saveBtn.textContent = this.walkinUncertain ? 'Retry Request' : (this.state.activeEditId ? 'Save Changes' : 'Register & Select');
+                }
+            }
+        });
     },
 
     destroy() {

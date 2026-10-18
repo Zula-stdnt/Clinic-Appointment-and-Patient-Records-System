@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 03 APIs and Database Operations/header_detail_forms & 01 JavaScript Foundations/javascript_objects_and_arrays
 
 import api from '../api.js?v=8';
-import { create, escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=26';
+import { create, escapeHtml, showToast, openModal, closeModal, confirmAction } from '../ui.js?v=26';
 import { SearchSelect } from '../components/search-select.js?v=1';
 import { printPrescription } from '../components/print-prescription.js?v=2';
 import { printLabRequest } from '../components/print-lab-request.js?v=1';
@@ -806,16 +806,33 @@ export default {
 
     attachEventListeners() {
         const c = this.container;
+        this.state.isDirty = false;
+        const isEditable = ['scheduled', 'confirmed'].includes(this.state.appointment?.status);
         
         // Navigation & helpers
         c.querySelector('#btn-cancel-consult')?.addEventListener('click', () => {
-            window.navigateTo('doctor_appointments');
+            if (isEditable && this.state.isDirty) {
+                confirmAction({
+                    title: 'Discard Unsaved Consultation?',
+                    message: 'You have unsaved clinical notes or orders. Are you sure you want to leave without saving?',
+                    btnText: 'Discard & Leave',
+                    btnClass: 'btn btn-danger',
+                    cancelBtnText: 'Keep Editing',
+                    onConfirm: () => {
+                        this.state.isDirty = false;
+                        window.navigateTo('doctor_appointments');
+                    }
+                });
+            } else {
+                window.navigateTo('doctor_appointments');
+            }
         });
 
         c.querySelector('#btn-set-nkda')?.addEventListener('click', () => {
             const input = c.querySelector('#cons-allergies');
             if (input) {
                 input.value = 'No Known Drug Allergies (NKDA)';
+                this.state.isDirty = true;
                 input.focus();
             }
         });
@@ -823,6 +840,7 @@ export default {
         // SOAP Plan Prescription Summarizer shortcut
         c.querySelector('#btn-sync-rx-plan')?.addEventListener('click', () => {
             this.syncPrescriptionsToPlan();
+            this.state.isDirty = true;
         });
 
         // Reprint actions for saved consultations
@@ -832,21 +850,27 @@ export default {
         // Add detail buttons
         c.querySelector('#btn-add-diagnosis')?.addEventListener('click', () => {
             this.state.diagnoses.push(createEmptyDiagnosis());
+            this.state.isDirty = true;
             this.renderDiagnoses();
         });
 
         c.querySelector('#btn-add-prescription')?.addEventListener('click', () => {
             this.state.prescriptions.push(createEmptyPrescription());
+            this.state.isDirty = true;
             this.renderPrescriptions();
         });
 
         c.querySelector('#btn-add-lab')?.addEventListener('click', () => {
             this.state.lab_requests.push(createEmptyLabRequest());
+            this.state.isDirty = true;
             this.renderLabs();
         });
 
         // Field change listener for two-way state synchronization
         const handleSync = (e) => {
+            if (e.target.closest('#consultation-form')) {
+                this.state.isDirty = true;
+            }
             if (e.target.matches('[data-type]')) {
                 const type = e.target.getAttribute('data-type');
                 const index = parseInt(e.target.getAttribute('data-index'), 10);
@@ -879,6 +903,7 @@ export default {
             if (btnDiag) {
                 const idx = parseInt(btnDiag.getAttribute('data-remove-diagnosis'), 10);
                 this.state.diagnoses.splice(idx, 1);
+                this.state.isDirty = true;
                 this.renderDiagnoses();
             }
 
@@ -886,6 +911,7 @@ export default {
             if (btnRx) {
                 const idx = parseInt(btnRx.getAttribute('data-remove-prescription'), 10);
                 this.state.prescriptions.splice(idx, 1);
+                this.state.isDirty = true;
                 this.renderPrescriptions();
             }
 
@@ -893,6 +919,7 @@ export default {
             if (btnLab) {
                 const idx = parseInt(btnLab.getAttribute('data-remove-lab'), 10);
                 this.state.lab_requests.splice(idx, 1);
+                this.state.isDirty = true;
                 this.renderLabs();
             }
         });
@@ -903,9 +930,6 @@ export default {
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const btnSave = c.querySelector('#btn-save-consultation');
-                btnSave.disabled = true;
-                btnSave.textContent = 'Saving encounter...';
-
                 const allergiesVal = c.querySelector('#cons-allergies') ? c.querySelector('#cons-allergies').value.trim() : null;
 
                 const soapPayload = {
@@ -931,23 +955,36 @@ export default {
                     lab_requests: validLabs
                 };
 
-                try {
-                    const res = await api.post('api/consultation_controller.php', payload);
-                    if (res.success) {
-                        showToast('Encounter saved successfully.', 'success');
-                        this.showAfterVisitActions();
-                    } else {
-                        showToast(res.message || 'Failed to save encounter.', 'error');
-                        btnSave.disabled = false;
-                        btnSave.textContent = 'Save & Complete Encounter';
+                confirmAction({
+                    title: 'Complete Clinical Encounter',
+                    message: 'Are you sure you want to finalize and save this consultation encounter? Once completed, the SOAP notes and clinical orders become part of the permanent medical record.',
+                    btnText: 'Save & Complete',
+                    btnClass: 'btn btn-success',
+                    cancelBtnText: 'Review Notes',
+                    onConfirm: async () => {
+                        btnSave.disabled = true;
+                        btnSave.textContent = 'Saving encounter...';
+
+                        try {
+                            const res = await api.post('api/consultation_controller.php', payload);
+                            if (res.success) {
+                                this.state.isDirty = false;
+                                showToast('Encounter saved successfully.', 'success');
+                                this.showAfterVisitActions();
+                            } else {
+                                showToast(res.message || 'Failed to save encounter.', 'error');
+                                btnSave.disabled = false;
+                                btnSave.textContent = 'Save & Complete Encounter';
+                            }
+                        } catch (err) {
+                            console.error('Error saving consultation', err);
+                            const msg = err.response?.data?.message || 'An unexpected error occurred.';
+                            showToast(msg, 'error');
+                            btnSave.disabled = false;
+                            btnSave.textContent = 'Save & Complete Encounter';
+                        }
                     }
-                } catch (err) {
-                    console.error('Error saving consultation', err);
-                    const msg = err.response?.data?.message || 'An unexpected error occurred.';
-                    showToast(msg, 'error');
-                    btnSave.disabled = false;
-                    btnSave.textContent = 'Save & Complete Encounter';
-                }
+                });
             });
         }
 
@@ -968,35 +1005,44 @@ export default {
                     return;
                 }
 
-                btnSaveAddendum.disabled = true;
-                btnSaveAddendum.textContent = 'Saving...';
+                confirmAction({
+                    title: 'Confirm Clinical Addendum',
+                    message: 'Are you sure you want to append this addendum to the completed consultation record? Addenda are permanent and cannot be modified once saved.',
+                    btnText: 'Submit Addendum',
+                    btnClass: 'btn btn-primary',
+                    cancelBtnText: 'Keep Editing',
+                    onConfirm: async () => {
+                        btnSaveAddendum.disabled = true;
+                        btnSaveAddendum.textContent = 'Saving...';
 
-                try {
-                    const res = await api.post('api/consultation_controller.php?action=addendum', {
-                        appointment_id: this.state.appointmentId,
-                        notes: notes
-                    });
+                        try {
+                            const res = await api.post('api/consultation_controller.php?action=addendum', {
+                                appointment_id: this.state.appointmentId,
+                                notes: notes
+                            });
 
-                    if (res.success) {
-                        showToast('Addendum recorded successfully.', 'success');
-                        closeModal('addendum-modal');
-                        if (notesInput) notesInput.value = '';
-                        await this.loadConsultationData();
-                        const addendaCont = c.querySelector('#addenda-container');
-                        if (addendaCont) {
-                            addendaCont.innerHTML = this.renderAddendaHtml();
+                            if (res.success) {
+                                showToast('Addendum recorded successfully.', 'success');
+                                closeModal('addendum-modal', true);
+                                if (notesInput) notesInput.value = '';
+                                await this.loadConsultationData();
+                                const addendaCont = c.querySelector('#addenda-container');
+                                if (addendaCont) {
+                                    addendaCont.innerHTML = this.renderAddendaHtml();
+                                }
+                            } else {
+                                showToast(res.message || 'Failed to save addendum.', 'error');
+                            }
+                        } catch (err) {
+                            console.error('Error saving addendum', err);
+                            const msg = err.response?.data?.message || 'Failed to save addendum.';
+                            showToast(msg, 'error');
+                        } finally {
+                            btnSaveAddendum.disabled = false;
+                            btnSaveAddendum.textContent = 'Submit Addendum';
                         }
-                    } else {
-                        showToast(res.message || 'Failed to save addendum.', 'error');
                     }
-                } catch (err) {
-                    console.error('Error saving addendum', err);
-                    const msg = err.response?.data?.message || 'Failed to save addendum.';
-                    showToast(msg, 'error');
-                } finally {
-                    btnSaveAddendum.disabled = false;
-                    btnSaveAddendum.textContent = 'Submit Addendum';
-                }
+                });
             });
         }
     },

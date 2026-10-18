@@ -123,11 +123,97 @@ let previousActiveElement = null;
 
 const resolveModal = (modalId) => typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
 
+const NON_DIRTY_MODAL_IDS = new Set([
+    'global-confirm-modal',
+    'shared-confirm-modal',
+    'blank-modal',
+    'after-visit-modal',
+    'print-prompt-modal'
+]);
+
+const isTrackableFormModal = (modal) => {
+    if (!modal || !modal.id) return false;
+    if (NON_DIRTY_MODAL_IDS.has(modal.id) || modal.id.endsWith('-view-modal')) return false;
+    return Boolean(modal.querySelector('form, input, select, textarea'));
+};
+
+const attachDirtyTracker = (modal) => {
+    if (!isTrackableFormModal(modal)) return;
+    modal._isDirty = false;
+    if (modal._dirtyTrackerAttached) return;
+    modal._dirtyTrackerAttached = true;
+
+    const markDirty = (e) => {
+        if (!modal.classList.contains('show')) return;
+        const target = e.target;
+        if (target && (target.matches('input, select, textarea') || target.closest('form'))) {
+            modal._isDirty = true;
+        }
+    };
+
+    modal.addEventListener('input', markDirty);
+    modal.addEventListener('change', markDirty);
+
+    modal.querySelectorAll('form').forEach(form => {
+        form.addEventListener('reset', () => {
+            modal._isDirty = false;
+        });
+    });
+};
+
+export const markModalClean = (modalId) => {
+    const modal = resolveModal(modalId);
+    if (modal) {
+        modal._isDirty = false;
+    }
+};
+
+export const ensureGlobalConfirmModal = () => {
+    let modal = document.getElementById('global-confirm-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.id = 'global-confirm-modal';
+        modal.setAttribute('tabindex', '-1');
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-labelledby', 'global-confirm-title');
+        modal.setAttribute('aria-hidden', 'true');
+        modal.innerHTML = `
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 class="modal-title" id="global-confirm-title">Confirm Action</h3>
+                        <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                        <button type="button" id="global-confirm-btn" class="btn btn-danger">Confirm</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    return modal;
+};
+
 export const openModal = (modalId) => {
     const modal = resolveModal(modalId);
     if (!modal || modal.classList.contains('show')) return;
 
-    previousActiveElement = document.activeElement;
+    if (activeModal && activeModal !== modal && activeModal.classList.contains('show')) {
+        modal._previousModal = activeModal;
+        modal._previousActiveElement = document.activeElement;
+    } else {
+        modal._previousModal = null;
+        modal._previousActiveElement = document.activeElement;
+        previousActiveElement = document.activeElement;
+    }
+
+    attachDirtyTracker(modal);
+
     modal.classList.add('show');
     modal.classList.add('active');
     modal.setAttribute('aria-hidden', 'false');
@@ -154,33 +240,61 @@ export const closeModal = (modalId, force = false) => {
         const event = new CustomEvent('beforeModalClose', { cancelable: true });
         modal.dispatchEvent(event);
         if (event.defaultPrevented) return;
+
+        if (modal._isDirty && !NON_DIRTY_MODAL_IDS.has(modal.id)) {
+            confirmAction({
+                title: 'Discard Changes?',
+                message: 'You have unsaved changes. Are you sure you want to discard them?',
+                btnText: 'Discard',
+                btnClass: 'btn btn-danger',
+                cancelBtnText: 'Keep Editing',
+                onConfirm: () => {
+                    modal._isDirty = false;
+                    closeModal(modal, true);
+                }
+            });
+            return;
+        }
     }
 
+    modal._isDirty = false;
     modal.classList.remove('show');
     modal.classList.remove('active');
     modal.setAttribute('aria-hidden', 'true');
     modal.removeEventListener('keydown', handleModalKeydown);
 
-    if (activeModal === modal) {
-        activeModal = null;
-    }
-    if (window.__cprms_active_modal === modal) {
-        window.__cprms_active_modal = null;
-    }
+    const prevModal = (modal._previousModal && modal._previousModal.classList.contains('show'))
+        ? modal._previousModal
+        : document.querySelector('.modal.show');
+    const prevFocus = modal._previousActiveElement || previousActiveElement;
 
-    if (!document.querySelector('.modal.show')) {
+    modal._previousModal = null;
+    modal._previousActiveElement = null;
+
+    if (prevModal) {
+        activeModal = prevModal;
+        window.__cprms_active_modal = prevModal;
+    } else {
+        if (activeModal === modal) {
+            activeModal = null;
+        }
+        if (window.__cprms_active_modal === modal) {
+            window.__cprms_active_modal = null;
+        }
         document.body.classList.remove('modal-open');
     }
 
-    if (previousActiveElement && typeof previousActiveElement.focus === 'function') {
-        previousActiveElement.focus();
+    if (prevFocus && typeof prevFocus.focus === 'function') {
+        prevFocus.focus();
     }
-    previousActiveElement = null;
+    if (!prevModal) {
+        previousActiveElement = null;
+    }
 };
 
 // Close every open modal. Safe to call before re-rendering a module view.
 export const hideAllModals = () => {
-    document.querySelectorAll('.modal.show').forEach(modal => closeModal(modal));
+    document.querySelectorAll('.modal.show').forEach(modal => closeModal(modal, true));
     document.body.classList.remove('modal-open');
 };
 
@@ -301,9 +415,11 @@ const bindConfirmAction = (modal, confirmBtn, onConfirm) => {
 
     cleanClone.addEventListener('click', async () => {
         cleanClone.disabled = true;
+        closeModal(modal, true);
         try {
-            await onConfirm();
-            closeModal(modal);
+            if (typeof onConfirm === 'function') {
+                await onConfirm();
+            }
         } catch (err) {
             cleanClone.disabled = false;
         }
@@ -313,7 +429,7 @@ const bindConfirmAction = (modal, confirmBtn, onConfirm) => {
 };
 
 export const confirmAction = ({ title, message, btnText = 'Confirm', btnClass = 'btn btn-primary', cancelBtnText = 'Cancel', cancelBtnClass = 'btn btn-secondary', onConfirm }) => {
-    const modal = document.getElementById('global-confirm-modal');
+    const modal = ensureGlobalConfirmModal();
     if (!modal) return;
 
     const modalTitle = modal.querySelector('.modal-title');
@@ -322,7 +438,7 @@ export const confirmAction = ({ title, message, btnText = 'Confirm', btnClass = 
     const cancelBtn = modal.querySelector('.modal-footer [data-dismiss="modal"]');
 
     modalTitle.textContent = title || 'Confirm Action';
-    modalBody.innerHTML = `<p class="mb-0">${escapeHtml(message)}</p>`;
+    modalBody.innerHTML = `<p class="mb-0" style="white-space: pre-line;">${escapeHtml(message)}</p>`;
 
     setButtonClassList(confirmBtn, btnClass);
     confirmBtn.textContent = btnText;
@@ -342,7 +458,7 @@ export const confirmAction = ({ title, message, btnText = 'Confirm', btnClass = 
 };
 
 export const confirmSoftDelete = ({ title, message, itemName, btnText = 'Archive Record', btnClass = 'btn btn-warning', cancelBtnText = 'Cancel', onConfirm }) => {
-    const modal = document.getElementById('global-confirm-modal');
+    const modal = ensureGlobalConfirmModal();
     if (!modal) return;
 
     const modalTitle = modal.querySelector('.modal-title');
@@ -372,7 +488,7 @@ export const confirmSoftDelete = ({ title, message, itemName, btnText = 'Archive
 };
 
 export const confirmRestore = ({ title = 'Restore Record', message, itemName, btnText = 'Restore', cancelBtnText = 'Cancel', onConfirm }) => {
-    const modal = document.getElementById('global-confirm-modal');
+    const modal = ensureGlobalConfirmModal();
     if (!modal) return;
 
     const modalTitle = modal.querySelector('.modal-title');
@@ -402,7 +518,7 @@ export const confirmRestore = ({ title = 'Restore Record', message, itemName, bt
 };
 
 export const confirmHardDelete = ({ title, message, itemName, typeToConfirmText = 'DELETE', cancelBtnText = 'Cancel', onConfirm }) => {
-    const modal = document.getElementById('global-confirm-modal');
+    const modal = ensureGlobalConfirmModal();
     if (!modal) return;
 
     const modalTitle = modal.querySelector('.modal-title');
@@ -511,7 +627,7 @@ if (!window.__cprms_ui_events_initialized) {
         }
 
         // Modals: explicit close buttons and backdrop clicks
-        const modalDismiss = e.target.closest('[data-dismiss="modal"]');
+        const modalDismiss = e.target.closest('[data-dismiss="modal"], [data-close-modal]');
         if (modalDismiss) {
             closeModal(modalDismiss.closest('.modal'));
             return;

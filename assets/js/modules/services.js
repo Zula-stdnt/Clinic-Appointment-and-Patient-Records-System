@@ -1,9 +1,9 @@
-﻿// assets/js/modules/Services.js
+// assets/js/modules/Services.js
 // Manage Services module
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_records, mysql_insert_records & mysql_update_records (Modular CRUD and DOM container reset before re-render)
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=26';
+import { escapeHtml, showToast, openModal, closeModal, confirmAction, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=26';
 
 export default {
     state: {
@@ -345,40 +345,53 @@ export default {
         }
 
         const payload = { service_name: name };
-        const saveBtn = this.container.querySelector('#btn-save-service');
-        saveBtn.disabled = true;
+        const isEdit = Boolean(id);
 
-        try {
-            let res;
-            if (id) {
-                res = await api.put(`api/service_controller.php?id=${id}`, payload);
-            } else {
-                res = await api.post('api/service_controller.php', payload);
-            }
+        confirmAction({
+            title: isEdit ? 'Confirm Service Update' : 'Confirm New Service',
+            message: isEdit
+                ? `Are you sure you want to save changes to service "${name}"?`
+                : `Are you sure you want to create the clinical service "${name}"?`,
+            btnText: isEdit ? 'Save Changes' : 'Create Service',
+            btnClass: 'btn btn-primary',
+            cancelBtnText: 'Keep Editing',
+            onConfirm: async () => {
+                const saveBtn = this.container.querySelector('#btn-save-service');
+                saveBtn.disabled = true;
 
-            if (res.success) {
-                showToast(res.message, 'success');
-                closeModal('service-form-modal');
-                this.loadData();
-            } else {
-                throw new Error(res.message);
-            }
-        } catch (err) {
-            const data = err.response?.data;
-            if (data?.errors) {
-                const fieldMap = {
-                    service_name: 'service-name',
-                    description: 'service-description'
-                };
-                for (const [f, msg] of Object.entries(data.errors)) {
-                    const targetId = fieldMap[f] || `service-${f.replace(/_/g, '-')}`;
-                    this.showFieldError(targetId, msg);
+                try {
+                    let res;
+                    if (id) {
+                        res = await api.put(`api/service_controller.php?id=${id}`, payload);
+                    } else {
+                        res = await api.post('api/service_controller.php', payload);
+                    }
+
+                    if (res.success) {
+                        showToast(res.message, 'success');
+                        closeModal('service-form-modal', true);
+                        this.loadData();
+                    } else {
+                        throw new Error(res.message);
+                    }
+                } catch (err) {
+                    const data = err.response?.data;
+                    if (data?.errors) {
+                        const fieldMap = {
+                            service_name: 'service-name',
+                            description: 'service-description'
+                        };
+                        for (const [f, msg] of Object.entries(data.errors)) {
+                            const targetId = fieldMap[f] || `service-${f.replace(/_/g, '-')}`;
+                            this.showFieldError(targetId, msg);
+                        }
+                    }
+                    showToast(data?.message || err.message, 'danger');
+                } finally {
+                    saveBtn.disabled = false;
                 }
             }
-            showToast(data?.message || err.message, 'danger');
-        } finally {
-            saveBtn.disabled = false;
-        }
+        });
     },
 
     showFieldError(fieldId, message) {

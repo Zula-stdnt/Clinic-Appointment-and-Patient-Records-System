@@ -160,3 +160,51 @@ function reset_login_throttle(): void {
     $key = 'failed_attempts_' . md5($ip);
     unset($_SESSION[$key]);
 }
+
+/**
+ * Verifies if a Doctor is authorized to view/print an appointment and its clinical artifacts.
+ * Access is granted if:
+ * 1. The doctor is the attending physician of the appointment, OR
+ * 2. The doctor has an active/non-cancelled appointment relationship with the patient, OR
+ * 3. The doctor holds an approved, non-expired record access grant (including Break-Glass).
+ */
+function is_doctor_authorized_for_appointment(PDO $pdo, int $doctorId, array $appointment): bool {
+    if ($doctorId <= 0) {
+        return false;
+    }
+
+    if ((int)($appointment['doctor_id'] ?? 0) === $doctorId) {
+        return true;
+    }
+
+    $patientId = (int)($appointment['patient_id'] ?? 0);
+    if ($patientId <= 0) {
+        return false;
+    }
+
+    // Check if the doctor is assigned to this patient via any non-cancelled appointment
+    $relStmt = $pdo->prepare(
+        "SELECT 1 FROM appointments
+         WHERE doctor_id = :docId AND patient_id = :patId AND status != 'cancelled'
+         LIMIT 1"
+    );
+    $relStmt->bindParam(':docId', $doctorId, PDO::PARAM_INT);
+    $relStmt->bindParam(':patId', $patientId, PDO::PARAM_INT);
+    $relStmt->execute();
+    if ($relStmt->fetch()) {
+        return true;
+    }
+
+    // Check if the doctor has an approved clinical record access grant
+    $accStmt = $pdo->prepare(
+        "SELECT 1 FROM record_access_requests
+         WHERE doctor_id = :docId AND patient_id = :patId AND status = 'approved'
+           AND (expires_at IS NULL OR expires_at > NOW())
+         LIMIT 1"
+    );
+    $accStmt->bindParam(':docId', $doctorId, PDO::PARAM_INT);
+    $accStmt->bindParam(':patId', $patientId, PDO::PARAM_INT);
+    $accStmt->execute();
+    return (bool)$accStmt->fetch();
+}
+

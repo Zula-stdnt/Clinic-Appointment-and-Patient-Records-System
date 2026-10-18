@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 02 DOM and UI/dom_create_and_remove_elements (Create -> Configure -> Listen -> Append row pattern) & 03 APIs and Database Operations/javascript_working_with_apis (Async/await response validation)
 
 import api from '../api.js?v=8';
-import { create, escapeHtml, showToast, openModal, closeModal, formatStatusLabel } from '../ui.js?v=26';
+import { create, escapeHtml, showToast, openModal, closeModal, confirmAction, formatStatusLabel } from '../ui.js?v=26';
 import { confirmDialog } from '../components/confirm-dialog.js?v=1';
 
 export default {
@@ -220,31 +220,40 @@ export default {
                     return;
                 }
 
-                btnSubmitCancel.disabled = true;
-                btnSubmitCancel.textContent = 'Submitting...';
+                confirmAction({
+                    title: 'Confirm Cancellation Request',
+                    message: 'Are you sure you want to submit this appointment cancellation request to Reception?',
+                    btnText: 'Submit Request',
+                    btnClass: 'btn btn-danger',
+                    cancelBtnText: 'Keep Editing',
+                    onConfirm: async () => {
+                        btnSubmitCancel.disabled = true;
+                        btnSubmitCancel.textContent = 'Submitting...';
 
-                try {
-                    const res = await api.post('api/appointment_controller.php?action=request_cancel', {
-                        appointment_id: this.state.targetCancelAppointmentId,
-                        reason: reason
-                    });
+                        try {
+                            const res = await api.post('api/appointment_controller.php?action=request_cancel', {
+                                appointment_id: this.state.targetCancelAppointmentId,
+                                reason: reason
+                            });
 
-                    if (res.success) {
-                        showToast('Cancellation request submitted to Reception.', 'success');
-                        closeModal('doctor-cancel-request-modal');
-                        if (reasonInput) reasonInput.value = '';
-                        this.state.targetCancelAppointmentId = null;
-                        await this.loadData();
-                    } else {
-                        showToast(res.message || 'Failed to submit cancellation request.', 'error');
+                            if (res.success) {
+                                showToast('Cancellation request submitted to Reception.', 'success');
+                                closeModal('doctor-cancel-request-modal', true);
+                                if (reasonInput) reasonInput.value = '';
+                                this.state.targetCancelAppointmentId = null;
+                                await this.loadData();
+                            } else {
+                                showToast(res.message || 'Failed to submit cancellation request.', 'error');
+                            }
+                        } catch (err) {
+                            console.error('Error requesting cancellation', err);
+                            showToast(err.response?.data?.message || err.message || 'Failed to submit cancellation request.', 'error');
+                        } finally {
+                            btnSubmitCancel.disabled = false;
+                            btnSubmitCancel.textContent = 'Submit Request';
+                        }
                     }
-                } catch (err) {
-                    console.error('Error requesting cancellation', err);
-                    showToast(err.response?.data?.message || err.message || 'Failed to submit cancellation request.', 'error');
-                } finally {
-                    btnSubmitCancel.disabled = false;
-                    btnSubmitCancel.textContent = 'Submit Request';
-                }
+                });
             });
         }
     },

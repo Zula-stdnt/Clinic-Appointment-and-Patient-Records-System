@@ -50,8 +50,10 @@ test.describe('Admin User and Doctor Middle Initial UI', () => {
         await expect(miInput).not.toHaveClass(/is-invalid/);
         await expect(miError).toHaveText('');
 
-        // Close modal
+        // Close modal (dirty check prompts confirmation)
         await page.click('#user-form-modal [data-close-modal]');
+        await expect(page.locator('#global-confirm-modal')).toHaveClass(/active/);
+        await page.click('#global-confirm-btn');
         await expect(page.locator('#user-form-modal')).not.toHaveClass(/active/);
     });
 
@@ -94,8 +96,10 @@ test.describe('Admin User and Doctor Middle Initial UI', () => {
         await expect(miInput).not.toHaveClass(/is-invalid/);
         await expect(miError).toHaveText('');
 
-        // Close modal
+        // Close modal (dirty check prompts confirmation)
         await page.click('#doctor-form-modal [data-close-modal]');
+        await expect(page.locator('#global-confirm-modal')).toHaveClass(/active/);
+        await page.click('#global-confirm-btn');
         await expect(page.locator('#doctor-form-modal')).not.toHaveClass(/active/);
     });
 });

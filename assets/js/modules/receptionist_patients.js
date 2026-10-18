@@ -1,4 +1,4 @@
-﻿// assets/js/modules/receptionist_patients.js
+// assets/js/modules/receptionist_patients.js
 // Front-desk Patient Register: search the patient directory and register new patients
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_records (paginated, filterable SELECT)
 // & mysql_insert_records (registration through the shared patient form component)
@@ -553,13 +553,22 @@ export default {
                 message: `You are modifying core patient demographic identity details:\n\n• ${diffs.join('\n• ')}\n\nThis identity amendment will be permanently logged in the audit trail. Are you sure you want to proceed?`,
                 btnText: 'Confirm & Save Changes',
                 btnClass: 'btn btn-primary',
-                cancelText: 'Cancel',
+                cancelText: 'Keep Editing',
                 onConfirm: async () => {
                     await this.executePatientUpdate(payload);
                 }
             });
         } else {
-            this.executePatientUpdate(payload);
+            confirmDialog({
+                title: 'Confirm Patient Update',
+                message: `Are you sure you want to save the updated demographic details for "${firstName} ${lastName}"?`,
+                btnText: 'Save Changes',
+                btnClass: 'btn btn-primary',
+                cancelText: 'Keep Editing',
+                onConfirm: async () => {
+                    await this.executePatientUpdate(payload);
+                }
+            });
         }
     },
 
@@ -573,7 +582,7 @@ export default {
             const res = await api.put(`api/patient_controller.php?id=${payload.patient_id}`, payload);
             if (res.success) {
                 showToast('Patient record updated successfully.', 'success');
-                closeModal('edit-patient-modal');
+                closeModal('edit-patient-modal', true);
                 await this.loadData();
                 const recContainer = this.container.querySelector('#patient-record-container');
                 if (recContainer && recContainer.style.display !== 'none') {

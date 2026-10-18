@@ -1,9 +1,9 @@
-﻿// assets/js/modules/doctor_patients.js
+// assets/js/modules/doctor_patients.js
 // Doctor Dashboard - Patient Records Module
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_specific_record (Summary table with primary-key drill-down to full record) & 02 DOM and UI/dom_create_and_remove_elements (Container reset before re-render)
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=26';
+import { escapeHtml, showToast, openModal, closeModal, confirmAction } from '../ui.js?v=26';
 import { renderPatientRecord } from '../components/patient-record-view.js?v=5';
 
 export default {
@@ -417,22 +417,32 @@ export default {
                 const targetPatientId = this.state.targetBreakGlassPatientId;
                 if (!targetPatientId) return;
 
-                stdRequestBtn.disabled = true;
-                stdRequestBtn.textContent = 'Submitting...';
+                confirmAction({
+                    title: 'Confirm Record Access Request',
+                    message: 'Are you sure you want to submit this 24-hour standard medical record access request for Administrator approval?',
+                    btnText: 'Submit Request',
+                    btnClass: 'btn btn-primary',
+                    cancelBtnText: 'Keep Editing',
+                    onConfirm: async () => {
+                        stdRequestBtn.disabled = true;
+                        stdRequestBtn.textContent = 'Submitting...';
 
-                api.post('api/access_request_controller.php', {
-                    patient_id: targetPatientId,
-                    mode: 'standard',
-                    reason: reason,
-                    duration_hours: 24
-                }).then(res => {
-                    closeModal('break-glass-modal');
-                    showToast('Standard access request submitted for Administrator approval.', 'success');
-                }).catch(err => {
-                    showToast(err.response?.data?.message || 'Failed to submit access request.', 'danger');
-                }).finally(() => {
-                    stdRequestBtn.disabled = false;
-                    stdRequestBtn.textContent = 'Request Standard Access (24h)';
+                        try {
+                            await api.post('api/access_request_controller.php', {
+                                patient_id: targetPatientId,
+                                mode: 'standard',
+                                reason: reason,
+                                duration_hours: 24
+                            });
+                            closeModal('break-glass-modal', true);
+                            showToast('Standard access request submitted for Administrator approval.', 'success');
+                        } catch (err) {
+                            showToast(err.response?.data?.message || 'Failed to submit access request.', 'danger');
+                        } finally {
+                            stdRequestBtn.disabled = false;
+                            stdRequestBtn.textContent = 'Request Standard Access (24h)';
+                        }
+                    }
                 });
                 return;
             }
@@ -447,10 +457,19 @@ export default {
                     return;
                 }
                 const targetPatientId = this.state.targetBreakGlassPatientId;
-                closeModal('break-glass-modal');
-                if (targetPatientId) {
-                    this.viewMedicalRecord(targetPatientId, reason);
-                }
+                confirmAction({
+                    title: 'Confirm Emergency Break-Glass Override',
+                    message: 'Emergency Break-Glass access grants immediate 6-hour access to this patient record and is logged for Administrator security review. Do you want to proceed?',
+                    btnText: 'Confirm Emergency Access',
+                    btnClass: 'btn btn-danger',
+                    cancelBtnText: 'Keep Editing',
+                    onConfirm: () => {
+                        closeModal('break-glass-modal', true);
+                        if (targetPatientId) {
+                            this.viewMedicalRecord(targetPatientId, reason);
+                        }
+                    }
+                });
                 return;
             }
         });
