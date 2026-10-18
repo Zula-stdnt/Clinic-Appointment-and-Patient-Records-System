@@ -52,7 +52,7 @@ A plain-English summary of major updates, new modules, and bug fixes across the 
 
 ### Global Navbar Cleanup (Eliminate Header Redundancy)
 - **Topbar Simplification:** Removed duplicate module titles from the top navigation bar across all three dashboard shells (`admin_dashboard.html`, `doctor_dashboard.html`, `receptionist_dashboard.html`). Headers now live cleanly within the active workspace cards.
-- **Browser Tab Sync:** Module navigation dynamically updates `document.title` to `${moduleTitle} - CPRMS`.
+- **Browser Tab Sync:** Module navigation dynamically updates `document.title` to `${moduleTitle} - CAPRS`.
 
 ## Admin Audit Logs Module Improvements & Expanded Event Tracking
 

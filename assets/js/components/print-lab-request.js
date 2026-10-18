@@ -1,4 +1,4 @@
-﻿// assets/js/components/print-lab-request.js
+// assets/js/components/print-lab-request.js
 // Builds and prints the laboratory / diagnostic request slip. The doctor hands
 // it to the patient, who presents it to the laboratory or diagnostic area.
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_specific_record
@@ -57,7 +57,7 @@ export function buildLabRequest(data) {
     <div class="header">
         <img src="${logoUrl}" alt="CPRMS Logo">
         <div>
-            <div class="org">CLINIC PATIENT RECORDS MANAGEMENT SYSTEM (CPRMS)</div>
+            <div class="org">CLINIC APPOINTMENT AND PATIENT RECORDS SYSTEM (CAPRS)</div>
             <div class="sub">Out-Patient Department &middot; Laboratory &amp; Diagnostic Request</div>
         </div>
         <div class="doc-number">

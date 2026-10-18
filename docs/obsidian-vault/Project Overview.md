@@ -4,7 +4,7 @@ tags: [overview]
 
 # Project Overview
 
-The **Clinic Patient Records Management System (CPRMS)** is a specialized web application engineered for outpatient clinical care and health records governance. It helps clinic staff manage patient medical charts, physician duty rotas, clinical encounters, diagnostic coding, appointments, user accounts, and archived records in one centralized, real-time environment.
+The **Clinic Appointment and Patient Records System (CAPRS)** is a specialized web application engineered for outpatient clinical care and health records governance. It helps clinic staff manage patient medical charts, physician duty rotas, clinical encounters, diagnostic coding, appointments, user accounts, and archived records in one centralized, real-time environment.
 
 ## Clinic Operational Profile & 3-Doctor Rotation Model
 The system is tailored for a boutique multi-specialty outpatient facility (*"Healing for Everyone"*), operating under specific operational boundaries:

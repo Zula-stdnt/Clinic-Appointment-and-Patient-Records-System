@@ -1,4 +1,4 @@
-﻿// assets/js/components/print-appointment-form.js
+// assets/js/components/print-appointment-form.js
 // Builds and prints the combined "Patient Registration & Appointment Form":
 // patient demographics plus the appointment details (and triage vitals) in a
 // single self-contained, print-ready A4 document rendered in a hidden iframe.
@@ -175,7 +175,7 @@ export function buildPrintableForm(appt) {
     <div class="header">
         <img src="${logoUrl}" alt="CPRMS Logo">
         <div>
-            <div class="org">CLINIC PATIENT RECORDS MANAGEMENT SYSTEM (CPRMS)</div>
+            <div class="org">CLINIC APPOINTMENT AND PATIENT RECORDS SYSTEM (CAPRS)</div>
             <div class="sub">Front Desk &middot; Patient Registration &amp; Appointment Services</div>
         </div>
         <div class="doc-number">
@@ -301,7 +301,7 @@ export function buildBlankForm() {
     <div class="header">
         <img src="${logoUrl}" alt="CPRMS Logo">
         <div>
-            <div class="org">CLINIC PATIENT RECORDS MANAGEMENT SYSTEM (CPRMS)</div>
+            <div class="org">CLINIC APPOINTMENT AND PATIENT RECORDS SYSTEM (CAPRS)</div>
             <div class="sub">Front Desk &middot; Patient Registration &amp; Appointment Services</div>
         </div>
         <div class="doc-number">

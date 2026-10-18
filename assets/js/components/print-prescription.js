@@ -1,4 +1,4 @@
-﻿// assets/js/components/print-prescription.js
+// assets/js/components/print-prescription.js
 // Builds and prints the prescription (Rx) slip handed to the patient after a
 // consultation, using the saved encounter from the consultation controller.
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_specific_record
@@ -96,7 +96,7 @@ export function buildPrescription(data) {
     <div class="header">
         <img src="${logoUrl}" alt="CPRMS Logo">
         <div>
-            <div class="org">CLINIC PATIENT RECORDS MANAGEMENT SYSTEM (CPRMS)</div>
+            <div class="org">CLINIC APPOINTMENT AND PATIENT RECORDS SYSTEM (CAPRS)</div>
             <div class="sub">Out-Patient Department &middot; Prescription</div>
         </div>
         <div class="doc-number">

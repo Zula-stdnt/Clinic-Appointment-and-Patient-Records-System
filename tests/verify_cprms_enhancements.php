@@ -1,6 +1,6 @@
 <?php
 // tests/verify_cprms_enhancements.php
-// Verification suite for CPRMS (Clinic Patient Records Management System) enhancements
+// Verification suite for CAPRS (Clinic Appointment and Patient Records System) enhancements
 
 $baseUrl = 'http://localhost/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System';
 $cookieAdmin = tempnam(sys_get_temp_dir(), 'ck_adm_enh_');

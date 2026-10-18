@@ -801,7 +801,7 @@ This update delivers a major responsive redesign of the Receptionist Overview an
 
 ## Section 33: Boutique Clinic Operational Scope & 3-Doctor Rotation Model
 
-This milestone codifies the operational boundaries and staffing profile of the clinic into CPRMS core architecture:
+This milestone codifies the operational boundaries and staffing profile of the clinic into CAPRS core architecture:
 - **Outpatient Clinic Reality:** Tailored for a specialized outpatient facility (*"Healing for Everyone"*), operating under structured clinic hours (08:00 AM – 05:00 PM) with a mandatory lunch pause (12:00 PM – 01:00 PM) and Sunday closures.
 - **Three Multi-Specialty Attending Physicians:**
   - **Dr. Gregory House:** *Internal Medicine* & *Cardiology* &bull; Duty Days: **Mondays & Tuesdays** (08:00 AM – 05:00 PM).
@@ -1001,7 +1001,7 @@ Replaced verbose text-labeled buttons with standardized, compact icon-only butto
 
 ### 3. Global Navbar Cleanup (Eliminate Header Redundancy)
 - **Top Navigation Bar Cleanup:** Removed `<h1 class="topbar-title" id="current-module-title">` from the top navigation bar across all three dashboard shells (`admin_dashboard.html`, `doctor_dashboard.html`, `receptionist_dashboard.html`). Page titles now appear cleanly and exclusively within the main workspace card header, completely eliminating visual redundancy.
-- **Dynamic Browser Tab Synchronization (`main.js`, `doctor_main.js`, `receptionist_main.js`):** Updated navigation scripts to dynamically update the browser window tab title (`document.title = "${moduleTitle} - CPRMS"`) upon module selection while gracefully bypassing absent DOM topbar title elements.
+- **Dynamic Browser Tab Synchronization (`main.js`, `doctor_main.js`, `receptionist_main.js`):** Updated navigation scripts to dynamically update the browser window tab title (`document.title = "${moduleTitle} - CAPRS"`) upon module selection while gracefully bypassing absent DOM topbar title elements.
 
 ---
 
@@ -1056,7 +1056,7 @@ System stability, functional safety, and regression resistance across all 44 dev
 | **Doctor Schedules & Form UX** | `tests/verify_schedule_and_form_ux.php` | 20 / 20 | **100% PASS** | Form date `min`, time bounds, schedule notices, warning banners, zero-retype draft preservation, `doctor_schedule_controller.php`, modal presets |
 | **UI & Functional Improvements** | `tests/verify_ui_functional_improvements.php` | 17 / 17 | **100% PASS** | Overview table layout, no horizontal scroll at 100% zoom, dedicated Chief Complaint column, stacked vitals, date range picker, rows per page, compact cancel icon |
 | **System Acceptance** | `tests/verify_acceptance.php` | 20 / 20 | **100% PASS** | 10-patient capacity model, operating hours (08:00–17:00), lunch pause, Sunday closure, consultation gating, allergy confirmation, audit logs |
-| **CPRMS Enhancements** | `tests/verify_cprms_enhancements.php` | 10 / 10 | **100% PASS** | Universal table sorting, 4-way gender filtering ("Other" resolution), human-readable audit logs, entity name enrichment |
+| **CAPRS Enhancements** | `tests/verify_cprms_enhancements.php` | 10 / 10 | **100% PASS** | Universal table sorting, 4-way gender filtering ("Other" resolution), human-readable audit logs, entity name enrichment |
 | **To-Do Improvements** | `tests/verify_todo_improvements.php` | 8 / 8 | **100% PASS** | Hybrid break-glass access, standard access requests (24h window), live multi-tab synchronization (`live-sync.js`) |
 | **Allergy Workflow** | `tests/verify_allergy_workflow.php` | 6 / 6 | **100% PASS** | Patient allergy alerts, intake unconfirmed notes, doctor confirmation lifecycle |
 | **Total Test Coverage** | **15 Suites** | **210 / 210** | **100% PASS** | **Zero Regressions** |

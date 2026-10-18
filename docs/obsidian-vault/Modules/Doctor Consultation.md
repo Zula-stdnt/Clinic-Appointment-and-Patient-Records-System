@@ -65,7 +65,7 @@ The clinical examination and charting screen. Doctors use this screen to review 
 * **What the doctor does:**
   - In the separate **Laboratory & Diagnostic Requests** card, clicks **+ Add Lab Request**.
   - Enters the required diagnostic test or radiological procedure using datalist quick-picks (e.g., `Complete Blood Count (CBC) with Platelet`, `Fasting Blood Sugar (FBS)`, `Lipid Profile`, `Chest X-Ray (PA View)`, `Urinalysis (Routine)`, `12-Lead ECG`).
-  - Lab orders are saved and can be printed on the official CPRMS Laboratory Request Slip for patient presentation at the diagnostic facility.
+  - Lab orders are saved and can be printed on the official CAPRS Laboratory Request Slip for patient presentation at the diagnostic facility.
 
 ---
 

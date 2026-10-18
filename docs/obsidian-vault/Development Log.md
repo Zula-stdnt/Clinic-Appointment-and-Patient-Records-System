@@ -84,7 +84,7 @@ A running, per-commit record of every change and implementation in this project,
 - `assets/js/modules/receptionist_patients.js` — replaced text "View" and "Edit" with icon-only buttons (`.btn-outline-info.btn-sm.btn-icon.btn-view-patient` and `.btn-outline-primary.btn-sm.btn-icon.btn-edit-patient`).
 - `assets/css/style.css` — added `.btn-outline-*` button classes and standardized `.btn-icon` and `.btn-icon.btn-sm` sizing and SVG alignments.
 - `admin_dashboard.html`, `doctor_dashboard.html`, `receptionist_dashboard.html` — removed duplicate `<h1 class="topbar-title" id="current-module-title">` from top navigation bars.
-- `assets/js/main.js`, `assets/js/doctor_main.js`, `assets/js/receptionist_main.js` — dynamically sync `document.title = "${moduleTitle} - CPRMS"`.
+- `assets/js/main.js`, `assets/js/doctor_main.js`, `assets/js/receptionist_main.js` — dynamically sync `document.title = "${moduleTitle} - CAPRS"`.
 - `tests/verify_ui_fixes_and_noshow.php` — 16-test automated verification suite (16/16 PASS).
 **New IDs introduced:** `.btn-outline-info`, `.btn-outline-secondary`, `tests/verify_ui_fixes_and_noshow.php`
 **How to verify:**

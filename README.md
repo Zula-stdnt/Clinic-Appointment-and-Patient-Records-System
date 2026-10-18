@@ -1,4 +1,4 @@
-# Clinic Patient Records Management System (CPRMS)
+# Clinic Appointment and Patient Records System (CAPRS)
 
 A web application built for clinics to manage patient records, doctor profiles, appointment schedules, medical consultations, clinical specialties, staff accounts, and compliance audit logs in one place.
 
@@ -26,7 +26,7 @@ It is built with **PHP** (for server-side logic), **MySQL** via **PDO** (a secur
 ## Project Scope
 
 ### 1. System Nature & Operational Reality
-The **Clinic Patient Records Management System (CPRMS)** is an internal, specialized Electronic Health Record (EHR) and Patient Information System (PIS) engineered specifically for a **boutique outpatient multi-specialty clinic** (*"Healing for Everyone"*). 
+The **Clinic Appointment and Patient Records System (CAPRS)** is an internal, specialized Electronic Health Record (EHR) and Patient Information System (PIS) engineered specifically for a **boutique outpatient multi-specialty clinic** (*"Healing for Everyone"*). 
 
 Rather than a high-volume general hospital with rotating shifts or open wards, this clinic operates under a structured, deliberate care model centered on three primary pillars:
 * **Three (3) Attending Multi-Specialty Physicians:**
@@ -43,7 +43,7 @@ Rather than a high-volume general hospital with rotating shifts or open wards, t
 * **Operating Hours & Shift Rules:**
   Clinic consultations run strictly between **08:00 AM and 05:00 PM**, with a mandatory lunch pause from **12:00 PM to 01:00 PM**.
 * **Clinical EHR vs. Financial Ledger Separation:**
-  The clinic intentionally separates medical care from financial transactions. Following database migration `006_remove_financial_schema.sql`, monetary ledgers, invoice calculations, discounts, and cashiering tables were removed to focus CPRMS purely on clinical records, triage, queueing, and diagnostic workflows.
+  The clinic intentionally separates medical care from financial transactions. Following database migration `006_remove_financial_schema.sql`, monetary ledgers, invoice calculations, discounts, and cashiering tables were removed to focus CAPRS purely on clinical records, triage, queueing, and diagnostic workflows.
 
 ---
 
@@ -51,7 +51,7 @@ Rather than a high-volume general hospital with rotating shifts or open wards, t
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│                       CPRMS CLINIC OPERATIONAL ARCHITECTURE                 │
+│                       CAPRS CLINIC OPERATIONAL ARCHITECTURE                 │
 └─────────────────────────────────────────────────────────────────────────────┘
                                        │
         ┌──────────────────────────────┼──────────────────────────────┐
@@ -108,7 +108,7 @@ Rather than a high-volume general hospital with rotating shifts or open wards, t
 
 4. **Financial & Billing Boundary:**
    * The system manages the administrative **Services Catalog** (catalog of clinical consultation types, diagnostic lab tests, and procedures).
-   * Direct money-handling, patient billing ledgers, point-of-sale cashiering, receipt generation, discount formulas, and payment processing are decoupled from CPRMS to maintain a clean clinical focus.
+   * Direct money-handling, patient billing ledgers, point-of-sale cashiering, receipt generation, discount formulas, and payment processing are decoupled from CAPRS to maintain a clean clinical focus.
 
 ---
 
@@ -159,7 +159,7 @@ To preserve system clarity, security, and performance, the following capabilitie
 * **Inpatient Ward & Bed Management:** Bed assignment, ward rounds, nursing shift logs, and overnight hospital admission tracking (system is strictly outpatient).
 * **Wholesale Pharmacy Inventory Stocking:** Automated warehouse stock decrementation and supplier ordering (prescriptions are clinical order sheets).
 * **Direct Laboratory Analyzer Interfacing:** Direct serial/network hardware communication with physical medical lab analyzers (lab requisitions are documented as clinical orders).
-* **Patient-Facing Self-Service Web Portals:** Public user accounts, online self-booking, and remote chart downloads (CPRMS is strictly an internal, authenticated intranet portal for verified clinic staff).
+* **Patient-Facing Self-Service Web Portals:** Public user accounts, online self-booking, and remote chart downloads (CAPRS is strictly an internal, authenticated intranet portal for verified clinic staff).
 
 ---
 
