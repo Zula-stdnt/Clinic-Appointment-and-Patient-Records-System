@@ -60,19 +60,19 @@ export class SearchSelect {
 
     _buildDom() {
         this.root = document.createElement('div');
-        this.root.className = 'search-select';
+        this.root.classList.add('search-select');
 
         this.control = document.createElement('div');
-        this.control.className = 'search-select-control';
+        this.control.classList.add('search-select-control');
 
         this.icon = document.createElement('span');
-        this.icon.className = 'search-select-icon';
+        this.icon.classList.add('search-select-icon');
         this.icon.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>';
 
         this.input = document.createElement('input');
         this.input.type = 'text';
         this.input.id = this.inputId;
-        this.input.className = 'form-control search-select-input';
+        this.input.classList.add('form-control', 'search-select-input');
         this.input.placeholder = this.placeholder;
         this.input.autocomplete = 'off';
         this.input.spellcheck = false;
@@ -83,19 +83,19 @@ export class SearchSelect {
 
         this.clearBtn = document.createElement('button');
         this.clearBtn.type = 'button';
-        this.clearBtn.className = 'search-select-clear';
+        this.clearBtn.classList.add('search-select-clear');
         this.clearBtn.setAttribute('aria-label', 'Clear selection');
         this.clearBtn.innerHTML = '&times;';
         this.clearBtn.hidden = true;
 
         this.spinner = document.createElement('span');
-        this.spinner.className = 'search-select-spinner';
+        this.spinner.classList.add('search-select-spinner');
         this.spinner.setAttribute('aria-hidden', 'true');
         this.spinner.hidden = true;
 
         this.hidden = document.createElement('input');
         this.hidden.type = 'hidden';
-        this.hidden.className = 'search-select-value';
+        this.hidden.classList.add('search-select-value');
         if (this.name) this.hidden.name = this.name;
 
         this.control.appendChild(this.icon);
@@ -106,7 +106,7 @@ export class SearchSelect {
         this.root.appendChild(this.hidden);
 
         this.menu = document.createElement('div');
-        this.menu.className = 'search-select-menu';
+        this.menu.classList.add('search-select-menu');
         this.menu.id = `${this.inputId}-menu`;
         this.menu.setAttribute('role', 'listbox');
         this.menu.hidden = true;

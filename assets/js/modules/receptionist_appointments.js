@@ -872,7 +872,7 @@ export default {
         this.state.doctors.forEach((d) => {
             const name = `${d.last_name}, ${d.first_name}${d.middle_initial ? ' ' + d.middle_initial + '.' : ''}`;
             const item = document.createElement('div');
-            item.className = 'doctor-combobox-option';
+            item.classList.add('doctor-combobox-option');
             item.id = `doctor-option-${d.doctor_id}`;
             item.setAttribute('role', 'option');
             item.dataset.id = d.doctor_id;

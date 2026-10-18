@@ -4,35 +4,51 @@
 // - Doctors only: Administrators and Receptionists have zero clinical access
 // - Completed consultations are locked: amendments are recorded as dated addenda in consultation_addenda
 // - Doctors can confirm and update patient allergy alerts during consultation
-// ITE 387 Lessons applied: 03 APIs and Database Operations/header_detail_forms & 04 Database Design/database_master_detail_design_part_2 (PDO transaction saving consultation header + diagnosis, prescriptions, and lab_requests detail rows via lastInsertId)
+// ITE 387 Lessons applied: 03 APIs and Database Operations/header_detail_forms & 04 Database Design/database_master_detail_design_part_2 (PDO transaction saving consultation header + diagnosis, prescriptions, and lab_requests detail rows via lastInsertId, bindParam, and switch($operation))
 
 require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/audit.php';
 require_once __DIR__ . '/../includes/clinical_notes.php';
+require_once __DIR__ . '/../includes/patient_validation.php';
 
 require_login();
 require_role('Doctor');
 verify_csrf_on_state_change();
 
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
-$action = $_GET['action'] ?? null;
+$action = $_REQUEST['operation'] ?? $_GET['action'] ?? null;
+
+if (!in_array($method, ['GET', 'POST'], true)) {
+    send_error('Method not allowed.', [], 405);
+}
+
+if ($method === 'GET') {
+    $operation = $action ?: 'getConsultationDetails';
+} else {
+    $operation = $action ?: 'saveConsultation';
+}
 
 try {
-    if ($method === 'GET') {
-        if (!isset($_GET['appointment_id'])) {
-            send_error('appointment_id is required.', [], 400);
-        }
-        getConsultationDetails($pdo, (int)$_GET['appointment_id']);
-    } elseif ($method === 'POST') {
-        if ($action === 'addendum') {
+    switch ($operation) {
+        case 'getConsultationDetails':
+        case 'get':
+            if (!isset($_GET['appointment_id'])) {
+                send_error('appointment_id is required.', [], 400);
+            }
+            getConsultationDetails($pdo, (int)$_GET['appointment_id']);
+            break;
+        case 'addendum':
+        case 'saveConsultationAddendum':
             saveConsultationAddendum($pdo);
-        } else {
+            break;
+        case 'saveConsultation':
+        case 'save':
             saveConsultation($pdo);
-        }
-    } else {
-        send_error('Method not allowed.', [], 405);
+            break;
+        default:
+            send_error('Invalid operation.', [], 400);
     }
 } catch (PDOException $e) {
     error_log("Database Error in consultation_controller.php: " . $e->getMessage());
@@ -44,6 +60,7 @@ try {
 
 function getConsultationDetails(PDO $pdo, int $appointmentId) {
     $authUser = get_auth_user();
+    $authUserId = (int)$authUser['user_id'];
 
     // 1. Verify Appointment & Doctor access
     $sqlAppt = "SELECT a.appointment_id, a.patient_id, a.doctor_id, a.appointment_date, 
@@ -59,17 +76,19 @@ function getConsultationDetails(PDO $pdo, int $appointmentId) {
                 INNER JOIN patients p ON a.patient_id = p.patient_id
                 INNER JOIN doctors d ON a.doctor_id = d.doctor_id
                 LEFT JOIN users u ON d.user_id = u.user_id
-                WHERE a.appointment_id = ?";
+                WHERE a.appointment_id = :appointmentId";
     $stmtAppt = $pdo->prepare($sqlAppt);
-    $stmtAppt->execute([$appointmentId]);
+    $stmtAppt->bindParam(':appointmentId', $appointmentId, PDO::PARAM_INT);
+    $stmtAppt->execute();
     $appointment = $stmtAppt->fetch(PDO::FETCH_ASSOC);
 
     if (!$appointment) {
         send_error('Appointment not found.', [], 404);
     }
 
-    $stmtDoc = $pdo->prepare("SELECT doctor_id FROM doctors WHERE user_id = ? LIMIT 1");
-    $stmtDoc->execute([$authUser['user_id']]);
+    $stmtDoc = $pdo->prepare("SELECT doctor_id FROM doctors WHERE user_id = :userId LIMIT 1");
+    $stmtDoc->bindParam(':userId', $authUserId, PDO::PARAM_INT);
+    $stmtDoc->execute();
     $doc = $stmtDoc->fetch(PDO::FETCH_ASSOC);
     if (!$doc || $appointment['doctor_id'] != $doc['doctor_id']) {
         send_error('Unauthorized access to this appointment.', [], 403);
@@ -91,15 +110,18 @@ function getConsultationDetails(PDO $pdo, int $appointmentId) {
     } else {
         $appointment['age'] = 'Unknown';
     }
+    $appointment['allergies_list'] = getPatientAllergies($pdo, (int)$appointment['patient_id']);
 
     // 2. Get Vitals
-    $stmtVitals = $pdo->prepare("SELECT blood_pressure, temperature, oxygen_saturation FROM vital_signs WHERE appointment_id = ?");
-    $stmtVitals->execute([$appointmentId]);
+    $stmtVitals = $pdo->prepare("SELECT blood_pressure, temperature, oxygen_saturation FROM vital_signs WHERE appointment_id = :appointmentId");
+    $stmtVitals->bindParam(':appointmentId', $appointmentId, PDO::PARAM_INT);
+    $stmtVitals->execute();
     $vitals = $stmtVitals->fetch(PDO::FETCH_ASSOC);
 
     // 3. Get Existing Consultation
-    $stmtCons = $pdo->prepare("SELECT consultation_id, notes, consultation_date FROM consultation WHERE appointment_id = ?");
-    $stmtCons->execute([$appointmentId]);
+    $stmtCons = $pdo->prepare("SELECT consultation_id, notes, consultation_date FROM consultation WHERE appointment_id = :appointmentId");
+    $stmtCons->bindParam(':appointmentId', $appointmentId, PDO::PARAM_INT);
+    $stmtCons->execute();
     $consultation = $stmtCons->fetch(PDO::FETCH_ASSOC);
 
     $diagnoses = [];
@@ -111,12 +133,13 @@ function getConsultationDetails(PDO $pdo, int $appointmentId) {
         $consId = (int)$consultation['consultation_id'];
         $consultation['soap'] = parse_soap_notes($consultation['notes'] ?? '');
         
-        $stmtDiag = $pdo->prepare("SELECT d.diagnosis_id, d.icd10_code, d.diagnosis_name, d.notes, ic.description as icd10_description
+        $stmtDiag = $pdo->prepare("SELECT d.diagnosis_id, d.icd10_code, COALESCE(NULLIF(TRIM(d.diagnosis_name), ''), ic.description) AS diagnosis_name, d.notes, ic.description as icd10_description
                                    FROM diagnosis d
                                    LEFT JOIN icd10_codes ic ON d.icd10_code = ic.code
-                                   WHERE d.consultation_id = ?
+                                   WHERE d.consultation_id = :consId
                                    ORDER BY d.diagnosis_id ASC");
-        $stmtDiag->execute([$consId]);
+        $stmtDiag->bindParam(':consId', $consId, PDO::PARAM_INT);
+        $stmtDiag->execute();
         $diagnoses = $stmtDiag->fetchAll(PDO::FETCH_ASSOC);
 
         $stmtRx = $pdo->prepare("SELECT p.prescription_id, p.medication_id, m.name as medication_name, m.generic_name as medication_generic,
@@ -124,16 +147,18 @@ function getConsultationDetails(PDO $pdo, int $appointmentId) {
                                         p.time_to_take, p.start_date, p.end_date 
                                  FROM prescriptions p
                                  INNER JOIN medications m ON p.medication_id = m.medication_id
-                                 WHERE p.consultation_id = ?
+                                 WHERE p.consultation_id = :consId
                                  ORDER BY p.prescription_id ASC");
-        $stmtRx->execute([$consId]);
+        $stmtRx->bindParam(':consId', $consId, PDO::PARAM_INT);
+        $stmtRx->execute();
         $prescriptions = $stmtRx->fetchAll(PDO::FETCH_ASSOC);
 
         $stmtLab = $pdo->prepare("SELECT lr.lab_request_id, lr.test_name, lr.request_date, lr.status
                                   FROM lab_requests lr
-                                  WHERE lr.consultation_id = ?
+                                  WHERE lr.consultation_id = :consId
                                   ORDER BY lr.lab_request_id ASC");
-        $stmtLab->execute([$consId]);
+        $stmtLab->bindParam(':consId', $consId, PDO::PARAM_INT);
+        $stmtLab->execute();
         $lab_requests = $stmtLab->fetchAll(PDO::FETCH_ASSOC);
 
         $stmtAdd = $pdo->prepare("SELECT ca.addendum_id, ca.notes, ca.created_at,
@@ -141,9 +166,10 @@ function getConsultationDetails(PDO $pdo, int $appointmentId) {
                                   FROM consultation_addenda ca
                                   INNER JOIN doctors d ON ca.doctor_id = d.doctor_id
                                   INNER JOIN users u ON d.user_id = u.user_id
-                                  WHERE ca.consultation_id = ?
+                                  WHERE ca.consultation_id = :consId
                                   ORDER BY ca.created_at ASC");
-        $stmtAdd->execute([$consId]);
+        $stmtAdd->bindParam(':consId', $consId, PDO::PARAM_INT);
+        $stmtAdd->execute();
         $addenda = $stmtAdd->fetchAll(PDO::FETCH_ASSOC);
     }
 
@@ -160,6 +186,7 @@ function getConsultationDetails(PDO $pdo, int $appointmentId) {
 
 function saveConsultation(PDO $pdo) {
     $authUser = get_auth_user();
+    $authUserId = (int)$authUser['user_id'];
     $input = json_decode(file_get_contents('php://input'), true);
 
     if (!$input || empty($input['appointment_id'])) {
@@ -192,12 +219,14 @@ function saveConsultation(PDO $pdo) {
     $pdo->beginTransaction();
 
     try {
-        $stmtDoc = $pdo->prepare("SELECT doctor_id FROM doctors WHERE user_id = ? LIMIT 1");
-        $stmtDoc->execute([$authUser['user_id']]);
+        $stmtDoc = $pdo->prepare("SELECT doctor_id FROM doctors WHERE user_id = :userId LIMIT 1");
+        $stmtDoc->bindParam(':userId', $authUserId, PDO::PARAM_INT);
+        $stmtDoc->execute();
         $doc = $stmtDoc->fetch(PDO::FETCH_ASSOC);
 
-        $stmtAppt = $pdo->prepare("SELECT appointment_id, patient_id, doctor_id, status FROM appointments WHERE appointment_id = ? FOR UPDATE");
-        $stmtAppt->execute([$appointmentId]);
+        $stmtAppt = $pdo->prepare("SELECT appointment_id, patient_id, doctor_id, status FROM appointments WHERE appointment_id = :appointmentId FOR UPDATE");
+        $stmtAppt->bindParam(':appointmentId', $appointmentId, PDO::PARAM_INT);
+        $stmtAppt->execute();
         $appt = $stmtAppt->fetch(PDO::FETCH_ASSOC);
 
         if (!$appt || !$doc || $appt['doctor_id'] != $doc['doctor_id']) {
@@ -219,8 +248,9 @@ function saveConsultation(PDO $pdo) {
         }
 
         // 1. Insert or Update Consultation
-        $stmtConsCheck = $pdo->prepare("SELECT consultation_id FROM consultation WHERE appointment_id = ? FOR UPDATE");
-        $stmtConsCheck->execute([$appointmentId]);
+        $stmtConsCheck = $pdo->prepare("SELECT consultation_id FROM consultation WHERE appointment_id = :appointmentId FOR UPDATE");
+        $stmtConsCheck->bindParam(':appointmentId', $appointmentId, PDO::PARAM_INT);
+        $stmtConsCheck->execute();
         $existingCons = $stmtConsCheck->fetch(PDO::FETCH_ASSOC);
 
         $notes = null;
@@ -232,32 +262,87 @@ function saveConsultation(PDO $pdo) {
         $consultationId = null;
 
         if ($existingCons) {
-            $consultationId = $existingCons['consultation_id'];
-            $stmtUpdate = $pdo->prepare("UPDATE consultation SET notes = ? WHERE consultation_id = ?");
-            $stmtUpdate->execute([$notes, $consultationId]);
+            $consultationId = (int)$existingCons['consultation_id'];
+            $stmtUpdate = $pdo->prepare("UPDATE consultation SET notes = :notes WHERE consultation_id = :consId");
+            $stmtUpdate->bindParam(':notes', $notes);
+            $stmtUpdate->bindParam(':consId', $consultationId, PDO::PARAM_INT);
+            $stmtUpdate->execute();
         } else {
-            $stmtInsert = $pdo->prepare("INSERT INTO consultation (appointment_id, notes, consultation_date) VALUES (?, ?, NOW())");
-            $stmtInsert->execute([$appointmentId, $notes]);
+            $stmtInsert = $pdo->prepare("INSERT INTO consultation (appointment_id, notes, consultation_date) VALUES (:appointmentId, :notes, NOW())");
+            $stmtInsert->bindParam(':appointmentId', $appointmentId, PDO::PARAM_INT);
+            $stmtInsert->bindParam(':notes', $notes);
+            $stmtInsert->execute();
             $consultationId = (int)$pdo->lastInsertId();
         }
 
         // 2. Replace Diagnoses
-        $pdo->prepare("DELETE FROM diagnosis WHERE consultation_id = ?")->execute([$consultationId]);
+        $delDiag = $pdo->prepare("DELETE FROM diagnosis WHERE consultation_id = :consId");
+        $delDiag->bindParam(':consId', $consultationId, PDO::PARAM_INT);
+        $delDiag->execute();
+
         if (!empty($input['diagnoses']) && is_array($input['diagnoses'])) {
-            $stmtDiag = $pdo->prepare("INSERT INTO diagnosis (consultation_id, icd10_code, diagnosis_name, notes) VALUES (?, ?, ?, ?)");
+            $icdCode = null;
+            $diagName = '';
+            $diagNotes = null;
+            $stmtDiag = $pdo->prepare("INSERT INTO diagnosis (consultation_id, icd10_code, diagnosis_name, notes) VALUES (:consId, :icdCode, :diagName, :diagNotes)");
+            $stmtDiag->bindParam(':consId', $consultationId, PDO::PARAM_INT);
+            $stmtDiag->bindParam(':icdCode', $icdCode);
+            $stmtDiag->bindParam(':diagName', $diagName);
+            $stmtDiag->bindParam(':diagNotes', $diagNotes);
+
+            $stmtIcdDesc = $pdo->prepare("SELECT description FROM icd10_codes WHERE code = :icdCode LIMIT 1");
+            $stmtIcdDesc->bindParam(':icdCode', $icdCode);
+
             foreach ($input['diagnoses'] as $d) {
-                if (!empty($d['diagnosis_name'])) {
-                    $stmtDiag->execute([$consultationId, $d['icd10_code'] ?? null, $d['diagnosis_name'], $d['notes'] ?? null]);
+                $icdCode = !empty($d['icd10_code']) ? trim((string)$d['icd10_code']) : null;
+                $diagName = trim((string)($d['diagnosis_name'] ?? ''));
+                $diagNotes = $d['notes'] ?? null;
+                if ($diagName === '' && $icdCode !== null) {
+                    $stmtIcdDesc->execute();
+                    $diagName = (string)($stmtIcdDesc->fetchColumn() ?: $icdCode);
+                }
+                if ($diagName !== '') {
+                    $stmtDiag->execute();
                 }
             }
         }
 
         // 3. Replace Prescriptions
-        $pdo->prepare("DELETE FROM prescriptions WHERE consultation_id = ?")->execute([$consultationId]);
+        $delRx = $pdo->prepare("DELETE FROM prescriptions WHERE consultation_id = :consId");
+        $delRx->bindParam(':consId', $consultationId, PDO::PARAM_INT);
+        $delRx->execute();
+
         if (!empty($input['prescriptions']) && is_array($input['prescriptions'])) {
-            $stmtRx = $pdo->prepare("INSERT INTO prescriptions (consultation_id, medication_id, strength, dosage, route, frequency, duration, instructions, time_to_take, start_date, end_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            $medId = 0;
+            $strength = null;
+            $dosage = 'As directed';
+            $route = null;
+            $frequency = 'As directed';
+            $duration = null;
+            $instructions = null;
+            $timeToTake = null;
+            $startDate = date('Y-m-d');
+            $endDate = null;
+
+            $stmtRx = $pdo->prepare(
+                "INSERT INTO prescriptions (consultation_id, medication_id, strength, dosage, route, frequency, duration, instructions, time_to_take, start_date, end_date)
+                 VALUES (:consId, :medId, :strength, :dosage, :route, :frequency, :duration, :instructions, :timeToTake, :startDate, :endDate)"
+            );
+            $stmtRx->bindParam(':consId', $consultationId, PDO::PARAM_INT);
+            $stmtRx->bindParam(':medId', $medId, PDO::PARAM_INT);
+            $stmtRx->bindParam(':strength', $strength);
+            $stmtRx->bindParam(':dosage', $dosage);
+            $stmtRx->bindParam(':route', $route);
+            $stmtRx->bindParam(':frequency', $frequency);
+            $stmtRx->bindParam(':duration', $duration);
+            $stmtRx->bindParam(':instructions', $instructions);
+            $stmtRx->bindParam(':timeToTake', $timeToTake);
+            $stmtRx->bindParam(':startDate', $startDate);
+            $stmtRx->bindParam(':endDate', $endDate);
+
             foreach ($input['prescriptions'] as $p) {
                 if (!empty($p['medication_id']) && (!empty($p['dosage']) || !empty($p['frequency']))) {
+                    $medId = (int)$p['medication_id'];
                     $strength = trim((string)($p['strength'] ?? '')) ?: null;
                     $dosage = trim((string)($p['dosage'] ?? '')) ?: 'As directed';
                     $route = trim((string)($p['route'] ?? '')) ?: null;
@@ -268,32 +353,29 @@ function saveConsultation(PDO $pdo) {
                     $startDate = !empty($p['start_date']) ? $p['start_date'] : date('Y-m-d');
                     $endDate = !empty($p['end_date']) ? $p['end_date'] : null;
 
-                    $stmtRx->execute([
-                        $consultationId,
-                        (int)$p['medication_id'],
-                        $strength,
-                        $dosage,
-                        $route,
-                        $frequency,
-                        $duration,
-                        $instructions,
-                        $timeToTake,
-                        $startDate,
-                        $endDate
-                    ]);
+                    $stmtRx->execute();
                 }
             }
         }
 
         // 4. Replace Lab Requests
-        $pdo->prepare("DELETE FROM lab_requests WHERE consultation_id = ?")->execute([$consultationId]);
+        $delLab = $pdo->prepare("DELETE FROM lab_requests WHERE consultation_id = :consId");
+        $delLab->bindParam(':consId', $consultationId, PDO::PARAM_INT);
+        $delLab->execute();
+
         if (!empty($input['lab_requests']) && is_array($input['lab_requests'])) {
-            $stmtLab = $pdo->prepare("INSERT INTO lab_requests (consultation_id, test_name, request_date, status) VALUES (?, ?, ?, 'requested')");
+            $testName = '';
+            $reqDate = date('Y-m-d');
+            $stmtLab = $pdo->prepare("INSERT INTO lab_requests (consultation_id, test_name, request_date, status) VALUES (:consId, :testName, :reqDate, 'requested')");
+            $stmtLab->bindParam(':consId', $consultationId, PDO::PARAM_INT);
+            $stmtLab->bindParam(':testName', $testName);
+            $stmtLab->bindParam(':reqDate', $reqDate);
+
             foreach ($input['lab_requests'] as $l) {
                 $testName = trim($l['test_name'] ?? '');
                 if ($testName !== '') {
                     $reqDate = !empty($l['request_date']) ? $l['request_date'] : date('Y-m-d');
-                    $stmtLab->execute([$consultationId, $testName, $reqDate]);
+                    $stmtLab->execute();
                 }
             }
         }
@@ -301,16 +383,22 @@ function saveConsultation(PDO $pdo) {
         // 5. Update patient allergy confirmation if provided
         if (isset($input['allergies_alerts'])) {
             $allergies = trim((string)$input['allergies_alerts']) ?: null;
-            $updPat = $pdo->prepare("UPDATE patients SET allergies_alerts = ?, allergies_confirmed_by_doctor = 1 WHERE patient_id = ?");
-            $updPat->execute([$allergies, $appt['patient_id']]);
+            $patId = (int)$appt['patient_id'];
+            $updPat = $pdo->prepare("UPDATE patients SET allergies_alerts = :allergies, allergies_confirmed_by_doctor = 1 WHERE patient_id = :patId");
+            $updPat->bindParam(':allergies', $allergies);
+            $updPat->bindParam(':patId', $patId, PDO::PARAM_INT);
+            $updPat->execute();
+            syncPatientAllergies($pdo, $patId, $allergies);
         }
 
         // 6. Complete appointment
-        $pdo->prepare("UPDATE appointments SET status = 'completed' WHERE appointment_id = ?")->execute([$appointmentId]);
+        $compAppt = $pdo->prepare("UPDATE appointments SET status = 'completed' WHERE appointment_id = :appointmentId");
+        $compAppt->bindParam(':appointmentId', $appointmentId, PDO::PARAM_INT);
+        $compAppt->execute();
 
         $isConsUpdate = !empty($existingCons);
         $consAction = $isConsUpdate ? 'UPDATE_CONSULTATION' : 'SAVE_CONSULTATION';
-        log_audit($pdo, (int)$authUser['user_id'], $consAction, 'consultation', $consultationId, $isConsUpdate ? ['consultation_id' => $consultationId] : null, [
+        log_audit($pdo, $authUserId, $consAction, 'consultation', $consultationId, $isConsUpdate ? ['consultation_id' => $consultationId] : null, [
             'consultation_id' => $consultationId,
             'appointment_id' => $appointmentId,
             'patient_id' => (int)$appt['patient_id'],
@@ -320,7 +408,7 @@ function saveConsultation(PDO $pdo) {
             'lab_requests_count' => count($input['lab_requests'] ?? [])
         ]);
 
-        log_audit($pdo, (int)$authUser['user_id'], 'COMPLETE_CONSULTATION', 'appointment', $appointmentId, [
+        log_audit($pdo, $authUserId, 'COMPLETE_CONSULTATION', 'appointment', $appointmentId, [
             'status' => $appt['status']
         ], [
             'status' => 'completed',
@@ -346,6 +434,7 @@ function saveConsultation(PDO $pdo) {
 
 function saveConsultationAddendum(PDO $pdo): void {
     $authUser = get_auth_user();
+    $authUserId = (int)$authUser['user_id'];
     $input = json_decode(file_get_contents('php://input'), true);
 
     if (!$input || empty($input['appointment_id']) || empty(trim($input['notes'] ?? ''))) {
@@ -355,8 +444,9 @@ function saveConsultationAddendum(PDO $pdo): void {
     $appointmentId = (int)$input['appointment_id'];
     $notes = trim($input['notes']);
 
-    $stmtDoc = $pdo->prepare("SELECT doctor_id FROM doctors WHERE user_id = ? LIMIT 1");
-    $stmtDoc->execute([$authUser['user_id']]);
+    $stmtDoc = $pdo->prepare("SELECT doctor_id FROM doctors WHERE user_id = :userId LIMIT 1");
+    $stmtDoc->bindParam(':userId', $authUserId, PDO::PARAM_INT);
+    $stmtDoc->execute();
     $doc = $stmtDoc->fetch(PDO::FETCH_ASSOC);
     if (!$doc) {
         send_error('Doctor profile not found.', [], 404);
@@ -366,8 +456,9 @@ function saveConsultationAddendum(PDO $pdo): void {
     $stmtAppt = $pdo->prepare("SELECT a.appointment_id, a.patient_id, a.doctor_id, a.status, c.consultation_id
                                FROM appointments a
                                LEFT JOIN consultation c ON a.appointment_id = c.appointment_id
-                               WHERE a.appointment_id = ?");
-    $stmtAppt->execute([$appointmentId]);
+                               WHERE a.appointment_id = :appointmentId");
+    $stmtAppt->bindParam(':appointmentId', $appointmentId, PDO::PARAM_INT);
+    $stmtAppt->execute();
     $appt = $stmtAppt->fetch(PDO::FETCH_ASSOC);
 
     if (!$appt || $appt['doctor_id'] != $doctorId) {
@@ -380,11 +471,14 @@ function saveConsultationAddendum(PDO $pdo): void {
 
     $consultationId = (int)$appt['consultation_id'];
 
-    $stmtAdd = $pdo->prepare("INSERT INTO consultation_addenda (consultation_id, doctor_id, notes, created_at) VALUES (?, ?, ?, NOW())");
-    $stmtAdd->execute([$consultationId, $doctorId, $notes]);
+    $stmtAdd = $pdo->prepare("INSERT INTO consultation_addenda (consultation_id, doctor_id, notes, created_at) VALUES (:consId, :docId, :notes, NOW())");
+    $stmtAdd->bindParam(':consId', $consultationId, PDO::PARAM_INT);
+    $stmtAdd->bindParam(':docId', $doctorId, PDO::PARAM_INT);
+    $stmtAdd->bindParam(':notes', $notes);
+    $stmtAdd->execute();
     $addendumId = (int)$pdo->lastInsertId();
 
-    log_audit($pdo, (int)$authUser['user_id'], 'ADD_ENCOUNTER_ADDENDUM', 'consultation', $consultationId, null, [
+    log_audit($pdo, $authUserId, 'ADD_ENCOUNTER_ADDENDUM', 'consultation', $consultationId, null, [
         'addendum_id' => $addendumId,
         'appointment_id' => $appointmentId,
         'patient_id' => (int)$appt['patient_id'],

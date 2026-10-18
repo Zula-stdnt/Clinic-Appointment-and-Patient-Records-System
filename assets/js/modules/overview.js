@@ -1,4 +1,4 @@
-﻿// assets/js/modules/overview.js
+// assets/js/modules/overview.js
 // Administrator dashboard overview: KPI cards, quick actions, and recent patients
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays (Arrays of configuration objects mapped to UI cards) & 03 APIs and Database Operations/javascript_working_with_apis
 
@@ -30,27 +30,27 @@ const ICONS = {
     archive: '<polyline points="21 8 21 21 3 21 3 8"></polyline><rect x="1" y="3" width="22" height="5"></rect><line x1="10" y1="12" x2="14" y2="12"></line>'
 };
 
-function iconSvg(name) {
+const iconSvg = (name) => {
     return `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[name] || ''}</svg>`;
-}
+};
 
-function capitalize(value) {
+const capitalize = (value) => {
     const str = String(value || '');
     return str.charAt(0).toUpperCase() + str.slice(1);
-}
+};
 
-function genderBadge(gender) {
+const genderBadge = (gender) => {
     if (gender === 'male') return 'badge badge-male';
     if (gender === 'female') return 'badge badge-female';
     return 'badge badge-role';
-}
+};
 
-function formatDate(value) {
+const formatDate = (value) => {
     if (!value) return '&mdash;';
     const date = new Date(String(value).replace(' ', 'T'));
     if (isNaN(date.getTime())) return escapeHtml(String(value));
     return date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
-}
+};
 
 export default {
     container: null,

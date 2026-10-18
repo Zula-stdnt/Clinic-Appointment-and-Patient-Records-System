@@ -62,3 +62,74 @@ function validatePatientInput(array $input): array {
 
     return $errors;
 }
+
+/**
+ * ITE 387 1NF Normalization Helper:
+ * Synchronizes the patient's comma-separated allergies_alerts summary string
+ * into atomic rows inside the `patient_allergies` relational table using bindParam().
+ */
+function syncPatientAllergies(PDO $pdo, int $patientId, ?string $allergiesStr): array {
+    if ($patientId <= 0) {
+        return [];
+    }
+
+    $delStmt = $pdo->prepare("DELETE FROM patient_allergies WHERE patient_id = :patientId");
+    $delStmt->bindParam(':patientId', $patientId, PDO::PARAM_INT);
+    $delStmt->execute();
+
+    if ($allergiesStr === null || trim($allergiesStr) === '') {
+        return [];
+    }
+
+    $rawParts = preg_split('/[,;\r\n]+/', $allergiesStr) ?: [];
+    $seen = [];
+    $atomicItems = [];
+
+    foreach ($rawParts as $part) {
+        $clean = trim($part);
+        if ($clean === '') {
+            continue;
+        }
+        $lower = strtolower($clean);
+        if (isset($seen[$lower])) {
+            continue;
+        }
+        $seen[$lower] = true;
+        $atomicItems[] = mb_substr($clean, 0, 150);
+    }
+
+    if (!empty($atomicItems)) {
+        $insStmt = $pdo->prepare(
+            "INSERT INTO patient_allergies (patient_id, allergen_name) VALUES (:patientId, :allergenName)"
+        );
+        $allergenVal = '';
+        $insStmt->bindParam(':patientId', $patientId, PDO::PARAM_INT);
+        $insStmt->bindParam(':allergenName', $allergenVal, PDO::PARAM_STR);
+
+        foreach ($atomicItems as $item) {
+            $allergenVal = $item;
+            $insStmt->execute();
+        }
+    }
+
+    return $atomicItems;
+}
+
+/**
+ * Retrieves atomic 1NF allergy records for a given patient_id.
+ */
+function getPatientAllergies(PDO $pdo, int $patientId): array {
+    if ($patientId <= 0) {
+        return [];
+    }
+    $stmt = $pdo->prepare(
+        "SELECT allergy_id, patient_id, allergen_name, severity, notes, created_at
+         FROM patient_allergies
+         WHERE patient_id = :patientId
+         ORDER BY allergy_id ASC"
+    );
+    $stmt->bindParam(':patientId', $patientId, PDO::PARAM_INT);
+    $stmt->execute();
+    return $stmt->fetchAll(PDO::FETCH_ASSOC);
+}
+

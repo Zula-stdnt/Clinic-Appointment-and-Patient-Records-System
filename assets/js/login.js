@@ -2,6 +2,12 @@
 // Login page behavior: session redirect, password visibility toggle, and sign-in flow.
 
 document.addEventListener('DOMContentLoaded', () => {
+    // ITE 387: Global State Persistence in sessionStorage (mysql_retrieve_specific_record.md)
+    if (!sessionStorage.getItem('baseAPIUrl')) {
+        const apiPath = window.location.pathname.replace(/\/[^/]*$/, '') + '/api';
+        sessionStorage.setItem('baseAPIUrl', apiPath);
+    }
+
     document.getElementById('current-year').textContent = new Date().getFullYear();
 
     const dashboards = {
@@ -10,7 +16,8 @@ document.addEventListener('DOMContentLoaded', () => {
         'Receptionist': 'receptionist_dashboard.html'
     };
 
-    axios.get('api/auth_controller.php?action=check', {
+    const baseAPI = sessionStorage.getItem('baseAPIUrl') || 'api';
+    axios.get(`${baseAPI}/auth_controller.php?action=check`, {
         headers: { 'Accept': 'application/json' }
     }).then((response) => {
         const data = response.data && response.data.data;
@@ -96,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnSpinner.style.display = 'inline-flex';
 
         try {
-            const response = await axios.post('api/auth_controller.php?action=login', {
+            const response = await axios.post(`${baseAPI}/auth_controller.php?action=login`, {
                 username: username,
                 password: password
             }, {

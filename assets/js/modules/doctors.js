@@ -1,4 +1,4 @@
-﻿// assets/js/modules/doctors.js
+// assets/js/modules/doctors.js
 // Manage Doctors module (with active specialty selection and FK appointment delete handling)
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays (Mapping specialty objects to <option> text/value) & 03 APIs and Database Operations/mysql_update_records
 
@@ -916,14 +916,16 @@ export default {
                     row.style.borderColor = 'var(--primary)';
                     timeInputs.style.opacity = '1';
                     timeInputs.style.pointerEvents = 'auto';
-                    badge.className = 'badge sched-status-badge badge-success';
+                    badge.classList.remove('badge-secondary');
+                    badge.classList.add('badge', 'sched-status-badge', 'badge-success');
                     badge.textContent = 'Active Duty';
                 } else {
                     row.style.background = 'var(--bg)';
                     row.style.borderColor = 'var(--border)';
                     timeInputs.style.opacity = '0.45';
                     timeInputs.style.pointerEvents = 'none';
-                    badge.className = 'badge sched-status-badge badge-secondary';
+                    badge.classList.remove('badge-success');
+                    badge.classList.add('badge', 'sched-status-badge', 'badge-secondary');
                     badge.textContent = 'Off Duty';
                 }
             });

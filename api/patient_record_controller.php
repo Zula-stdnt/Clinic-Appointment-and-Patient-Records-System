@@ -11,9 +11,11 @@ require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';
 require_once __DIR__ . '/../includes/auth.php';
 require_once __DIR__ . '/../includes/audit.php';
+require_once __DIR__ . '/../includes/patient_validation.php';
 
 require_login();
 require_role(['Administrator', 'Receptionist', 'Doctor']);
+verify_csrf_on_state_change();
 
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 $action = $_GET['action'] ?? 'history';
@@ -60,6 +62,7 @@ function getPatientRecord(PDO $pdo, int $patientId): void {
     } else {
         $patient['age'] = null;
     }
+    $patient['allergies_list'] = getPatientAllergies($pdo, $patientId);
 
     // 2. PRIVACY RULE: Administrators and Receptionists have ZERO clinical access.
     // They receive demographic columns and non-clinical appointment history log only.
@@ -222,8 +225,12 @@ function getPatientRecord(PDO $pdo, int $patientId): void {
         if (!empty($enc['consultation_id'])) {
             $cid = (int)$enc['consultation_id'];
 
-            // Diagnoses
-            $dStmt = $pdo->prepare("SELECT icd10_code, diagnosis_name, notes FROM diagnosis WHERE consultation_id = ? ORDER BY diagnosis_id ASC");
+            // Diagnoses (3NF join against icd10_codes catalog)
+            $dStmt = $pdo->prepare("SELECT d.icd10_code, COALESCE(NULLIF(TRIM(d.diagnosis_name), ''), ic.description) AS diagnosis_name, ic.description AS icd10_description, d.notes
+                                    FROM diagnosis d
+                                    LEFT JOIN icd10_codes ic ON d.icd10_code = ic.code
+                                    WHERE d.consultation_id = ?
+                                    ORDER BY d.diagnosis_id ASC");
             $dStmt->execute([$cid]);
             $enc['diagnoses'] = $dStmt->fetchAll(PDO::FETCH_ASSOC);
 

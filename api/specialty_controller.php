@@ -1,7 +1,7 @@
 <?php
 // api/specialty_controller.php
 // Master-file CRUD for Specialties
-// ITE 387 Lessons applied: 04 Database Design/database_normalization & 03 APIs and Database Operations/mysql_retrieve_records (Normalized specialty lookup entity with prepared PDO CRUD)
+// ITE 387 Lessons applied: 04 Database Design/database_normalization & 03 APIs and Database Operations/mysql_retrieve_records (Normalized specialty lookup entity with prepared PDO bindParam CRUD and switch($operation))
 
 require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';
@@ -12,37 +12,56 @@ require_role('Administrator');
 verify_csrf_on_state_change();
 
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
-$action = $_GET['action'] ?? null;
+$action = $_REQUEST['operation'] ?? $_GET['action'] ?? null;
+
+if (!in_array($method, ['GET', 'POST', 'PUT', 'DELETE'], true)) {
+    send_error('Method not allowed.', [], 405);
+}
+
+if ($method === 'GET') {
+    $operation = $action ?: (isset($_GET['id']) ? 'getSpecialty' : 'getAllSpecialties');
+} elseif ($method === 'POST') {
+    $operation = $action ?: 'createSpecialty';
+} elseif ($method === 'PUT') {
+    $operation = $action ?: 'updateSpecialty';
+} else {
+    $operation = 'hardDeleteSpecialty';
+}
 
 try {
-    if ($method === 'GET') {
-        if (isset($_GET['id'])) {
-            getSpecialtyById($pdo, (int)$_GET['id']);
-        } else {
+    switch ($operation) {
+        case 'getAllSpecialties':
+        case 'list':
             listSpecialties($pdo);
-        }
-    } elseif ($method === 'POST') {
-        if ($action === 'soft_delete') {
-            softDeleteSpecialty($pdo);
-        } elseif ($action === 'restore') {
-            restoreSpecialty($pdo);
-        } elseif ($action === 'hard_delete') {
-            hardDeleteSpecialty($pdo);
-        } else {
+            break;
+        case 'getSpecialty':
+        case 'get':
+            getSpecialtyById($pdo, (int)($_GET['id'] ?? 0));
+            break;
+        case 'createSpecialty':
+        case 'create':
             createSpecialty($pdo);
-        }
-    } elseif ($method === 'PUT') {
-        if ($action === 'soft_delete') {
-            softDeleteSpecialty($pdo);
-        } elseif ($action === 'restore') {
-            restoreSpecialty($pdo);
-        } else {
+            break;
+        case 'updateSpecialty':
+        case 'update':
             updateSpecialty($pdo);
-        }
-    } elseif ($method === 'DELETE') {
-        hardDeleteSpecialty($pdo);
-    } else {
-        send_error('Method not allowed.', [], 405);
+            break;
+        case 'soft_delete':
+        case 'softDeleteSpecialty':
+        case 'archiveSpecialty':
+            softDeleteSpecialty($pdo);
+            break;
+        case 'restore':
+        case 'restoreSpecialty':
+            restoreSpecialty($pdo);
+            break;
+        case 'hard_delete':
+        case 'hardDeleteSpecialty':
+        case 'deleteSpecialty':
+            hardDeleteSpecialty($pdo);
+            break;
+        default:
+            send_error('Invalid operation.', [], 400);
     }
 } catch (PDOException $e) {
     error_log('Specialty controller DB error: ' . $e->getMessage());
@@ -82,9 +101,10 @@ function listSpecialties(PDO $pdo): void {
 
     $countSql = "SELECT COUNT(*) FROM specialties WHERE {$whereSql}";
     $countStmt = $pdo->prepare($countSql);
-    foreach ($params as $k => $v) {
-        $countStmt->bindValue($k, $v);
+    foreach ($params as $k => &$v) {
+        $countStmt->bindParam($k, $v);
     }
+    unset($v);
     $countStmt->execute();
     $total = (int)$countStmt->fetchColumn();
 
@@ -95,11 +115,12 @@ function listSpecialties(PDO $pdo): void {
                 LIMIT :limit OFFSET :offset";
 
     $stmt = $pdo->prepare($dataSql);
-    foreach ($params as $k => $v) {
-        $stmt->bindValue($k, $v);
+    foreach ($params as $k => &$v) {
+        $stmt->bindParam($k, $v);
     }
-    $stmt->bindValue(':limit', $pageSize, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    unset($v);
+    $stmt->bindParam(':limit', $pageSize, PDO::PARAM_INT);
+    $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
     $items = $stmt->fetchAll();
 
@@ -113,8 +134,9 @@ function listSpecialties(PDO $pdo): void {
 }
 
 function getSpecialtyById(PDO $pdo, int $id): void {
-    $stmt = $pdo->prepare("SELECT * FROM specialties WHERE specialty_id = ? LIMIT 1");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("SELECT * FROM specialties WHERE specialty_id = :id LIMIT 1");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
     $specialty = $stmt->fetch();
 
     if (!$specialty) {
@@ -133,14 +155,16 @@ function validateSpecialtyInput(PDO $pdo, array $input, ?int $ignoreId = null): 
     } elseif (strlen($name) > 100) {
         $errors['specialty_name'] = 'Specialty name cannot exceed 100 characters.';
     } else {
-        $sql = "SELECT 1 FROM specialties WHERE specialty_name = ?";
-        $params = [$name];
+        $sql = "SELECT 1 FROM specialties WHERE specialty_name = :name";
         if ($ignoreId !== null) {
-            $sql .= " AND specialty_id != ?";
-            $params[] = $ignoreId;
+            $sql .= " AND specialty_id != :ignoreId";
         }
         $chk = $pdo->prepare($sql);
-        $chk->execute($params);
+        $chk->bindParam(':name', $name);
+        if ($ignoreId !== null) {
+            $chk->bindParam(':ignoreId', $ignoreId, PDO::PARAM_INT);
+        }
+        $chk->execute();
         if ($chk->fetch()) {
             $errors['specialty_name'] = 'A specialty with this name already exists.';
         }
@@ -160,8 +184,10 @@ function createSpecialty(PDO $pdo): void {
         send_error('Validation failed.', $errors, 422);
     }
 
-    $stmt = $pdo->prepare("INSERT INTO specialties (specialty_name) VALUES (?)");
-    $stmt->execute([trim($input['specialty_name'])]);
+    $specialtyName = trim($input['specialty_name']);
+    $stmt = $pdo->prepare("INSERT INTO specialties (specialty_name) VALUES (:specialtyName)");
+    $stmt->bindParam(':specialtyName', $specialtyName);
+    $stmt->execute();
 
     $newId = (int)$pdo->lastInsertId();
     send_success('Specialty created successfully.', ['specialty_id' => $newId], 201);
@@ -174,8 +200,9 @@ function updateSpecialty(PDO $pdo): void {
     }
 
     $id = (int)($_GET['id'] ?? ($input['specialty_id'] ?? 0));
-    $chk = $pdo->prepare("SELECT specialty_id FROM specialties WHERE specialty_id = ?");
-    $chk->execute([$id]);
+    $chk = $pdo->prepare("SELECT specialty_id FROM specialties WHERE specialty_id = :id");
+    $chk->bindParam(':id', $id, PDO::PARAM_INT);
+    $chk->execute();
     if (!$chk->fetch()) {
         send_error('Specialty not found.', [], 404);
     }
@@ -185,11 +212,11 @@ function updateSpecialty(PDO $pdo): void {
         send_error('Validation failed.', $errors, 422);
     }
 
-    $stmt = $pdo->prepare("UPDATE specialties SET specialty_name = ? WHERE specialty_id = ?");
-    $stmt->execute([
-        trim($input['specialty_name']),
-        $id
-    ]);
+    $specialtyName = trim($input['specialty_name']);
+    $stmt = $pdo->prepare("UPDATE specialties SET specialty_name = :specialtyName WHERE specialty_id = :id");
+    $stmt->bindParam(':specialtyName', $specialtyName);
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
 
     send_success('Specialty updated successfully.');
 }
@@ -198,8 +225,9 @@ function softDeleteSpecialty(PDO $pdo): void {
     $input = get_json_input();
     $id = (int)($_GET['id'] ?? ($input['specialty_id'] ?? 0));
 
-    $stmt = $pdo->prepare("UPDATE specialties SET deleted_at = NOW() WHERE specialty_id = ? AND deleted_at IS NULL");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("UPDATE specialties SET deleted_at = NOW() WHERE specialty_id = :id AND deleted_at IS NULL");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
 
     if ($stmt->rowCount() === 0) {
         send_error('Specialty not found or already deactivated.', [], 404);
@@ -212,8 +240,9 @@ function restoreSpecialty(PDO $pdo): void {
     $input = get_json_input();
     $id = (int)($_GET['id'] ?? ($input['specialty_id'] ?? 0));
 
-    $stmt = $pdo->prepare("UPDATE specialties SET deleted_at = NULL WHERE specialty_id = ? AND deleted_at IS NOT NULL");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("UPDATE specialties SET deleted_at = NULL WHERE specialty_id = :id AND deleted_at IS NOT NULL");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
 
     if ($stmt->rowCount() === 0) {
         send_error('Specialty not found or already active.', [], 404);
@@ -226,8 +255,9 @@ function hardDeleteSpecialty(PDO $pdo): void {
     $input = get_json_input();
     $id = (int)($_GET['id'] ?? ($input['specialty_id'] ?? 0));
 
-    $stmt = $pdo->prepare("DELETE FROM specialties WHERE specialty_id = ?");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("DELETE FROM specialties WHERE specialty_id = :id");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
 
     if ($stmt->rowCount() === 0) {
         send_error('Specialty not found.', [], 404);

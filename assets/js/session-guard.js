@@ -19,8 +19,14 @@ export async function requireSession(allowedRoles) {
     activeGuardedRoles = allowedRoles;
     let payload = null;
 
+    if (typeof sessionStorage !== 'undefined' && !sessionStorage.getItem('baseAPIUrl') && typeof window !== 'undefined' && window.location) {
+        const apiPath = window.location.pathname.replace(/\/[^/]*$/, '') + '/api';
+        sessionStorage.setItem('baseAPIUrl', apiPath);
+    }
+    const baseAPI = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('baseAPIUrl')) || 'api';
+
     try {
-        const response = await axios.get('api/auth_controller.php?action=me', {
+        const response = await axios.get(`${baseAPI}/auth_controller.php?action=me`, {
             headers: { 
                 'Accept': 'application/json',
                 'Cache-Control': 'no-cache, no-store, must-revalidate',

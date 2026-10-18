@@ -4,7 +4,7 @@
 // - Receptionists manage patient registration and demographic identity updates
 // - Administrators have zero edit access (read-only demographic directory + status/archive actions)
 // - Old-to-new demographic diffs are indelibly recorded in the audit log
-// ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_records, mysql_retrieve_specific_record, mysql_insert_records & mysql_update_records (Parameterized PDO CRUD with bindValue)
+// ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_records, mysql_retrieve_specific_record, mysql_insert_records & mysql_update_records (Parameterized PDO CRUD with bindParam and switch($operation))
 
 require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';
@@ -21,53 +21,69 @@ if (!in_array($authRole, ['Administrator', 'Receptionist', 'Doctor'], true)) {
 }
 
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
-$action = $_GET['action'] ?? null;
+$action = $_REQUEST['operation'] ?? $_GET['action'] ?? null;
+
+if (!in_array($method, ['GET', 'POST', 'PUT', 'DELETE'], true)) {
+    send_error('Method not allowed.', [], 405);
+}
+
+if ($method === 'GET') {
+    $operation = $action ?: (isset($_GET['id']) ? 'getPatient' : 'getAllPatients');
+} elseif ($method === 'POST') {
+    $operation = $action ?: 'createPatient';
+} elseif ($method === 'PUT') {
+    $operation = $action ?: 'updatePatient';
+} else {
+    $operation = 'hardDeletePatient';
+}
 
 try {
-    if ($method === 'GET') {
-        if (isset($_GET['id'])) {
-            getPatientById($pdo, (int)$_GET['id']);
-        } else {
+    switch ($operation) {
+        case 'getAllPatients':
+        case 'list':
             listPatients($pdo);
-        }
-    } elseif ($method === 'POST') {
-        if ($action === 'soft_delete') {
-            require_role('Administrator');
-            softDeletePatient($pdo);
-        } elseif ($action === 'restore') {
-            require_role('Administrator');
-            restorePatient($pdo);
-        } elseif ($action === 'hard_delete') {
-            require_role('Administrator');
-            hardDeletePatient($pdo);
-        } else {
+            break;
+        case 'getPatient':
+        case 'get':
+            getPatientById($pdo, (int)($_GET['id'] ?? 0));
+            break;
+        case 'createPatient':
+        case 'create':
             // Patient registration: Front-desk Receptionists only
             if ($authRole === 'Administrator') {
                 send_error('Administrators cannot register patients. Patient registration is managed by Receptionists.', [], 403);
             }
             require_role('Receptionist');
             createPatient($pdo);
-        }
-    } elseif ($method === 'PUT') {
-        if ($action === 'soft_delete') {
-            require_role('Administrator');
-            softDeletePatient($pdo);
-        } elseif ($action === 'restore') {
-            require_role('Administrator');
-            restorePatient($pdo);
-        } else {
+            break;
+        case 'updatePatient':
+        case 'update':
             // Demographic editing: Front-desk Receptionists only
             if ($authRole === 'Administrator') {
                 send_error('Administrators cannot modify patient demographics. Front-desk Receptionists manage patient identity corrections.', [], 403);
             }
             require_role('Receptionist');
             updatePatient($pdo);
-        }
-    } elseif ($method === 'DELETE') {
-        require_role('Administrator');
-        hardDeletePatient($pdo);
-    } else {
-        send_error('Method not allowed.', [], 405);
+            break;
+        case 'soft_delete':
+        case 'softDeletePatient':
+        case 'archivePatient':
+            require_role('Administrator');
+            softDeletePatient($pdo);
+            break;
+        case 'restore':
+        case 'restorePatient':
+            require_role('Administrator');
+            restorePatient($pdo);
+            break;
+        case 'hard_delete':
+        case 'hardDeletePatient':
+        case 'deletePatient':
+            require_role('Administrator');
+            hardDeletePatient($pdo);
+            break;
+        default:
+            send_error('Invalid operation.', [], 400);
     }
 } catch (PDOException $e) {
     error_log('Patient controller DB error: ' . $e->getMessage());
@@ -120,9 +136,10 @@ function listPatients(PDO $pdo): void {
     // Total count
     $countSql = "SELECT COUNT(*) FROM patients WHERE {$whereSql}";
     $countStmt = $pdo->prepare($countSql);
-    foreach ($params as $k => $v) {
-        $countStmt->bindValue($k, $v);
+    foreach ($params as $k => &$v) {
+        $countStmt->bindParam($k, $v);
     }
+    unset($v);
     $countStmt->execute();
     $total = (int)$countStmt->fetchColumn();
 
@@ -136,11 +153,12 @@ function listPatients(PDO $pdo): void {
                 LIMIT :limit OFFSET :offset";
 
     $stmt = $pdo->prepare($dataSql);
-    foreach ($params as $k => $v) {
-        $stmt->bindValue($k, $v);
+    foreach ($params as $k => &$v) {
+        $stmt->bindParam($k, $v);
     }
-    $stmt->bindValue(':limit', $pageSize, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    unset($v);
+    $stmt->bindParam(':limit', $pageSize, PDO::PARAM_INT);
+    $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -158,14 +176,17 @@ function getPatientById(PDO $pdo, int $id): void {
         "SELECT patient_id, first_name, middle_initial, last_name, gender, date_of_birth,
                 contact_no, address, allergies_alerts, allergies_confirmed_by_doctor,
                 created_at, updated_at, deleted_at
-         FROM patients WHERE patient_id = ? LIMIT 1"
+         FROM patients WHERE patient_id = :id LIMIT 1"
     );
-    $stmt->execute([$id]);
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
     $patient = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$patient) {
         send_error('Patient not found.', [], 404);
     }
+
+    $patient['allergies_list'] = getPatientAllergies($pdo, $id);
 
     send_success('Patient details retrieved.', array_merge($patient, ['patient' => $patient]));
 }
@@ -206,11 +227,15 @@ function createPatient(PDO $pdo): void {
     $dupSql = "SELECT patient_id, first_name, last_name, date_of_birth, contact_no
                FROM patients
                WHERE deleted_at IS NULL
-                 AND ((first_name = ? AND last_name = ? AND date_of_birth = ?)
-                      OR (contact_no = ? AND contact_no IS NOT NULL AND contact_no != ''))
+                 AND ((first_name = :firstName AND last_name = :lastName AND date_of_birth = :dob)
+                      OR (contact_no = :contactNo AND contact_no IS NOT NULL AND contact_no != ''))
                LIMIT 1";
     $dupStmt = $pdo->prepare($dupSql);
-    $dupStmt->execute([$firstName, $lastName, $dob, $contactNo]);
+    $dupStmt->bindParam(':firstName', $firstName);
+    $dupStmt->bindParam(':lastName', $lastName);
+    $dupStmt->bindParam(':dob', $dob);
+    $dupStmt->bindParam(':contactNo', $contactNo);
+    $dupStmt->execute();
     $existing = $dupStmt->fetch(PDO::FETCH_ASSOC);
 
     if ($existing) {
@@ -224,20 +249,20 @@ function createPatient(PDO $pdo): void {
 
     $stmt = $pdo->prepare(
         "INSERT INTO patients (first_name, middle_initial, last_name, gender, date_of_birth, contact_no, address, allergies_alerts)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+         VALUES (:firstName, :middleInitial, :lastName, :gender, :dob, :contactNo, :address, :allergies)"
     );
-    $stmt->execute([
-        $firstName,
-        $middleInitial,
-        $lastName,
-        $gender,
-        $dob,
-        $contactNo,
-        $address,
-        $allergies
-    ]);
+    $stmt->bindParam(':firstName', $firstName);
+    $stmt->bindParam(':middleInitial', $middleInitial);
+    $stmt->bindParam(':lastName', $lastName);
+    $stmt->bindParam(':gender', $gender);
+    $stmt->bindParam(':dob', $dob);
+    $stmt->bindParam(':contactNo', $contactNo);
+    $stmt->bindParam(':address', $address);
+    $stmt->bindParam(':allergies', $allergies);
+    $stmt->execute();
 
     $newId = (int)$pdo->lastInsertId();
+    syncPatientAllergies($pdo, $newId, $allergies);
     log_audit($pdo, (int)$_SESSION['user_id'], 'REGISTER_PATIENT', 'patient', $newId, null, $cleanInput);
 
     send_success('Patient record created successfully.', ['patient_id' => $newId], 201);
@@ -250,8 +275,9 @@ function updatePatient(PDO $pdo): void {
     }
 
     $id = (int)($_GET['id'] ?? ($input['patient_id'] ?? 0));
-    $chk = $pdo->prepare("SELECT * FROM patients WHERE patient_id = ?");
-    $chk->execute([$id]);
+    $chk = $pdo->prepare("SELECT * FROM patients WHERE patient_id = :id");
+    $chk->bindParam(':id', $id, PDO::PARAM_INT);
+    $chk->execute();
     $oldPatient = $chk->fetch(PDO::FETCH_ASSOC);
     if (!$oldPatient) {
         send_error('Patient not found.', [], 404);
@@ -284,16 +310,23 @@ function updatePatient(PDO $pdo): void {
     }
 
     // Priority 4: Prevent duplicate registration by matching name+DOB or phone against other active patients
+    $contactNoCheck = $contactNo ?? '';
     $dupStmt = $pdo->prepare(
         "SELECT patient_id, first_name, last_name, date_of_birth, contact_no
          FROM patients
-         WHERE ((LOWER(TRIM(first_name)) = LOWER(?) AND LOWER(TRIM(last_name)) = LOWER(?) AND date_of_birth = ?)
-            OR (? != '' AND contact_no = ?))
-           AND patient_id != ?
+         WHERE ((LOWER(TRIM(first_name)) = LOWER(:firstName) AND LOWER(TRIM(last_name)) = LOWER(:lastName) AND date_of_birth = :dob)
+            OR (:contactCheck1 != '' AND contact_no = :contactCheck2))
+           AND patient_id != :id
            AND deleted_at IS NULL
          LIMIT 1"
     );
-    $dupStmt->execute([$firstName, $lastName, $dob, $contactNo ?? '', $contactNo ?? '', $id]);
+    $dupStmt->bindParam(':firstName', $firstName);
+    $dupStmt->bindParam(':lastName', $lastName);
+    $dupStmt->bindParam(':dob', $dob);
+    $dupStmt->bindParam(':contactCheck1', $contactNoCheck);
+    $dupStmt->bindParam(':contactCheck2', $contactNoCheck);
+    $dupStmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $dupStmt->execute();
     $existing = $dupStmt->fetch(PDO::FETCH_ASSOC);
     if ($existing) {
         $formattedId = 'PAT-' . str_pad((string)$existing['patient_id'], 4, '0', STR_PAD_LEFT);
@@ -320,20 +353,21 @@ function updatePatient(PDO $pdo): void {
 
     $stmt = $pdo->prepare(
         "UPDATE patients
-         SET first_name = ?, middle_initial = ?, last_name = ?, gender = ?, date_of_birth = ?, contact_no = ?, address = ?, allergies_alerts = ?
-         WHERE patient_id = ?"
+         SET first_name = :firstName, middle_initial = :middleInitial, last_name = :lastName, gender = :gender, date_of_birth = :dob, contact_no = :contactNo, address = :address, allergies_alerts = :allergies
+         WHERE patient_id = :id"
     );
-    $stmt->execute([
-        $firstName,
-        $middleInitial,
-        $lastName,
-        $gender,
-        $dob,
-        $contactNo,
-        $address,
-        $allergies,
-        $id
-    ]);
+    $stmt->bindParam(':firstName', $firstName);
+    $stmt->bindParam(':middleInitial', $middleInitial);
+    $stmt->bindParam(':lastName', $lastName);
+    $stmt->bindParam(':gender', $gender);
+    $stmt->bindParam(':dob', $dob);
+    $stmt->bindParam(':contactNo', $contactNo);
+    $stmt->bindParam(':address', $address);
+    $stmt->bindParam(':allergies', $allergies);
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
+
+    syncPatientAllergies($pdo, $id, $allergies);
 
     if (!empty($newDiff)) {
         $reason = trim($input['reason'] ?? '') ?: 'Demographic identity update by front desk';
@@ -351,22 +385,25 @@ function softDeletePatient(PDO $pdo): void {
     // 1. Check upcoming active appointments
     $upStmt = $pdo->prepare(
         "SELECT COUNT(*) FROM appointments 
-         WHERE patient_id = ? AND status IN ('scheduled', 'confirmed') AND appointment_date >= CURRENT_DATE"
+         WHERE patient_id = :id AND status IN ('scheduled', 'confirmed') AND appointment_date >= CURRENT_DATE"
     );
-    $upStmt->execute([$id]);
+    $upStmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $upStmt->execute();
     if ((int)$upStmt->fetchColumn() > 0) {
         send_error('Cannot archive patient: active upcoming appointments are scheduled. Cancel or complete them first.', [], 409);
     }
 
     // 2. Check completed medical encounters
-    $compStmt = $pdo->prepare("SELECT COUNT(*) FROM appointments WHERE patient_id = ? AND status = 'completed'");
-    $compStmt->execute([$id]);
+    $compStmt = $pdo->prepare("SELECT COUNT(*) FROM appointments WHERE patient_id = :id AND status = 'completed'");
+    $compStmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $compStmt->execute();
     if ((int)$compStmt->fetchColumn() > 0) {
         send_error('Cannot archive patient: completed medical consultations exist. Inactive status should be used instead of archiving clinical history.', [], 409);
     }
 
-    $stmt = $pdo->prepare("UPDATE patients SET deleted_at = NOW() WHERE patient_id = ? AND deleted_at IS NULL");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("UPDATE patients SET deleted_at = NOW() WHERE patient_id = :id AND deleted_at IS NULL");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
 
     if ($stmt->rowCount() === 0) {
         send_error('Patient not found or already deactivated.', [], 404);
@@ -380,8 +417,9 @@ function restorePatient(PDO $pdo): void {
     $input = get_json_input();
     $id = (int)($_GET['id'] ?? ($input['patient_id'] ?? 0));
 
-    $stmt = $pdo->prepare("UPDATE patients SET deleted_at = NULL WHERE patient_id = ? AND deleted_at IS NOT NULL");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("UPDATE patients SET deleted_at = NULL WHERE patient_id = :id AND deleted_at IS NOT NULL");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
 
     if ($stmt->rowCount() === 0) {
         send_error('Patient not found or already active.', [], 404);
@@ -395,8 +433,9 @@ function hardDeletePatient(PDO $pdo): void {
     $input = get_json_input();
     $id = (int)($_GET['id'] ?? ($input['patient_id'] ?? 0));
 
-    $stmt = $pdo->prepare("DELETE FROM patients WHERE patient_id = ?");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("DELETE FROM patients WHERE patient_id = :id");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
 
     if ($stmt->rowCount() === 0) {
         send_error('Patient not found.', [], 404);

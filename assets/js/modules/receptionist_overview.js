@@ -1,4 +1,4 @@
-﻿// assets/js/modules/receptionist_overview.js
+// assets/js/modules/receptionist_overview.js
 // Receptionist Front-Desk Command Center (Dashboard)
 // Features: Multi-period time horizon filtering (Today, This Week, This Month, All-Time),
 // live lobby triage & waiting board, daily clinic capacity gauge (10 max limit),
@@ -11,7 +11,7 @@ import { printBlankForm } from '../components/print-appointment-form.js?v=24';
 
 const MAX_DAILY_CAPACITY = 10;
 
-function formatTime(val) {
+const formatTime = (val) => {
     if (!val) return '--';
     const parts = String(val).split(':');
     if (parts.length < 2) return String(val);
@@ -21,40 +21,40 @@ function formatTime(val) {
     const ampm = h >= 12 ? 'PM' : 'AM';
     const h12 = h % 12 || 12;
     return `${h12}:${String(m).padStart(2, '0')} ${ampm}`;
-}
+};
 
-function formatDateYMD(d) {
+const formatDateYMD = (d) => {
     const year = d.getFullYear();
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
-}
+};
 
-function formatDateHeader(d) {
+const formatDateHeader = (d) => {
     return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
-}
+};
 
-function formatShortDate(val) {
+const formatShortDate = (val) => {
     if (!val) return '--';
     const parsed = new Date(`${String(val).slice(0, 10)}T00:00:00`);
     if (Number.isNaN(parsed.getTime())) return String(val);
     return parsed.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
+};
 
-function getGreeting(h) {
+const getGreeting = (h) => {
     if (h < 12) return 'Good Morning';
     if (h < 18) return 'Good Afternoon';
     return 'Good Evening';
-}
+};
 
-function formatReadableDate(val) {
+const formatReadableDate = (val) => {
     if (!val) return '';
     const parsed = new Date(`${String(val).slice(0, 10)}T00:00:00`);
     if (Number.isNaN(parsed.getTime())) return String(val);
     return parsed.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
-}
+};
 
-function getPeriodLabel(period, now = new Date(), startDate = null, endDate = null) {
+const getPeriodLabel = (period, now = new Date(), startDate = null, endDate = null) => {
     if (period === 'today') {
         return formatDateHeader(now);
     }
@@ -84,9 +84,9 @@ function getPeriodLabel(period, now = new Date(), startDate = null, endDate = nu
         return 'All-Time Clinic Overview (All Dates)';
     }
     return 'Clinic Overview';
-}
+};
 
-function getAppointmentsForPeriod(allAppts, period, now = new Date(), startDate = null, endDate = null) {
+const getAppointmentsForPeriod = (allAppts, period, now = new Date(), startDate = null, endDate = null) => {
     const todayStr = formatDateYMD(now);
     if (period === 'today') {
         return allAppts
@@ -119,7 +119,7 @@ function getAppointmentsForPeriod(allAppts, period, now = new Date(), startDate 
         return [...allAppts].sort((a, b) => `${b.appointment_date} ${b.appointment_time || ''}`.localeCompare(`${a.appointment_date} ${a.appointment_time || ''}`));
     }
     return [...allAppts].sort((a, b) => `${b.appointment_date} ${b.appointment_time || ''}`.localeCompare(`${a.appointment_date} ${a.appointment_time || ''}`));
-}
+};
 
 export default {
     container: null,

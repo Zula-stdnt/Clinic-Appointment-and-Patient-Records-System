@@ -1,7 +1,7 @@
 <?php
 // api/user_controller.php
 // Master-file CRUD for Users (strictly restricted to Doctor and Receptionist)
-// ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_insert_records, mysql_update_records & header_detail_forms (Prepared CRUD and PDO transaction across users, doctors, and doctor_specialty)
+// ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_insert_records, mysql_update_records & header_detail_forms (Prepared CRUD with bindParam, switch($operation), and PDO transaction across users, doctors, and doctor_specialty)
 
 require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';
@@ -14,45 +14,70 @@ require_role('Administrator');
 verify_csrf_on_state_change();
 
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
-$action = $_GET['action'] ?? null;
+$action = $_REQUEST['operation'] ?? $_GET['action'] ?? null;
+
+if (!in_array($method, ['GET', 'POST', 'PUT', 'DELETE'], true)) {
+    send_error('Method not allowed.', [], 405);
+}
+
+if ($method === 'GET') {
+    if (isset($_GET['meta'])) {
+        $operation = 'meta_' . $_GET['meta'];
+    } elseif ($action) {
+        $operation = $action;
+    } else {
+        $operation = isset($_GET['id']) ? 'getUser' : 'getAllUsers';
+    }
+} elseif ($method === 'POST') {
+    $operation = $action ?: 'createUser';
+} elseif ($method === 'PUT') {
+    $operation = $action ?: 'updateUser';
+} else {
+    $operation = 'hardDeleteUser';
+}
 
 try {
-    if ($method === 'GET') {
-        if (isset($_GET['meta'])) {
-            if ($_GET['meta'] === 'roles') {
-                $stmt = $pdo->query("SELECT role_id, role_name FROM roles WHERE role_name IN ('Doctor', 'Receptionist') ORDER BY role_name ASC");
-                send_success('Roles retrieved successfully.', ['roles' => $stmt->fetchAll()]);
-            } elseif ($_GET['meta'] === 'specialties') {
-                $stmt = $pdo->query("SELECT specialty_id, specialty_name FROM specialties WHERE deleted_at IS NULL ORDER BY specialty_name ASC");
-                send_success('Specialties retrieved successfully.', ['specialties' => $stmt->fetchAll()]);
-            }
-        } elseif (isset($_GET['id'])) {
-            getUserById($pdo, (int)$_GET['id']);
-        } else {
+    switch ($operation) {
+        case 'meta_roles':
+            $stmt = $pdo->query("SELECT role_id, role_name FROM roles WHERE role_name IN ('Doctor', 'Receptionist') ORDER BY role_name ASC");
+            send_success('Roles retrieved successfully.', ['roles' => $stmt->fetchAll()]);
+            break;
+        case 'meta_specialties':
+            $stmt = $pdo->query("SELECT specialty_id, specialty_name FROM specialties WHERE deleted_at IS NULL ORDER BY specialty_name ASC");
+            send_success('Specialties retrieved successfully.', ['specialties' => $stmt->fetchAll()]);
+            break;
+        case 'getAllUsers':
+        case 'list':
             listUsers($pdo);
-        }
-    } elseif ($method === 'POST') {
-        if ($action === 'soft_delete') {
-            softDeleteUser($pdo);
-        } elseif ($action === 'restore') {
-            restoreUser($pdo);
-        } elseif ($action === 'hard_delete') {
-            hardDeleteUser($pdo);
-        } else {
+            break;
+        case 'getUser':
+        case 'get':
+            getUserById($pdo, (int)($_GET['id'] ?? 0));
+            break;
+        case 'createUser':
+        case 'create':
             createUser($pdo);
-        }
-    } elseif ($method === 'PUT') {
-        if ($action === 'soft_delete') {
-            softDeleteUser($pdo);
-        } elseif ($action === 'restore') {
-            restoreUser($pdo);
-        } else {
+            break;
+        case 'updateUser':
+        case 'update':
             updateUser($pdo);
-        }
-    } elseif ($method === 'DELETE') {
-        hardDeleteUser($pdo);
-    } else {
-        send_error('Method not allowed.', [], 405);
+            break;
+        case 'soft_delete':
+        case 'softDeleteUser':
+        case 'archiveUser':
+            softDeleteUser($pdo);
+            break;
+        case 'restore':
+        case 'restoreUser':
+            restoreUser($pdo);
+            break;
+        case 'hard_delete':
+        case 'hardDeleteUser':
+        case 'deleteUser':
+            hardDeleteUser($pdo);
+            break;
+        default:
+            send_error('Invalid operation.', [], 400);
     }
 } catch (PDOException $e) {
     error_log('User controller DB error: ' . $e->getMessage());
@@ -124,9 +149,10 @@ function listUsers(PDO $pdo): void {
     // Count query
     $countSql = "SELECT COUNT(*) FROM users u INNER JOIN roles r ON u.role_id = r.role_id WHERE {$whereSql}";
     $countStmt = $pdo->prepare($countSql);
-    foreach ($params as $k => $v) {
-        $countStmt->bindValue($k, $v);
+    foreach ($params as $k => &$v) {
+        $countStmt->bindParam($k, $v);
     }
+    unset($v);
     $countStmt->execute();
     $total = (int)$countStmt->fetchColumn();
 
@@ -142,11 +168,12 @@ function listUsers(PDO $pdo): void {
                 LIMIT :limit OFFSET :offset";
 
     $stmt = $pdo->prepare($dataSql);
-    foreach ($params as $k => $v) {
-        $stmt->bindValue($k, $v);
+    foreach ($params as $k => &$v) {
+        $stmt->bindParam($k, $v);
     }
-    $stmt->bindValue(':limit', $pageSize, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    unset($v);
+    $stmt->bindParam(':limit', $pageSize, PDO::PARAM_INT);
+    $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
     $items = $stmt->fetchAll();
 
@@ -171,11 +198,12 @@ function getUserById(PDO $pdo, int $userId): void {
          INNER JOIN roles r ON u.role_id = r.role_id
          LEFT JOIN doctors d ON u.user_id = d.user_id
          LEFT JOIN doctor_specialty ds ON d.doctor_id = ds.doctor_id
-         WHERE u.user_id = ? AND r.role_name IN ('Doctor', 'Receptionist')
+         WHERE u.user_id = :userId AND r.role_name IN ('Doctor', 'Receptionist')
          GROUP BY u.user_id, u.role_id, u.first_name, u.last_name, u.middle_initial, u.gender, u.username, u.created_at, u.updated_at, u.deleted_at, r.role_name, d.contact_no
          LIMIT 1"
     );
-    $stmt->execute([$userId]);
+    $stmt->bindParam(':userId', $userId, PDO::PARAM_INT);
+    $stmt->execute();
     $user = $stmt->fetch();
 
     if (!$user) {
@@ -236,8 +264,9 @@ function createUser(PDO $pdo): void {
         $errors['password'] = 'Password must be at least 6 characters, including uppercase, lowercase, number, and special character.';
     }
 
-    $stmt = $pdo->prepare("SELECT role_id, role_name FROM roles WHERE role_id = ? AND role_name IN ('Doctor', 'Receptionist')");
-    $stmt->execute([$roleId]);
+    $stmt = $pdo->prepare("SELECT role_id, role_name FROM roles WHERE role_id = :roleId AND role_name IN ('Doctor', 'Receptionist')");
+    $stmt->bindParam(':roleId', $roleId, PDO::PARAM_INT);
+    $stmt->execute();
     $role = $stmt->fetch();
     if (!$role) {
         $errors['role_id'] = 'Only Doctor or Receptionist roles can be assigned here.';
@@ -253,8 +282,9 @@ function createUser(PDO $pdo): void {
 
     // Username uniqueness check
     if ($username !== '') {
-        $uStmt = $pdo->prepare("SELECT 1 FROM users WHERE username = ?");
-        $uStmt->execute([$username]);
+        $uStmt = $pdo->prepare("SELECT 1 FROM users WHERE username = :username");
+        $uStmt->bindParam(':username', $username);
+        $uStmt->execute();
         if ($uStmt->fetch()) {
             $errors['username'] = 'This username is already in use.';
         }
@@ -271,22 +301,35 @@ function createUser(PDO $pdo): void {
 
         $ins = $pdo->prepare(
             "INSERT INTO users (role_id, first_name, last_name, middle_initial, gender, username, password_hash)
-             VALUES (?, ?, ?, ?, ?, ?, ?)"
+             VALUES (:roleId, :firstName, :lastName, :middleInitial, :gender, :username, :passwordHash)"
         );
-        $ins->execute([$roleId, $firstName, $lastName, $middleInitial, $gender, $username, $passwordHash]);
+        $ins->bindParam(':roleId', $roleId, PDO::PARAM_INT);
+        $ins->bindParam(':firstName', $firstName);
+        $ins->bindParam(':lastName', $lastName);
+        $ins->bindParam(':middleInitial', $middleInitial);
+        $ins->bindParam(':gender', $gender);
+        $ins->bindParam(':username', $username);
+        $ins->bindParam(':passwordHash', $passwordHash);
+        $ins->execute();
         $newUserId = (int)$pdo->lastInsertId();
 
         if ($role['role_name'] === 'Doctor') {
             // Names/gender live on the users row; doctors stores only profile data.
             $docIns = $pdo->prepare(
-                "INSERT INTO doctors (user_id, contact_no) VALUES (?, ?)"
+                "INSERT INTO doctors (user_id, contact_no) VALUES (:userId, :contactNo)"
             );
-            $docIns->execute([$newUserId, $contactNo]);
+            $docIns->bindParam(':userId', $newUserId, PDO::PARAM_INT);
+            $docIns->bindParam(':contactNo', $contactNo);
+            $docIns->execute();
             $newDocId = (int)$pdo->lastInsertId();
 
-            $specIns = $pdo->prepare("INSERT INTO doctor_specialty (doctor_id, specialty_id) VALUES (?, ?)");
+            $specIdVar = 0;
+            $specIns = $pdo->prepare("INSERT INTO doctor_specialty (doctor_id, specialty_id) VALUES (:docId, :specId)");
+            $specIns->bindParam(':docId', $newDocId, PDO::PARAM_INT);
+            $specIns->bindParam(':specId', $specIdVar, PDO::PARAM_INT);
             foreach ($specialtyIds as $specialtyId) {
-                $specIns->execute([$newDocId, $specialtyId]);
+                $specIdVar = (int)$specialtyId;
+                $specIns->execute();
             }
         }
 
@@ -322,17 +365,19 @@ function updateUser(PDO $pdo): void {
         "SELECT u.user_id, r.role_name, d.doctor_id FROM users u
          INNER JOIN roles r ON u.role_id = r.role_id
          LEFT JOIN doctors d ON u.user_id = d.user_id
-         WHERE u.user_id = ? AND r.role_name IN ('Doctor', 'Receptionist')"
+         WHERE u.user_id = :userId AND r.role_name IN ('Doctor', 'Receptionist')"
     );
-    $chk->execute([$userId]);
+    $chk->bindParam(':userId', $userId, PDO::PARAM_INT);
+    $chk->execute();
     $existingUser = $chk->fetch();
     if (!$existingUser) {
         send_error('User not found or access denied.', [], 404);
     }
     
     // Check new role
-    $stmt = $pdo->prepare("SELECT role_id, role_name FROM roles WHERE role_id = ? AND role_name IN ('Doctor', 'Receptionist')");
-    $stmt->execute([$roleId]);
+    $stmt = $pdo->prepare("SELECT role_id, role_name FROM roles WHERE role_id = :roleId AND role_name IN ('Doctor', 'Receptionist')");
+    $stmt->bindParam(':roleId', $roleId, PDO::PARAM_INT);
+    $stmt->execute();
     $newRole = $stmt->fetch();
     if (!$newRole) {
         send_error('Validation failed.', ['role_id' => 'Only Doctor or Receptionist roles can be assigned here.'], 422);
@@ -375,8 +420,10 @@ function updateUser(PDO $pdo): void {
 
     // Check unique username for another user
     if ($username !== '') {
-        $uStmt = $pdo->prepare("SELECT 1 FROM users WHERE username = ? AND user_id != ?");
-        $uStmt->execute([$username, $userId]);
+        $uStmt = $pdo->prepare("SELECT 1 FROM users WHERE username = :username AND user_id != :userId");
+        $uStmt->bindParam(':username', $username);
+        $uStmt->bindParam(':userId', $userId, PDO::PARAM_INT);
+        $uStmt->execute();
         if ($uStmt->fetch()) {
             $errors['username'] = 'This username is already taken by another account.';
         }
@@ -393,48 +440,82 @@ function updateUser(PDO $pdo): void {
         if ($password !== '') {
             $hash = password_hash($password, PASSWORD_DEFAULT);
             $upd = $pdo->prepare(
-                "UPDATE users SET role_id = ?, first_name = ?, last_name = ?, middle_initial = ?, gender = ?, username = ?, password_hash = ? WHERE user_id = ?"
+                "UPDATE users SET role_id = :roleId, first_name = :firstName, last_name = :lastName, middle_initial = :middleInitial, gender = :gender, username = :username, password_hash = :hash WHERE user_id = :userId"
             );
-            $upd->execute([$roleId, $firstName, $lastName, $middleInitial, $gender, $username, $hash, $userId]);
+            $upd->bindParam(':roleId', $roleId, PDO::PARAM_INT);
+            $upd->bindParam(':firstName', $firstName);
+            $upd->bindParam(':lastName', $lastName);
+            $upd->bindParam(':middleInitial', $middleInitial);
+            $upd->bindParam(':gender', $gender);
+            $upd->bindParam(':username', $username);
+            $upd->bindParam(':hash', $hash);
+            $upd->bindParam(':userId', $userId, PDO::PARAM_INT);
+            $upd->execute();
         } else {
             $upd = $pdo->prepare(
-                "UPDATE users SET role_id = ?, first_name = ?, last_name = ?, middle_initial = ?, gender = ?, username = ? WHERE user_id = ?"
+                "UPDATE users SET role_id = :roleId, first_name = :firstName, last_name = :lastName, middle_initial = :middleInitial, gender = :gender, username = :username WHERE user_id = :userId"
             );
-            $upd->execute([$roleId, $firstName, $lastName, $middleInitial, $gender, $username, $userId]);
+            $upd->bindParam(':roleId', $roleId, PDO::PARAM_INT);
+            $upd->bindParam(':firstName', $firstName);
+            $upd->bindParam(':lastName', $lastName);
+            $upd->bindParam(':middleInitial', $middleInitial);
+            $upd->bindParam(':gender', $gender);
+            $upd->bindParam(':username', $username);
+            $upd->bindParam(':userId', $userId, PDO::PARAM_INT);
+            $upd->execute();
         }
 
         // Manage Doctor profile
         if ($newRole['role_name'] === 'Doctor') {
             if ($existingUser['doctor_id']) {
+                $existingDocId = (int)$existingUser['doctor_id'];
                 // Update existing doctor profile (identity fields come from users)
                 $updDoc = $pdo->prepare(
-                    "UPDATE doctors SET contact_no = ?, deleted_at = NULL WHERE doctor_id = ?"
+                    "UPDATE doctors SET contact_no = :contactNo, deleted_at = NULL WHERE doctor_id = :docId"
                 );
-                $updDoc->execute([$contactNo, $existingUser['doctor_id']]);
+                $updDoc->bindParam(':contactNo', $contactNo);
+                $updDoc->bindParam(':docId', $existingDocId, PDO::PARAM_INT);
+                $updDoc->execute();
 
                 // Update specialties
-                $pdo->prepare("DELETE FROM doctor_specialty WHERE doctor_id = ?")->execute([$existingUser['doctor_id']]);
-                $specIns = $pdo->prepare("INSERT INTO doctor_specialty (doctor_id, specialty_id) VALUES (?, ?)");
+                $delSpec = $pdo->prepare("DELETE FROM doctor_specialty WHERE doctor_id = :docId");
+                $delSpec->bindParam(':docId', $existingDocId, PDO::PARAM_INT);
+                $delSpec->execute();
+
+                $specIdVar = 0;
+                $specIns = $pdo->prepare("INSERT INTO doctor_specialty (doctor_id, specialty_id) VALUES (:docId, :specId)");
+                $specIns->bindParam(':docId', $existingDocId, PDO::PARAM_INT);
+                $specIns->bindParam(':specId', $specIdVar, PDO::PARAM_INT);
                 foreach ($specialtyIds as $specialtyId) {
-                    $specIns->execute([$existingUser['doctor_id'], $specialtyId]);
+                    $specIdVar = (int)$specialtyId;
+                    $specIns->execute();
                 }
             } else {
                 // Insert new doctor profile if they changed from Receptionist to Doctor
                 $docIns = $pdo->prepare(
-                    "INSERT INTO doctors (user_id, contact_no) VALUES (?, ?)"
+                    "INSERT INTO doctors (user_id, contact_no) VALUES (:userId, :contactNo)"
                 );
-                $docIns->execute([$userId, $contactNo]);
+                $docIns->bindParam(':userId', $userId, PDO::PARAM_INT);
+                $docIns->bindParam(':contactNo', $contactNo);
+                $docIns->execute();
                 $newDocId = (int)$pdo->lastInsertId();
 
-                $specIns = $pdo->prepare("INSERT INTO doctor_specialty (doctor_id, specialty_id) VALUES (?, ?)");
+                $specIdVar = 0;
+                $specIns = $pdo->prepare("INSERT INTO doctor_specialty (doctor_id, specialty_id) VALUES (:docId, :specId)");
+                $specIns->bindParam(':docId', $newDocId, PDO::PARAM_INT);
+                $specIns->bindParam(':specId', $specIdVar, PDO::PARAM_INT);
                 foreach ($specialtyIds as $specialtyId) {
-                    $specIns->execute([$newDocId, $specialtyId]);
+                    $specIdVar = (int)$specialtyId;
+                    $specIns->execute();
                 }
             }
         } else {
             // Changed from Doctor to Receptionist. Soft-delete the doctor profile to prevent orphaned clinical data access.
             if ($existingUser['doctor_id']) {
-                $pdo->prepare("UPDATE doctors SET deleted_at = NOW() WHERE doctor_id = ?")->execute([$existingUser['doctor_id']]);
+                $existingDocId = (int)$existingUser['doctor_id'];
+                $delDoc = $pdo->prepare("UPDATE doctors SET deleted_at = NOW() WHERE doctor_id = :docId");
+                $delDoc->bindParam(':docId', $existingDocId, PDO::PARAM_INT);
+                $delDoc->execute();
             }
         }
 
@@ -458,16 +539,19 @@ function softDeleteUser(PDO $pdo): void {
             "UPDATE users u
              INNER JOIN roles r ON u.role_id = r.role_id
              SET u.deleted_at = NOW()
-             WHERE u.user_id = ? AND r.role_name IN ('Doctor', 'Receptionist') AND u.deleted_at IS NULL"
+             WHERE u.user_id = :userId AND r.role_name IN ('Doctor', 'Receptionist') AND u.deleted_at IS NULL"
         );
-        $stmt->execute([$userId]);
+        $stmt->bindParam(':userId', $userId, PDO::PARAM_INT);
+        $stmt->execute();
 
         if ($stmt->rowCount() === 0) {
             $pdo->rollBack();
             send_error('User not found or already deactivated.', [], 404);
         }
         
-        $pdo->prepare("UPDATE doctors SET deleted_at = NOW() WHERE user_id = ? AND deleted_at IS NULL")->execute([$userId]);
+        $docStmt = $pdo->prepare("UPDATE doctors SET deleted_at = NOW() WHERE user_id = :userId AND deleted_at IS NULL");
+        $docStmt->bindParam(':userId', $userId, PDO::PARAM_INT);
+        $docStmt->execute();
 
         $pdo->commit();
         log_audit($pdo, (int)$_SESSION['user_id'], 'ARCHIVE_USER', 'user', $userId);
@@ -489,16 +573,19 @@ function restoreUser(PDO $pdo): void {
             "UPDATE users u
              INNER JOIN roles r ON u.role_id = r.role_id
              SET u.deleted_at = NULL
-             WHERE u.user_id = ? AND r.role_name IN ('Doctor', 'Receptionist') AND u.deleted_at IS NOT NULL"
+             WHERE u.user_id = :userId AND r.role_name IN ('Doctor', 'Receptionist') AND u.deleted_at IS NOT NULL"
         );
-        $stmt->execute([$userId]);
+        $stmt->bindParam(':userId', $userId, PDO::PARAM_INT);
+        $stmt->execute();
 
         if ($stmt->rowCount() === 0) {
             $pdo->rollBack();
             send_error('User not found or already active.', [], 404);
         }
 
-        $pdo->prepare("UPDATE doctors SET deleted_at = NULL WHERE user_id = ? AND deleted_at IS NOT NULL")->execute([$userId]);
+        $docStmt = $pdo->prepare("UPDATE doctors SET deleted_at = NULL WHERE user_id = :userId AND deleted_at IS NOT NULL");
+        $docStmt->bindParam(':userId', $userId, PDO::PARAM_INT);
+        $docStmt->execute();
 
         $pdo->commit();
         log_audit($pdo, (int)$_SESSION['user_id'], 'RESTORE_USER', 'user', $userId);
@@ -519,16 +606,22 @@ function hardDeleteUser(PDO $pdo): void {
         $chk = $pdo->prepare(
             "SELECT u.user_id FROM users u
              INNER JOIN roles r ON u.role_id = r.role_id
-             WHERE u.user_id = ? AND r.role_name IN ('Doctor', 'Receptionist')"
+             WHERE u.user_id = :userId AND r.role_name IN ('Doctor', 'Receptionist')"
         );
-        $chk->execute([$userId]);
+        $chk->bindParam(':userId', $userId, PDO::PARAM_INT);
+        $chk->execute();
         if (!$chk->fetch()) {
             $pdo->rollBack();
             send_error('User not found.', [], 404);
         }
 
-        $pdo->prepare("DELETE FROM doctors WHERE user_id = ?")->execute([$userId]);
-        $pdo->prepare("DELETE FROM users WHERE user_id = ?")->execute([$userId]);
+        $delDoc = $pdo->prepare("DELETE FROM doctors WHERE user_id = :userId");
+        $delDoc->bindParam(':userId', $userId, PDO::PARAM_INT);
+        $delDoc->execute();
+
+        $delUser = $pdo->prepare("DELETE FROM users WHERE user_id = :userId");
+        $delUser->bindParam(':userId', $userId, PDO::PARAM_INT);
+        $delUser->execute();
 
         $pdo->commit();
         log_audit($pdo, (int)$_SESSION['user_id'], 'PURGE_USER', 'user', $userId);

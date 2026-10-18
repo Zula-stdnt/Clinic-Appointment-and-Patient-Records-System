@@ -4,7 +4,7 @@
 // Read (GET) is available to Administrators and Doctors (prescription picker);
 // create/update/archive/restore/hard-delete are Administrator-only.
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_records,
-// mysql_insert_records & mysql_update_records (Prepared PDO CRUD for medication master records)
+// mysql_insert_records & mysql_update_records (Prepared PDO CRUD with bindParam and switch($operation) for medication master records)
 
 require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';
@@ -14,41 +14,63 @@ require_login();
 verify_csrf_on_state_change();
 
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
-$action = $_GET['action'] ?? null;
+$action = $_REQUEST['operation'] ?? $_GET['action'] ?? null;
+
+if (!in_array($method, ['GET', 'POST', 'PUT', 'DELETE'], true)) {
+    send_error('Method not allowed.', [], 405);
+}
+
+if ($method === 'GET') {
+    $operation = $action ?: (isset($_GET['id']) ? 'getMedication' : 'getAllMedications');
+} elseif ($method === 'POST') {
+    $operation = $action ?: 'createMedication';
+} elseif ($method === 'PUT') {
+    $operation = $action ?: 'updateMedication';
+} else {
+    $operation = 'hardDeleteMedication';
+}
 
 try {
-    if ($method === 'GET') {
-        require_role(['Administrator', 'Doctor']);
-        if (isset($_GET['id'])) {
-            getMedicationById($pdo, (int)$_GET['id']);
-        } else {
+    switch ($operation) {
+        case 'getAllMedications':
+        case 'list':
+            require_role(['Administrator', 'Doctor']);
             listMedications($pdo);
-        }
-    } elseif ($method === 'POST') {
-        require_role('Administrator');
-        if ($action === 'soft_delete') {
-            softDeleteMedication($pdo);
-        } elseif ($action === 'restore') {
-            restoreMedication($pdo);
-        } elseif ($action === 'hard_delete') {
-            hardDeleteMedication($pdo);
-        } else {
+            break;
+        case 'getMedication':
+        case 'get':
+            require_role(['Administrator', 'Doctor']);
+            getMedicationById($pdo, (int)($_GET['id'] ?? 0));
+            break;
+        case 'createMedication':
+        case 'create':
+            require_role('Administrator');
             createMedication($pdo);
-        }
-    } elseif ($method === 'PUT') {
-        require_role('Administrator');
-        if ($action === 'soft_delete') {
-            softDeleteMedication($pdo);
-        } elseif ($action === 'restore') {
-            restoreMedication($pdo);
-        } else {
+            break;
+        case 'updateMedication':
+        case 'update':
+            require_role('Administrator');
             updateMedication($pdo);
-        }
-    } elseif ($method === 'DELETE') {
-        require_role('Administrator');
-        hardDeleteMedication($pdo);
-    } else {
-        send_error('Method not allowed.', [], 405);
+            break;
+        case 'soft_delete':
+        case 'softDeleteMedication':
+        case 'archiveMedication':
+            require_role('Administrator');
+            softDeleteMedication($pdo);
+            break;
+        case 'restore':
+        case 'restoreMedication':
+            require_role('Administrator');
+            restoreMedication($pdo);
+            break;
+        case 'hard_delete':
+        case 'hardDeleteMedication':
+        case 'deleteMedication':
+            require_role('Administrator');
+            hardDeleteMedication($pdo);
+            break;
+        default:
+            send_error('Invalid operation.', [], 400);
     }
 } catch (PDOException $e) {
     error_log("Database Error in medication_controller.php: " . $e->getMessage());
@@ -92,9 +114,10 @@ function listMedications(PDO $pdo): void {
     $sortOrder = strtoupper($_GET['sort_order'] ?? 'ASC') === 'DESC' ? 'DESC' : 'ASC';
 
     $countStmt = $pdo->prepare("SELECT COUNT(*) FROM medications WHERE {$whereSql}");
-    foreach ($params as $k => $v) {
-        $countStmt->bindValue($k, $v);
+    foreach ($params as $k => &$v) {
+        $countStmt->bindParam($k, $v);
     }
+    unset($v);
     $countStmt->execute();
     $total = (int)$countStmt->fetchColumn();
 
@@ -104,11 +127,12 @@ function listMedications(PDO $pdo): void {
             ORDER BY {$sortBy} {$sortOrder}
             LIMIT :limit OFFSET :offset";
     $stmt = $pdo->prepare($sql);
-    foreach ($params as $k => $v) {
-        $stmt->bindValue($k, $v);
+    foreach ($params as $k => &$v) {
+        $stmt->bindParam($k, $v);
     }
-    $stmt->bindValue(':limit', $pageSize, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    unset($v);
+    $stmt->bindParam(':limit', $pageSize, PDO::PARAM_INT);
+    $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
     $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
@@ -123,8 +147,9 @@ function listMedications(PDO $pdo): void {
 
 function getMedicationById(PDO $pdo, int $id): void {
     $stmt = $pdo->prepare("SELECT medication_id, name, generic_name, manufacturer, created_at, updated_at, deleted_at
-                           FROM medications WHERE medication_id = ? AND deleted_at IS NULL LIMIT 1");
-    $stmt->execute([$id]);
+                           FROM medications WHERE medication_id = :id AND deleted_at IS NULL LIMIT 1");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
     $med = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$med) {
@@ -145,14 +170,16 @@ function validateMedicationInput(PDO $pdo, array $input, ?int $ignoreId = null):
     } elseif (strlen($name) > 150) {
         $errors['name'] = 'Medication name cannot exceed 150 characters.';
     } else {
-        $sql = "SELECT 1 FROM medications WHERE name = ?";
-        $params = [$name];
+        $sql = "SELECT 1 FROM medications WHERE name = :name";
         if ($ignoreId !== null) {
-            $sql .= " AND medication_id != ?";
-            $params[] = $ignoreId;
+            $sql .= " AND medication_id != :ignoreId";
         }
         $chk = $pdo->prepare($sql);
-        $chk->execute($params);
+        $chk->bindParam(':name', $name);
+        if ($ignoreId !== null) {
+            $chk->bindParam(':ignoreId', $ignoreId, PDO::PARAM_INT);
+        }
+        $chk->execute();
         if ($chk->fetch()) {
             $errors['name'] = 'A medication with this name already exists.';
         }
@@ -179,12 +206,15 @@ function createMedication(PDO $pdo): void {
         send_error('Validation failed.', $errors, 422);
     }
 
-    $stmt = $pdo->prepare("INSERT INTO medications (name, generic_name, manufacturer) VALUES (?, ?, ?)");
-    $stmt->execute([
-        trim($input['name']),
-        trim($input['generic_name'] ?? '') ?: null,
-        trim($input['manufacturer'] ?? '') ?: null
-    ]);
+    $name = trim($input['name']);
+    $genericName = trim($input['generic_name'] ?? '') ?: null;
+    $manufacturer = trim($input['manufacturer'] ?? '') ?: null;
+
+    $stmt = $pdo->prepare("INSERT INTO medications (name, generic_name, manufacturer) VALUES (:name, :genericName, :manufacturer)");
+    $stmt->bindParam(':name', $name);
+    $stmt->bindParam(':genericName', $genericName);
+    $stmt->bindParam(':manufacturer', $manufacturer);
+    $stmt->execute();
 
     send_success('Medication created successfully.', ['medication_id' => (int)$pdo->lastInsertId()], 201);
 }
@@ -196,8 +226,9 @@ function updateMedication(PDO $pdo): void {
     }
 
     $id = (int)($_GET['id'] ?? ($input['medication_id'] ?? 0));
-    $chk = $pdo->prepare("SELECT medication_id FROM medications WHERE medication_id = ?");
-    $chk->execute([$id]);
+    $chk = $pdo->prepare("SELECT medication_id FROM medications WHERE medication_id = :id");
+    $chk->bindParam(':id', $id, PDO::PARAM_INT);
+    $chk->execute();
     if (!$chk->fetch()) {
         send_error('Medication not found.', [], 404);
     }
@@ -207,13 +238,16 @@ function updateMedication(PDO $pdo): void {
         send_error('Validation failed.', $errors, 422);
     }
 
-    $stmt = $pdo->prepare("UPDATE medications SET name = ?, generic_name = ?, manufacturer = ? WHERE medication_id = ?");
-    $stmt->execute([
-        trim($input['name']),
-        trim($input['generic_name'] ?? '') ?: null,
-        trim($input['manufacturer'] ?? '') ?: null,
-        $id
-    ]);
+    $name = trim($input['name']);
+    $genericName = trim($input['generic_name'] ?? '') ?: null;
+    $manufacturer = trim($input['manufacturer'] ?? '') ?: null;
+
+    $stmt = $pdo->prepare("UPDATE medications SET name = :name, generic_name = :genericName, manufacturer = :manufacturer WHERE medication_id = :id");
+    $stmt->bindParam(':name', $name);
+    $stmt->bindParam(':genericName', $genericName);
+    $stmt->bindParam(':manufacturer', $manufacturer);
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
 
     send_success('Medication updated successfully.');
 }
@@ -222,8 +256,9 @@ function softDeleteMedication(PDO $pdo): void {
     $input = get_json_input();
     $id = (int)($_GET['id'] ?? ($input['medication_id'] ?? 0));
 
-    $stmt = $pdo->prepare("UPDATE medications SET deleted_at = NOW() WHERE medication_id = ? AND deleted_at IS NULL");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("UPDATE medications SET deleted_at = NOW() WHERE medication_id = :id AND deleted_at IS NULL");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
 
     if ($stmt->rowCount() === 0) {
         send_error('Medication not found or already archived.', [], 404);
@@ -236,8 +271,9 @@ function restoreMedication(PDO $pdo): void {
     $input = get_json_input();
     $id = (int)($_GET['id'] ?? ($input['medication_id'] ?? 0));
 
-    $stmt = $pdo->prepare("UPDATE medications SET deleted_at = NULL WHERE medication_id = ? AND deleted_at IS NOT NULL");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("UPDATE medications SET deleted_at = NULL WHERE medication_id = :id AND deleted_at IS NOT NULL");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
 
     if ($stmt->rowCount() === 0) {
         send_error('Medication not found or already active.', [], 404);
@@ -250,8 +286,9 @@ function hardDeleteMedication(PDO $pdo): void {
     $input = get_json_input();
     $id = (int)($_GET['id'] ?? ($input['medication_id'] ?? 0));
 
-    $stmt = $pdo->prepare("DELETE FROM medications WHERE medication_id = ?");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("DELETE FROM medications WHERE medication_id = :id");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
 
     if ($stmt->rowCount() === 0) {
         send_error('Medication not found.', [], 404);

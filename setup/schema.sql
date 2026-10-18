@@ -40,6 +40,13 @@ CREATE TABLE `consultation` (
   CONSTRAINT `fk_consultation_appointment` FOREIGN KEY (`appointment_id`) REFERENCES `appointments` (`appointment_id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE `icd10_codes` (
+  `code` varchar(20) NOT NULL,
+  `description` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE `diagnosis` (
   `diagnosis_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
   `consultation_id` int(10) unsigned NOT NULL,
@@ -50,7 +57,9 @@ CREATE TABLE `diagnosis` (
   `updated_at` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   PRIMARY KEY (`diagnosis_id`),
   KEY `fk_diagnosis_consultation` (`consultation_id`),
-  CONSTRAINT `fk_diagnosis_consultation` FOREIGN KEY (`consultation_id`) REFERENCES `consultation` (`consultation_id`) ON DELETE CASCADE ON UPDATE CASCADE
+  KEY `fk_diagnosis_icd10` (`icd10_code`),
+  CONSTRAINT `fk_diagnosis_consultation` FOREIGN KEY (`consultation_id`) REFERENCES `consultation` (`consultation_id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  CONSTRAINT `fk_diagnosis_icd10` FOREIGN KEY (`icd10_code`) REFERENCES `icd10_codes` (`code`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `doctor_specialty` (
@@ -115,6 +124,18 @@ CREATE TABLE `patients` (
   `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`patient_id`)
 ) ENGINE=InnoDB  DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `patient_allergies` (
+  `allergy_id` int(10) unsigned NOT NULL AUTO_INCREMENT,
+  `patient_id` int(10) unsigned NOT NULL,
+  `allergen_name` varchar(150) NOT NULL,
+  `severity` enum('mild','moderate','severe','unknown') NOT NULL DEFAULT 'unknown',
+  `notes` text DEFAULT NULL,
+  `created_at` timestamp NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`allergy_id`),
+  KEY `idx_patient_allergy` (`patient_id`),
+  CONSTRAINT `fk_patient_allergies_patient` FOREIGN KEY (`patient_id`) REFERENCES `patients` (`patient_id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 CREATE TABLE `prescriptions` (
   `prescription_id` int(10) unsigned NOT NULL AUTO_INCREMENT,

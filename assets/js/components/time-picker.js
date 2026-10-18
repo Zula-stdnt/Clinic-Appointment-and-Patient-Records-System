@@ -111,11 +111,11 @@ export class TimePicker {
 
     _buildDom() {
         this.root = document.createElement('div');
-        this.root.className = 'time-picker';
+        this.root.classList.add('time-picker');
 
         this.control = document.createElement('button');
         this.control.type = 'button';
-        this.control.className = 'form-control time-picker-control';
+        this.control.classList.add('form-control', 'time-picker-control');
         this.control.id = this.inputId;
         this.control.setAttribute('aria-haspopup', 'true');
         this.control.setAttribute('aria-expanded', 'false');
@@ -131,7 +131,7 @@ export class TimePicker {
         this.root.appendChild(this.control);
 
         this.menu = document.createElement('div');
-        this.menu.className = 'time-picker-menu';
+        this.menu.classList.add('time-picker-menu');
         this.menu.id = `${this.inputId}-menu`;
         this.menu.hidden = true;
 

@@ -1,7 +1,7 @@
 <?php
 // api/service_controller.php
 // Master-file CRUD for services
-// ITE 387 Lessons applied: 04 Database Design/database_normalization & 03 APIs and Database Operations/mysql_retrieve_records (Normalized service lookup entity with prepared PDO CRUD)
+// ITE 387 Lessons applied: 04 Database Design/database_normalization & 03 APIs and Database Operations/mysql_retrieve_records (Normalized service lookup entity with prepared PDO bindParam CRUD and switch($operation))
 
 require_once __DIR__ . '/../config/db_connect.php';
 require_once __DIR__ . '/../includes/response.php';
@@ -12,37 +12,56 @@ require_role('Administrator');
 verify_csrf_on_state_change();
 
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
-$action = $_GET['action'] ?? null;
+$action = $_REQUEST['operation'] ?? $_GET['action'] ?? null;
+
+if (!in_array($method, ['GET', 'POST', 'PUT', 'DELETE'], true)) {
+    send_error('Method not allowed.', [], 405);
+}
+
+if ($method === 'GET') {
+    $operation = $action ?: (isset($_GET['id']) ? 'getService' : 'getAllServices');
+} elseif ($method === 'POST') {
+    $operation = $action ?: 'createService';
+} elseif ($method === 'PUT') {
+    $operation = $action ?: 'updateService';
+} else {
+    $operation = 'hardDeleteService';
+}
 
 try {
-    if ($method === 'GET') {
-        if (isset($_GET['id'])) {
-            getServiceById($pdo, (int)$_GET['id']);
-        } else {
+    switch ($operation) {
+        case 'getAllServices':
+        case 'list':
             listServices($pdo);
-        }
-    } elseif ($method === 'POST') {
-        if ($action === 'soft_delete') {
-            softDeleteService($pdo);
-        } elseif ($action === 'restore') {
-            restoreService($pdo);
-        } elseif ($action === 'hard_delete') {
-            hardDeleteService($pdo);
-        } else {
+            break;
+        case 'getService':
+        case 'get':
+            getServiceById($pdo, (int)($_GET['id'] ?? 0));
+            break;
+        case 'createService':
+        case 'create':
             createService($pdo);
-        }
-    } elseif ($method === 'PUT') {
-        if ($action === 'soft_delete') {
-            softDeleteService($pdo);
-        } elseif ($action === 'restore') {
-            restoreService($pdo);
-        } else {
+            break;
+        case 'updateService':
+        case 'update':
             updateService($pdo);
-        }
-    } elseif ($method === 'DELETE') {
-        hardDeleteService($pdo);
-    } else {
-        send_error('Method not allowed.', [], 405);
+            break;
+        case 'soft_delete':
+        case 'softDeleteService':
+        case 'archiveService':
+            softDeleteService($pdo);
+            break;
+        case 'restore':
+        case 'restoreService':
+            restoreService($pdo);
+            break;
+        case 'hard_delete':
+        case 'hardDeleteService':
+        case 'deleteService':
+            hardDeleteService($pdo);
+            break;
+        default:
+            send_error('Invalid operation.', [], 400);
     }
 } catch (PDOException $e) {
     error_log('service controller DB error: ' . $e->getMessage());
@@ -82,9 +101,10 @@ function listServices(PDO $pdo): void {
 
     $countSql = "SELECT COUNT(*) FROM services WHERE {$whereSql}";
     $countStmt = $pdo->prepare($countSql);
-    foreach ($params as $k => $v) {
-        $countStmt->bindValue($k, $v);
+    foreach ($params as $k => &$v) {
+        $countStmt->bindParam($k, $v);
     }
+    unset($v);
     $countStmt->execute();
     $total = (int)$countStmt->fetchColumn();
 
@@ -95,11 +115,12 @@ function listServices(PDO $pdo): void {
                 LIMIT :limit OFFSET :offset";
 
     $stmt = $pdo->prepare($dataSql);
-    foreach ($params as $k => $v) {
-        $stmt->bindValue($k, $v);
+    foreach ($params as $k => &$v) {
+        $stmt->bindParam($k, $v);
     }
-    $stmt->bindValue(':limit', $pageSize, PDO::PARAM_INT);
-    $stmt->bindValue(':offset', $offset, PDO::PARAM_INT);
+    unset($v);
+    $stmt->bindParam(':limit', $pageSize, PDO::PARAM_INT);
+    $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
     $stmt->execute();
     $items = $stmt->fetchAll();
 
@@ -113,8 +134,9 @@ function listServices(PDO $pdo): void {
 }
 
 function getServiceById(PDO $pdo, int $id): void {
-    $stmt = $pdo->prepare("SELECT service_id, service_name, created_at, updated_at, deleted_at FROM services WHERE service_id = ? LIMIT 1");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("SELECT service_id, service_name, created_at, updated_at, deleted_at FROM services WHERE service_id = :id LIMIT 1");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
     $service = $stmt->fetch();
 
     if (!$service) {
@@ -133,14 +155,16 @@ function validateserviceInput(PDO $pdo, array $input, ?int $ignoreId = null): ar
     } elseif (strlen($name) > 100) {
         $errors['service_name'] = 'service name cannot exceed 100 characters.';
     } else {
-        $sql = "SELECT 1 FROM services WHERE service_name = ?";
-        $params = [$name];
+        $sql = "SELECT 1 FROM services WHERE service_name = :name";
         if ($ignoreId !== null) {
-            $sql .= " AND service_id != ?";
-            $params[] = $ignoreId;
+            $sql .= " AND service_id != :ignoreId";
         }
         $chk = $pdo->prepare($sql);
-        $chk->execute($params);
+        $chk->bindParam(':name', $name);
+        if ($ignoreId !== null) {
+            $chk->bindParam(':ignoreId', $ignoreId, PDO::PARAM_INT);
+        }
+        $chk->execute();
         if ($chk->fetch()) {
             $errors['service_name'] = 'A service with this name already exists.';
         }
@@ -160,8 +184,10 @@ function createService(PDO $pdo): void {
         send_error('Validation failed.', $errors, 422);
     }
 
-    $stmt = $pdo->prepare("INSERT INTO services (service_name) VALUES (?)");
-    $stmt->execute([trim($input['service_name'])]);
+    $serviceName = trim($input['service_name']);
+    $stmt = $pdo->prepare("INSERT INTO services (service_name) VALUES (:serviceName)");
+    $stmt->bindParam(':serviceName', $serviceName);
+    $stmt->execute();
 
     $newId = (int)$pdo->lastInsertId();
     send_success('service created successfully.', ['service_id' => $newId], 201);
@@ -174,8 +200,9 @@ function updateService(PDO $pdo): void {
     }
 
     $id = (int)($_GET['id'] ?? ($input['service_id'] ?? 0));
-    $chk = $pdo->prepare("SELECT service_id FROM services WHERE service_id = ?");
-    $chk->execute([$id]);
+    $chk = $pdo->prepare("SELECT service_id FROM services WHERE service_id = :id");
+    $chk->bindParam(':id', $id, PDO::PARAM_INT);
+    $chk->execute();
     if (!$chk->fetch()) {
         send_error('service not found.', [], 404);
     }
@@ -185,11 +212,11 @@ function updateService(PDO $pdo): void {
         send_error('Validation failed.', $errors, 422);
     }
 
-    $stmt = $pdo->prepare("UPDATE services SET service_name = ? WHERE service_id = ?");
-    $stmt->execute([
-        trim($input['service_name']),
-        $id
-    ]);
+    $serviceName = trim($input['service_name']);
+    $stmt = $pdo->prepare("UPDATE services SET service_name = :serviceName WHERE service_id = :id");
+    $stmt->bindParam(':serviceName', $serviceName);
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
 
     send_success('service updated successfully.');
 }
@@ -198,8 +225,9 @@ function softDeleteService(PDO $pdo): void {
     $input = get_json_input();
     $id = (int)($_GET['id'] ?? ($input['service_id'] ?? 0));
 
-    $stmt = $pdo->prepare("UPDATE services SET deleted_at = NOW() WHERE service_id = ? AND deleted_at IS NULL");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("UPDATE services SET deleted_at = NOW() WHERE service_id = :id AND deleted_at IS NULL");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
 
     if ($stmt->rowCount() === 0) {
         send_error('service not found or already deactivated.', [], 404);
@@ -212,8 +240,9 @@ function restoreService(PDO $pdo): void {
     $input = get_json_input();
     $id = (int)($_GET['id'] ?? ($input['service_id'] ?? 0));
 
-    $stmt = $pdo->prepare("UPDATE services SET deleted_at = NULL WHERE service_id = ? AND deleted_at IS NOT NULL");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("UPDATE services SET deleted_at = NULL WHERE service_id = :id AND deleted_at IS NOT NULL");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
 
     if ($stmt->rowCount() === 0) {
         send_error('service not found or already active.', [], 404);
@@ -226,8 +255,9 @@ function hardDeleteService(PDO $pdo): void {
     $input = get_json_input();
     $id = (int)($_GET['id'] ?? ($input['service_id'] ?? 0));
 
-    $stmt = $pdo->prepare("DELETE FROM services WHERE service_id = ?");
-    $stmt->execute([$id]);
+    $stmt = $pdo->prepare("DELETE FROM services WHERE service_id = :id");
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
+    $stmt->execute();
 
     if ($stmt->rowCount() === 0) {
         send_error('service not found.', [], 404);

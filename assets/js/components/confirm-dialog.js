@@ -1,18 +1,18 @@
-﻿// assets/js/components/confirm-dialog.js
+// assets/js/components/confirm-dialog.js
 // Reusable confirmation dialog for destructive or irreversible actions.
 // Built on the shared modal styles and ui.js open/close helpers.
 // ITE 387 Lessons applied: 02 DOM and UI/dom_create_and_remove_elements (dialog created
 // on demand and reused) & dom_apply_styles (existing modal classes)
 
-import { escapeHtml, openModal, closeModal } from '../ui.js?v=26';
+import { escapeHtml, openModal, closeModal, setButtonClassList } from '../ui.js?v=26';
 
 let modalEl = null;
 
-function ensureModal() {
+const ensureModal = () => {
     if (modalEl) return modalEl;
 
     modalEl = document.createElement('div');
-    modalEl.className = 'modal';
+    modalEl.classList.add('modal');
     modalEl.id = 'shared-confirm-modal';
     modalEl.setAttribute('tabindex', '-1');
     modalEl.setAttribute('aria-hidden', 'true');
@@ -40,9 +40,9 @@ function ensureModal() {
     });
 
     return modalEl;
-}
+};
 
-export function confirmDialog(options = {}) {
+export const confirmDialog = (options = {}) => {
     const modal = ensureModal();
     const title = options.title || 'Confirm Action';
     const message = options.message || 'Are you sure?';
@@ -60,7 +60,7 @@ export function confirmDialog(options = {}) {
     if (cancelBtn) cancelBtn.textContent = cancelText;
 
     const confirmBtn = modal.querySelector('#shared-confirm-btn');
-    confirmBtn.className = confirmClass;
+    setButtonClassList(confirmBtn, confirmClass);
     confirmBtn.textContent = confirmText;
     confirmBtn.disabled = false;
     confirmBtn.onclick = async () => {

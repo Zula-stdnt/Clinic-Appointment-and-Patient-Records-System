@@ -10,7 +10,9 @@ require_once __DIR__ . '/../includes/response.php';
 header('Content-Type: application/json; charset=utf-8');
 
 // Strict Access Control: only Administrator can view system audit trails
+require_login();
 require_role('Administrator');
+verify_csrf_on_state_change();
 
 $method = strtoupper($_SERVER['REQUEST_METHOD'] ?? 'GET');
 

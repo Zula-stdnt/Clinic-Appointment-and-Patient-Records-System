@@ -20,17 +20,17 @@ export const APPOINTMENT_STATUS_MAP = {
     no_show: 'No Show'
 };
 
-export function formatStatusLabel(status) {
+export const formatStatusLabel = (status) => {
     if (!status) return '';
     const s = String(status).trim().toLowerCase();
     if (APPOINTMENT_STATUS_MAP[s]) {
         return APPOINTMENT_STATUS_MAP[s];
     }
     return s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
+};
 
 // Secure HTML escaping to prevent Cross-Site Scripting (XSS)
-export function escapeHtml(str) {
+export const escapeHtml = (str) => {
     if (str === null || str === undefined) {
         return '';
     }
@@ -40,7 +40,7 @@ export function escapeHtml(str) {
         .replace(/>/g, '&gt;')
         .replace(/"/g, '&quot;')
         .replace(/'/g, '&#039;');
-}
+};
 
 // ---------------------------------------------------------------------------
 // Inline SVG icons (stroke-based, 24x24 viewBox)
@@ -67,19 +67,19 @@ const TOAST_TONES = {
     info: { tone: 'info', title: 'Notice', icon: ICONS.info }
 };
 
-export function showToast(message, type = 'success', duration = 4000) {
+export const showToast = (message, type = 'success', duration = 4000) => {
     let container = document.getElementById('toast-container');
     if (!container) {
         container = document.createElement('div');
         container.id = 'toast-container';
-        container.className = 'toast-container';
+        container.classList.add('toast-container');
         document.body.appendChild(container);
     }
 
     const meta = TOAST_TONES[type] || TOAST_TONES.info;
 
     const toastEl = document.createElement('div');
-    toastEl.className = `toast toast-${meta.tone}`;
+    toastEl.classList.add('toast', `toast-${meta.tone}`);
     toastEl.setAttribute('role', 'alert');
     toastEl.setAttribute('aria-live', 'assertive');
     toastEl.setAttribute('aria-atomic', 'true');
@@ -100,9 +100,9 @@ export function showToast(message, type = 'success', duration = 4000) {
 
     const timer = setTimeout(() => removeToast(toastEl), duration);
     toastEl._removeTimer = timer;
-}
+};
 
-function removeToast(el) {
+const removeToast = (el) => {
     if (!el || el._removing) return;
     el._removing = true;
     clearTimeout(el._removeTimer);
@@ -112,7 +112,7 @@ function removeToast(el) {
             el.parentNode.removeChild(el);
         }
     }, 300);
-}
+};
 
 // ---------------------------------------------------------------------------
 // Modals
@@ -121,11 +121,9 @@ function removeToast(el) {
 let activeModal = null;
 let previousActiveElement = null;
 
-function resolveModal(modalId) {
-    return typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
-}
+const resolveModal = (modalId) => typeof modalId === 'string' ? document.getElementById(modalId) : modalId;
 
-export function openModal(modalId) {
+export const openModal = (modalId) => {
     const modal = resolveModal(modalId);
     if (!modal || modal.classList.contains('show')) return;
 
@@ -146,9 +144,9 @@ export function openModal(modalId) {
     });
 
     modal.addEventListener('keydown', handleModalKeydown);
-}
+};
 
-export function closeModal(modalId, force = false) {
+export const closeModal = (modalId, force = false) => {
     const modal = resolveModal(modalId) || window.__cprms_active_modal || activeModal || document.querySelector('.modal.show');
     if (!modal) return;
 
@@ -178,21 +176,19 @@ export function closeModal(modalId, force = false) {
         previousActiveElement.focus();
     }
     previousActiveElement = null;
-}
+};
 
 // Close every open modal. Safe to call before re-rendering a module view.
-export function hideAllModals() {
+export const hideAllModals = () => {
     document.querySelectorAll('.modal.show').forEach(modal => closeModal(modal));
     document.body.classList.remove('modal-open');
-}
+};
 
-function getFocusableElements(container) {
-    return Array.from(container.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    )).filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null);
-}
+const getFocusableElements = (container) => Array.from(container.querySelectorAll(
+    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+)).filter(el => !el.hasAttribute('disabled') && el.offsetParent !== null);
 
-function handleModalKeydown(e) {
+const handleModalKeydown = (e) => {
     if (!activeModal) return;
 
     if (e.key === 'Escape') {
@@ -220,13 +216,86 @@ function handleModalKeydown(e) {
             }
         }
     }
-}
+};
+
+// Helper to set button class list safely via classList API
+export const setButtonClassList = (btn, classStr) => {
+    if (!btn) return;
+    Array.from(btn.classList).forEach(cls => {
+        if (cls !== 'btn') btn.classList.remove(cls);
+    });
+    btn.classList.add('btn');
+    (classStr || '').split(/\s+/).forEach(cls => {
+        if (cls) btn.classList.add(cls);
+    });
+};
+
+// ---------------------------------------------------------------------------
+// Course-Standard Reusable Blank Modal Pattern (mysql_retrieve_specific_record.md)
+// ---------------------------------------------------------------------------
+
+export const openBlankModal = ({ title, bodyHtml, footerButtons = [] }) => {
+    let modal = document.getElementById('blank-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'blank-modal';
+        modal.classList.add('modal');
+        modal.setAttribute('tabindex', '-1');
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-modal', 'true');
+        modal.setAttribute('aria-hidden', 'true');
+        modal.innerHTML = `
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 class="modal-title" id="blank-modal-title"></h3>
+                        <button type="button" class="btn-close" data-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="blank-modal-body"></div>
+                    <div class="modal-footer" id="blank-modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+
+    const titleEl = modal.querySelector('#blank-modal-title');
+    const bodyEl = modal.querySelector('#blank-modal-body');
+    const footerEl = modal.querySelector('#blank-modal-footer');
+
+    if (titleEl) titleEl.textContent = title || '';
+    if (bodyEl) bodyEl.innerHTML = bodyHtml || '';
+
+    if (footerEl && Array.isArray(footerButtons) && footerButtons.length > 0) {
+        footerEl.innerHTML = '';
+        footerButtons.forEach(btnConfig => {
+            const btn = document.createElement('button');
+            btn.type = btnConfig.type || 'button';
+            setButtonClassList(btn, btnConfig.btnClass || 'btn-secondary');
+            btn.textContent = btnConfig.text || 'Button';
+            if (btnConfig.dismiss) {
+                btn.setAttribute('data-dismiss', 'modal');
+            }
+            if (typeof btnConfig.onClick === 'function') {
+                btn.addEventListener('click', (e) => btnConfig.onClick(e, modal));
+            }
+            footerEl.appendChild(btn);
+        });
+    } else if (footerEl) {
+        footerEl.innerHTML = '<button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>';
+    }
+
+    openModal(modal);
+    return modal;
+};
 
 // ---------------------------------------------------------------------------
 // Confirmation Dialogs: Action, Soft Delete (Archive), Restore, and Hard Delete
 // ---------------------------------------------------------------------------
 
-function bindConfirmAction(modal, confirmBtn, onConfirm) {
+const bindConfirmAction = (modal, confirmBtn, onConfirm) => {
     const cleanClone = confirmBtn.cloneNode(true);
     confirmBtn.parentNode.replaceChild(cleanClone, confirmBtn);
 
@@ -241,9 +310,9 @@ function bindConfirmAction(modal, confirmBtn, onConfirm) {
     });
 
     return cleanClone;
-}
+};
 
-export function confirmAction({ title, message, btnText = 'Confirm', btnClass = 'btn btn-primary', cancelBtnText = 'Cancel', cancelBtnClass = 'btn btn-secondary', onConfirm }) {
+export const confirmAction = ({ title, message, btnText = 'Confirm', btnClass = 'btn btn-primary', cancelBtnText = 'Cancel', cancelBtnClass = 'btn btn-secondary', onConfirm }) => {
     const modal = document.getElementById('global-confirm-modal');
     if (!modal) return;
 
@@ -255,26 +324,24 @@ export function confirmAction({ title, message, btnText = 'Confirm', btnClass = 
     modalTitle.textContent = title || 'Confirm Action';
     modalBody.innerHTML = `<p class="mb-0">${escapeHtml(message)}</p>`;
 
-    confirmBtn.className = btnClass;
+    setButtonClassList(confirmBtn, btnClass);
     confirmBtn.textContent = btnText;
     confirmBtn.disabled = false;
 
     if (cancelBtn) {
-        // Prevent ambiguous "Double Cancel" buttons: if the action button is "Cancel" or "Cancel Appointment"
-        // and cancelBtnText was not explicitly customized away from "Cancel", default dismissal to "Close".
         let resolvedCancelText = cancelBtnText;
         if (resolvedCancelText === 'Cancel' && (/^cancel/i.test(btnText.trim()) || btnText.trim().toLowerCase() === 'cancel')) {
             resolvedCancelText = 'Close';
         }
         cancelBtn.textContent = resolvedCancelText || 'Cancel';
-        cancelBtn.className = cancelBtnClass || 'btn btn-secondary';
+        setButtonClassList(cancelBtn, cancelBtnClass || 'btn btn-secondary');
     }
 
     bindConfirmAction(modal, confirmBtn, onConfirm);
     openModal(modal);
-}
+};
 
-export function confirmSoftDelete({ title, message, itemName, btnText = 'Archive Record', btnClass = 'btn btn-warning', cancelBtnText = 'Cancel', onConfirm }) {
+export const confirmSoftDelete = ({ title, message, itemName, btnText = 'Archive Record', btnClass = 'btn btn-warning', cancelBtnText = 'Cancel', onConfirm }) => {
     const modal = document.getElementById('global-confirm-modal');
     if (!modal) return;
 
@@ -291,20 +358,20 @@ export function confirmSoftDelete({ title, message, itemName, btnText = 'Archive
         <p class="mb-0">${escapeHtml(message || `Are you sure you want to archive "${itemName}"?`)}</p>
     `;
 
-    confirmBtn.className = btnClass;
+    setButtonClassList(confirmBtn, btnClass);
     confirmBtn.textContent = btnText;
     confirmBtn.disabled = false;
 
     if (cancelBtn) {
         cancelBtn.textContent = cancelBtnText || 'Cancel';
-        cancelBtn.className = 'btn btn-secondary';
+        setButtonClassList(cancelBtn, 'btn btn-secondary');
     }
 
     bindConfirmAction(modal, confirmBtn, onConfirm);
     openModal(modal);
-}
+};
 
-export function confirmRestore({ title = 'Restore Record', message, itemName, btnText = 'Restore', cancelBtnText = 'Cancel', onConfirm }) {
+export const confirmRestore = ({ title = 'Restore Record', message, itemName, btnText = 'Restore', cancelBtnText = 'Cancel', onConfirm }) => {
     const modal = document.getElementById('global-confirm-modal');
     if (!modal) return;
 
@@ -321,20 +388,20 @@ export function confirmRestore({ title = 'Restore Record', message, itemName, bt
         <p class="mb-0">${escapeHtml(message || `Are you sure you want to restore "${itemName}"?`)}</p>
     `;
 
-    confirmBtn.className = 'btn btn-success';
+    setButtonClassList(confirmBtn, 'btn btn-success');
     confirmBtn.textContent = btnText;
     confirmBtn.disabled = false;
 
     if (cancelBtn) {
         cancelBtn.textContent = cancelBtnText || 'Cancel';
-        cancelBtn.className = 'btn btn-secondary';
+        setButtonClassList(cancelBtn, 'btn btn-secondary');
     }
 
     bindConfirmAction(modal, confirmBtn, onConfirm);
     openModal(modal);
-}
+};
 
-export function confirmHardDelete({ title, message, itemName, typeToConfirmText = 'DELETE', cancelBtnText = 'Cancel', onConfirm }) {
+export const confirmHardDelete = ({ title, message, itemName, typeToConfirmText = 'DELETE', cancelBtnText = 'Cancel', onConfirm }) => {
     const modal = document.getElementById('global-confirm-modal');
     if (!modal) return;
 
@@ -355,13 +422,13 @@ export function confirmHardDelete({ title, message, itemName, typeToConfirmText 
         </div>
     `;
 
-    confirmBtn.className = 'btn btn-danger';
+    setButtonClassList(confirmBtn, 'btn btn-danger');
     confirmBtn.textContent = 'Permanently Delete';
     confirmBtn.disabled = true;
 
     if (cancelBtn) {
         cancelBtn.textContent = cancelBtnText || 'Cancel';
-        cancelBtn.className = 'btn btn-secondary';
+        setButtonClassList(cancelBtn, 'btn btn-secondary');
     }
 
     const cleanClone = bindConfirmAction(modal, confirmBtn, onConfirm);
@@ -373,33 +440,33 @@ export function confirmHardDelete({ title, message, itemName, typeToConfirmText 
 
     openModal(modal);
     setTimeout(() => input.focus(), 50);
-}
+};
 
 // ---------------------------------------------------------------------------
 // Dropdown menus (top-bar account menu)
 // ---------------------------------------------------------------------------
 
-export function closeAllDropdowns() {
+export const closeAllDropdowns = () => {
     document.querySelectorAll('.dropdown.show').forEach(dropdown => {
         dropdown.classList.remove('show');
         const toggle = dropdown.querySelector('[data-dropdown-toggle]');
         if (toggle) toggle.setAttribute('aria-expanded', 'false');
     });
-}
+};
 
 // ---------------------------------------------------------------------------
 // Off-canvas and Collapsible sidebar
 // ---------------------------------------------------------------------------
 
-export function closeSidebar() {
+export const closeSidebar = () => {
     if (document.body.classList.contains('sidebar-open')) {
         document.body.classList.remove('sidebar-open');
         const toggle = document.querySelector('[data-sidebar-toggle]');
         if (toggle) toggle.setAttribute('aria-expanded', 'false');
     }
-}
+};
 
-export function toggleSidebar() {
+export const toggleSidebar = () => {
     if (window.matchMedia('(min-width: 992px)').matches) {
         // Desktop: toggle collapsed state
         const isCollapsed = document.body.classList.toggle('sidebar-collapsed');
@@ -412,15 +479,15 @@ export function toggleSidebar() {
         const toggle = document.querySelector('[data-sidebar-toggle]');
         if (toggle) toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
     }
-}
+};
 
-function initSidebarState() {
+const initSidebarState = () => {
     if (window.matchMedia('(min-width: 992px)').matches) {
         if (localStorage.getItem('cprms_sidebar_collapsed') === '1') {
             document.body.classList.add('sidebar-collapsed');
         }
     }
-}
+};
 
 // ---------------------------------------------------------------------------
 // Global event delegation (Idempotent: attached once per window lifetime)

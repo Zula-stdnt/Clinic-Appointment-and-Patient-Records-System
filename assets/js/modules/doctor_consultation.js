@@ -1,4 +1,4 @@
-﻿// assets/js/modules/doctor_consultation.js
+// assets/js/modules/doctor_consultation.js
 // Clinical Consultation Module with SOAP Clinical Notes and Structured Prescriptions
 // ITE 387 Lessons applied: 03 APIs and Database Operations/header_detail_forms & 01 JavaScript Foundations/javascript_objects_and_arrays
 
@@ -652,7 +652,7 @@ export default {
 
         this.state.prescriptions.forEach((rx, index) => {
             const card = create('div');
-            card.className = 'prescription-item-card';
+            card.classList.add('prescription-item-card');
             card.style.cssText = 'background: var(--bg-alt, #f8fafc); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin-bottom: 1rem;';
 
             card.innerHTML = `

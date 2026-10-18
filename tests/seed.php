@@ -15,6 +15,7 @@ $pdo->exec("TRUNCATE TABLE vital_signs");
 $pdo->exec("TRUNCATE TABLE appointments");
 $pdo->exec("TRUNCATE TABLE record_access_requests");
 $pdo->exec("TRUNCATE TABLE doctor_schedules");
+$pdo->exec("TRUNCATE TABLE patient_allergies");
 $pdo->exec("TRUNCATE TABLE patients");
 $pdo->exec("TRUNCATE TABLE doctors");
 $pdo->exec("TRUNCATE TABLE users");

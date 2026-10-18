@@ -1,6 +1,13 @@
 // assets/js/receptionist_main.js
 // Single-Page Application Router and Module Orchestrator for the Receptionist Portal
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_modules (ES module orchestration) & javascript_fundamentals (DOMContentLoaded initialization)
+// & 03 APIs and Database Operations/mysql_retrieve_specific_record (Global state persistence in sessionStorage.baseAPIUrl)
+
+// ITE 387: Global State Persistence in sessionStorage (mysql_retrieve_specific_record.md)
+if (!sessionStorage.getItem('baseAPIUrl')) {
+    const apiPath = window.location.pathname.replace(/\/[^/]*$/, '') + '/api';
+    sessionStorage.setItem('baseAPIUrl', apiPath);
+}
 
 import { requireSession } from './session-guard.js?v=24';
 import { hideAllModals, closeSidebar } from './ui.js?v=26';
@@ -36,7 +43,7 @@ const modules = {
 
 let activeRouteKey = null;
 
-window.navigateTo = function(route) {
+window.navigateTo = (route) => {
     const parts = route.split('/');
     let moduleKey = parts[0];
 
@@ -78,7 +85,7 @@ window.navigateTo = function(route) {
     }
 };
 
-function populateShell(user) {
+const populateShell = (user) => {
     const fallbackName = user.full_name || 'Receptionist';
     const initial = fallbackName.trim().charAt(0).toUpperCase();
     const roleLabel = user.role_name || 'Receptionist';
@@ -109,9 +116,9 @@ function populateShell(user) {
             year: 'numeric'
         });
     }
-}
+};
 
-function startApp() {
+const startApp = () => {
     document.querySelectorAll('.sidebar-nav .nav-link[data-module]').forEach(link => {
         link.addEventListener('click', (e) => {
             e.preventDefault();

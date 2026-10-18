@@ -96,6 +96,7 @@ try {
     ]);
 
     $newId = (int)$pdo->lastInsertId();
+    syncPatientAllergies($pdo, $newId, $allergies);
     log_audit($pdo, (int)$_SESSION['user_id'], 'REGISTER_WALKIN', 'patient', $newId, null, $cleanInput);
 
     send_success('Patient record created successfully.', ['patient_id' => $newId], 201);
