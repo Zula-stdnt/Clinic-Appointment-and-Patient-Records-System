@@ -94,8 +94,9 @@ try {
 }
 
 function listPatients(PDO $pdo): void {
+    $isAll = isset($_GET['all']) && ($_GET['all'] === 'true' || $_GET['all'] === '1');
     $page = max(1, (int)($_GET['page'] ?? 1));
-    $pageSize = max(1, min(100, (int)($_GET['page_size'] ?? 10)));
+    $pageSize = max(1, min(100, (int)($_GET['page_size'] ?? $_GET['limit'] ?? 10)));
     $offset = ($page - 1) * $pageSize;
 
     $search = trim($_GET['search'] ?? '');
@@ -117,6 +118,18 @@ function listPatients(PDO $pdo): void {
         $params[':gender'] = $genderLower;
     } elseif ($genderLower === 'other') {
         $where[] = "(LOWER(TRIM(COALESCE(gender, ''))) NOT IN ('male', 'female', 'unknown') AND LOWER(TRIM(COALESCE(gender, ''))) != '')";
+    }
+
+    $startDate = trim($_GET['start_date'] ?? '');
+    if ($startDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $startDate)) {
+        $where[] = 'DATE(created_at) >= :start_date';
+        $params[':start_date'] = $startDate;
+    }
+
+    $endDate = trim($_GET['end_date'] ?? '');
+    if ($endDate !== '' && preg_match('/^\d{4}-\d{2}-\d{2}$/', $endDate)) {
+        $where[] = 'DATE(created_at) <= :end_date';
+        $params[':end_date'] = $endDate;
     }
 
     if ($search !== '') {
@@ -144,6 +157,32 @@ function listPatients(PDO $pdo): void {
     $total = (int)$countStmt->fetchColumn();
 
     // Data query: returns demographics and allergy alerts only
+    if ($isAll) {
+        $dataSql = "SELECT patient_id, first_name, middle_initial, last_name, gender, date_of_birth,
+                           contact_no, address, allergies_alerts, allergies_confirmed_by_doctor,
+                           created_at, updated_at, deleted_at
+                    FROM patients
+                    WHERE {$whereSql}
+                    ORDER BY {$sortBy} {$sortOrder}";
+
+        $stmt = $pdo->prepare($dataSql);
+        foreach ($params as $k => &$v) {
+            $stmt->bindParam($k, $v);
+        }
+        unset($v);
+        $stmt->execute();
+        $items = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        send_success('Patients retrieved successfully.', [
+            'items'     => $items,
+            'total'     => $total,
+            'page'      => 1,
+            'page_size' => $total,
+            'pages'     => 1
+        ]);
+        return;
+    }
+
     $dataSql = "SELECT patient_id, first_name, middle_initial, last_name, gender, date_of_birth,
                        contact_no, address, allergies_alerts, allergies_confirmed_by_doctor,
                        created_at, updated_at, deleted_at

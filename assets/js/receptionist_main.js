@@ -12,7 +12,7 @@ if (!sessionStorage.getItem('baseAPIUrl')) {
 import { requireSession } from './session-guard.js?v=24';
 import { hideAllModals, closeSidebar } from './ui.js?v=26';
 import { LiveSync } from './live-sync.js?v=1';
-import receptionistOverview from './modules/receptionist_overview.js?v=4';
+import receptionistOverview from './modules/receptionist_overview.js?v=5';
 import receptionistAppointments from './modules/receptionist_appointments.js?v=40';
 import receptionistPatients from './modules/receptionist_patients.js?v=34';
 import settingsModule from './modules/account_settings.js?v=25';

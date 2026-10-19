@@ -126,6 +126,7 @@ export default {
     state: {
         allAppointments: [],
         allPatients: [],
+        totalPatientsCount: 0,
         doctors: [],
         activePeriod: 'today', // 'today' | 'week' | 'all' | 'range'
         startDate: '',
@@ -139,6 +140,7 @@ export default {
 
     async init(container) {
         this.container = container;
+        this.state.totalPatientsCount = 0;
         this.state.activePeriod = 'today';
         this.state.startDate = '';
         this.state.endDate = '';
@@ -214,7 +216,7 @@ export default {
         try {
             const [apptsRes, patientsRes, docsRes] = await Promise.all([
                 api.get('api/appointment_controller.php').catch(() => null),
-                api.get('api/patient_controller.php?limit=100').catch(() => null),
+                api.get('api/patient_controller.php?all=true&sort_by=created_at&sort_order=DESC').catch(() => null),
                 api.get('api/appointment_controller.php?meta=doctors').catch(() => null)
             ]);
 
@@ -225,6 +227,10 @@ export default {
             this.state.allPatients = (patientsRes && patientsRes.success && patientsRes.data && patientsRes.data.items)
                 ? patientsRes.data.items
                 : [];
+
+            this.state.totalPatientsCount = (patientsRes && patientsRes.success && patientsRes.data && patientsRes.data.total != null)
+                ? Number(patientsRes.data.total)
+                : this.state.allPatients.length;
 
             this.state.doctors = (docsRes && docsRes.success && docsRes.data && docsRes.data.items)
                 ? docsRes.data.items
@@ -288,7 +294,7 @@ export default {
                 return true;
             }).length;
         } else {
-            newPatientsCount = this.state.allPatients.length;
+            newPatientsCount = this.state.totalPatientsCount || this.state.allPatients.length;
         }
 
         // Capacity indicator badge for header
