@@ -27,6 +27,8 @@ There is no migration-tracking table in the database, so "is my machine up to da
 | `011_create_audit_logs.sql` | Creates immutable `audit_logs` table for compliance and security tracking | No |
 | `012_clinical_safety_and_constraints.sql` | Creates `consultation_addenda` table and unique active slot constraint on `appointments` | No |
 | `013_doctor_schedules_and_hybrid_break_glass.sql` | Creates `doctor_schedules` and `record_access_requests` tables, seeds multi-specialties and fixed weekly doctor duty rotas | No |
+| `2026_10_medication_hard_delete_fix.sql` | Snapshot columns on `prescriptions` and `ON DELETE SET NULL` for medication FK; MySQL 8-compatible guarded column adds | No |
+| `2026_10_unrestricted_hard_delete_cascade.sql` | CASCADE/SET NULL rules for patient, doctor, and creator foreign keys | No |
 | `016_reset_admin_and_three_doctors.sql` | **DESTRUCTIVE**: clears clinical/account data and seeds 1 Administrator (`admin`) + 3 Doctors (`dr.smith`, `dr.watson`, `dr.grey`). Passwords are documented in the file header and `secret.txt` | Yes |
 | `hospital_db.sql` | **DEPRECATED**: Legacy structural dump. **Do not use.** | n/a |
 
@@ -110,6 +112,7 @@ For **existing databases**, inspect the specific migration file to confirm your 
 | 2026-10-13 | Applied `013_doctor_schedules_and_hybrid_break_glass.sql` | Configured doctor schedules and hybrid break-glass / standard access requests |
 | 2026-10-16 | Applied `014_structured_prescriptions.sql` | Added `strength`, `route`, `duration`, and `instructions` to `prescriptions` for structured medication orders |
 | 2026-10-20 | Applied `016_reset_admin_and_three_doctors.sql` | Reset data to 1 Administrator + 3 Doctors |
+| 2026-10-20 | Applied `2026_10_medication_hard_delete_fix.sql` (patched for MySQL 8.4) + `2026_10_unrestricted_hard_delete_cascade.sql` | Prescription snapshots and hard-delete cascade rules |
 
 ## Related
 

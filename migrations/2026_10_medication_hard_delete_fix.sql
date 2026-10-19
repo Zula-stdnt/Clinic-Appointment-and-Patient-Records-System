@@ -2,9 +2,32 @@
 -- Adds medication_name and generic_name snapshots to prescriptions and changes FK to ON DELETE SET NULL
 -- so historical clinical records remain 100% intact when an archived medication is permanently purged.
 
-ALTER TABLE `prescriptions`
-  ADD COLUMN IF NOT EXISTS `medication_name` VARCHAR(150) DEFAULT NULL AFTER `medication_id`,
-  ADD COLUMN IF NOT EXISTS `generic_name` VARCHAR(150) DEFAULT NULL AFTER `medication_name`;
+-- MySQL 8.x does not support ADD COLUMN IF NOT EXISTS; guard each column instead.
+SET @has_col := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'prescriptions' AND COLUMN_NAME = 'medication_name'
+);
+SET @sql := IF(
+  @has_col = 0,
+  'ALTER TABLE `prescriptions` ADD COLUMN `medication_name` VARCHAR(150) DEFAULT NULL AFTER `medication_id`',
+  'SELECT 1'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @has_col := (
+  SELECT COUNT(*) FROM information_schema.COLUMNS
+  WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'prescriptions' AND COLUMN_NAME = 'generic_name'
+);
+SET @sql := IF(
+  @has_col = 0,
+  'ALTER TABLE `prescriptions` ADD COLUMN `generic_name` VARCHAR(150) DEFAULT NULL AFTER `medication_name`',
+  'SELECT 1'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 UPDATE `prescriptions` p
 INNER JOIN `medications` m ON p.`medication_id` = m.`medication_id`
