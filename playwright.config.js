@@ -1,7 +1,7 @@
 const { defineConfig } = require('@playwright/test');
 
 module.exports = defineConfig({
-  testDir: './tests',
+  testDir: './tests/e2e',
   fullyParallel: false,
   retries: 0,
   workers: 1,

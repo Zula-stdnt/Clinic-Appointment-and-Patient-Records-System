@@ -1,4 +1,12 @@
 {
+  "name": "clinic-appointment-and-patient-records-system",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node tests/runners/run_api_tests.js",
+    "test:api": "node tests/runners/run_api_tests.js",
+    "test:ui": "node tests/runners/run_ui_tests.js",
+    "test:e2e": "playwright test"
+  },
   "devDependencies": {
     "@playwright/test": "^1.63.0"
   }
