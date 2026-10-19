@@ -19,6 +19,8 @@ Desktop.ini
 *.env
 *.pem
 *.key
+secret.txt
+secret.text
 
 # Logs and temporary files
 *.log
