@@ -32,6 +32,21 @@ A running, per-commit record of every change and implementation in this project,
 
 ## Entries
 
+### 2026-10-20 — CAPRS Rebase, Sidebar Collapse Handle, Clinic Logo & Reset Seed (`0c02ce8`)
+**Type:** feat / fix / chore
+**Database / migrations:** `migrations/016_reset_admin_and_three_doctors.sql` (**destructive**), `migrations/2026_10_medication_hard_delete_fix.sql` (patched for MySQL 8.4), `migrations/2026_10_unrestricted_hard_delete_cascade.sql`
+**Files changed:**
+- `admin_dashboard.html`, `doctor_dashboard.html`, `receptionist_dashboard.html`, `login.html` — clinic logo, CAPRS branding, cache-busted asset versions.
+- `assets/css/style.css`, `assets/js/ui.js` — sidebar edge collapse handle, icon state, tooltip/ARIA sync.
+- `assets/js/**/*.js` — harmonized `ui.js` imports to `v=28`; bumped print/component cache versions.
+- `migrations/016_reset_admin_and_three_doctors.sql` — clears clinical/account data and seeds 1 Administrator + 3 Doctors. Credentials are documented in the migration header and local `secret.txt`.
+- `migrations/2026_10_medication_hard_delete_fix.sql` — replaced unsupported `ADD COLUMN IF NOT EXISTS` with information_schema guards.
+**New IDs introduced:** sidebar `.sidebar-edge-toggle`; seed accounts `admin`, `dr.smith`, `dr.watson`, `dr.grey`.
+**How to verify:**
+- Log in as `admin` (password in migration header); confirm only the three seeded doctor accounts exist.
+- On any dashboard, use the sidebar-edge handle to collapse/expand; verify the new logo and CAPRS naming.
+- Apply the new migrations from a fresh backup; verify `prescriptions.medication_name` / `generic_name` and FK delete rules (`SET NULL` / `CASCADE`).
+
 ### 2026-10-18 — Appointments View Toolbar Alignment, Profile Dropdown Fix, Double-Cancel Prevention & Refresh Audit (`03e32fc`)
 **Type:** fix / ui / ux / refactor
 **Database / migrations:** none
