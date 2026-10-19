@@ -10,19 +10,19 @@ if (!sessionStorage.getItem('baseAPIUrl')) {
 }
 
 import { requireSession } from './session-guard.js?v=24';
-import { hideAllModals, closeSidebar } from './ui.js?v=26';
+import { hideAllModals, closeSidebar } from './ui.js?v=28';
 import { LiveSync } from './live-sync.js?v=1';
-import overviewModule from './modules/overview.js?v=26';
-import usersModule from './modules/users.js?v=25';
-import patientsModule from './modules/patients.js?v=30';
-import doctorsModule from './modules/doctors.js?v=26';
-import servicesModule from './modules/services.js?v=26';
-import medicationsModule from './modules/medications.js?v=3';
-import specialtiesModule from './modules/specialties.js?v=25';
-import archiveModule from './modules/archive.js?v=25';
-import auditLogsModule from './modules/audit_logs.js?v=4';
-import settingsModule from './modules/account_settings.js?v=25';
-import profileModule from './modules/my_profile.js?v=25';
+import overviewModule from './modules/overview.js?v=27';
+import usersModule from './modules/users.js?v=26';
+import patientsModule from './modules/patients.js?v=32';
+import doctorsModule from './modules/doctors.js?v=27';
+import servicesModule from './modules/services.js?v=27';
+import medicationsModule from './modules/medications.js?v=4';
+import specialtiesModule from './modules/specialties.js?v=26';
+import archiveModule from './modules/archive.js?v=26';
+import auditLogsModule from './modules/audit_logs.js?v=5';
+import settingsModule from './modules/account_settings.js?v=26';
+import profileModule from './modules/my_profile.js?v=26';
 
 const modules = {
     'overview': {

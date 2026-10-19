@@ -3,11 +3,11 @@
 // ITE 387 Lessons applied: 03 APIs and Database Operations/header_detail_forms (appointment header + vital signs detail saved together) & 02 DOM and UI/dom_create_and_remove_elements (Create -> Configure -> Listen -> Append rows)
 
 import api from '../api.js?v=8';
-import { create, escapeHtml, showToast, openModal, closeModal, confirmAction, formatStatusLabel } from '../ui.js?v=26';
+import { create, escapeHtml, showToast, openModal, closeModal, confirmAction, formatStatusLabel } from '../ui.js?v=28';
 import { SearchSelect } from '../components/search-select.js?v=1';
-import { PatientRegisterForm } from '../components/patient-register.js?v=1';
-import { printAppointmentForm } from '../components/print-appointment-form.js?v=2';
-import { confirmDialog } from '../components/confirm-dialog.js?v=1';
+import { PatientRegisterForm } from '../components/patient-register.js?v=2';
+import { printAppointmentForm } from '../components/print-appointment-form.js?v=4';
+import { confirmDialog } from '../components/confirm-dialog.js?v=2';
 
 export default {
     state: {

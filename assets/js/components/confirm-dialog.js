@@ -4,7 +4,7 @@
 // ITE 387 Lessons applied: 02 DOM and UI/dom_create_and_remove_elements (dialog created
 // on demand and reused) & dom_apply_styles (existing modal classes)
 
-import { escapeHtml, openModal, closeModal, setButtonClassList } from '../ui.js?v=26';
+import { escapeHtml, openModal, closeModal, setButtonClassList } from '../ui.js?v=28';
 
 let modalEl = null;
 

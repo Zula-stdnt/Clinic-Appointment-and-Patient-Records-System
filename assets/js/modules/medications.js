@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_records, mysql_insert_records & mysql_update_records (Async Axios CRUD with semantic hook classes .btn-view / .btn-edit / .btn-archive)
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast, openModal, closeModal, confirmAction, confirmSoftDelete } from '../ui.js?v=26';
+import { escapeHtml, showToast, openModal, closeModal, confirmAction, confirmSoftDelete } from '../ui.js?v=28';
 
 export default {
     state: {

@@ -2,7 +2,7 @@
 // Account Settings: read-only account summary and a secure change-password form
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast, confirmAction } from '../ui.js?v=26';
+import { escapeHtml, showToast, confirmAction } from '../ui.js?v=28';
 
 const PASSWORD_RULE = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{6,}$/;
 

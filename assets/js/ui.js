@@ -575,11 +575,22 @@ export const closeAllDropdowns = () => {
 // Off-canvas and Collapsible sidebar
 // ---------------------------------------------------------------------------
 
+const syncSidebarEdgeToggle = () => {
+    const isCollapsed = document.body.classList.contains('sidebar-collapsed');
+    document.querySelectorAll('.sidebar-edge-toggle').forEach(toggle => {
+        const label = isCollapsed ? 'Expand navigation menu' : 'Collapse navigation menu';
+        toggle.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+        toggle.setAttribute('aria-label', label);
+        toggle.setAttribute('title', label);
+    });
+};
+
 export const closeSidebar = () => {
     if (document.body.classList.contains('sidebar-open')) {
         document.body.classList.remove('sidebar-open');
-        const toggle = document.querySelector('[data-sidebar-toggle]');
-        if (toggle) toggle.setAttribute('aria-expanded', 'false');
+        document.querySelectorAll('.sidebar-toggle').forEach(toggle => {
+            toggle.setAttribute('aria-expanded', 'false');
+        });
     }
 };
 
@@ -588,13 +599,13 @@ export const toggleSidebar = () => {
         // Desktop: toggle collapsed state
         const isCollapsed = document.body.classList.toggle('sidebar-collapsed');
         localStorage.setItem('cprms_sidebar_collapsed', isCollapsed ? '1' : '0');
-        const toggle = document.querySelector('[data-sidebar-toggle]');
-        if (toggle) toggle.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+        syncSidebarEdgeToggle();
     } else {
         // Mobile: toggle off-canvas
         const isOpen = document.body.classList.toggle('sidebar-open');
-        const toggle = document.querySelector('[data-sidebar-toggle]');
-        if (toggle) toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        document.querySelectorAll('.sidebar-toggle').forEach(toggle => {
+            toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        });
     }
 };
 
@@ -603,6 +614,7 @@ const initSidebarState = () => {
         if (localStorage.getItem('cprms_sidebar_collapsed') === '1') {
             document.body.classList.add('sidebar-collapsed');
         }
+        syncSidebarEdgeToggle();
     }
 };
 

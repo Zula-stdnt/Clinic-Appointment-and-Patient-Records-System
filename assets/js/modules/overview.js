@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays (Arrays of configuration objects mapped to UI cards) & 03 APIs and Database Operations/javascript_working_with_apis
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast } from '../ui.js?v=26';
+import { escapeHtml, showToast } from '../ui.js?v=28';
 
 const STATS = [
     { key: 'patients',    label: 'Registered Patients', endpoint: 'api/patient_controller.php',   tone: 'primary',   href: '#patients' },

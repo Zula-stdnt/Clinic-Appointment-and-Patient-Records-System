@@ -2,7 +2,7 @@
 // Compliance & Audit Logs module for Administrator oversight
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast } from '../ui.js?v=26';
+import { escapeHtml, showToast } from '../ui.js?v=28';
 
 const AUDIT_ACTION_GROUPS = [
     {

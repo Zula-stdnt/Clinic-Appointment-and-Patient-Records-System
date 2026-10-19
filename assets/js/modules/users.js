@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays (Dynamic <select> option population from lookup arrays) & 03 APIs and Database Operations/mysql_insert_records / mysql_update_records
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast, openModal, closeModal, confirmAction, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=26';
+import { escapeHtml, showToast, openModal, closeModal, confirmAction, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=28';
 
 export default {
     state: {

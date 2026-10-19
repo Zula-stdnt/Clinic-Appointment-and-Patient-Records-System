@@ -6,16 +6,20 @@
     <meta name="csrf-token" content="">
     <title>Receptionist Dashboard - Clinic Appointment and Patient Records System (CAPRS)</title>
     <link rel="stylesheet" href="assets/vendor/inter/inter.css">
-    <link rel="stylesheet" href="assets/css/style.css?v=27">
+    <link rel="stylesheet" href="assets/css/style.css?v=35">
     <script src="assets/js/axios.min.js"></script>
 </head>
 <body>
     <div class="dashboard-layout">
         <!-- Sidebar Navigation (fixed on desktop, off-canvas drawer on mobile) -->
         <aside class="app-sidebar" id="sidebar" aria-label="Primary navigation">
+            <button type="button" class="sidebar-edge-toggle" data-sidebar-toggle aria-controls="sidebar" aria-expanded="true" aria-label="Collapse navigation menu" title="Collapse navigation menu">
+                <svg class="icon-collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m16 15-3-3 3-3"></path></svg>
+                <svg class="icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"></rect><path d="M9 3v18"></path><path d="m14 9 3 3-3 3"></path></svg>
+            </button>
             <div class="sidebar">
                 <div class="sidebar-brand">
-                    <img src="logo.png" alt="CPRMS Logo" class="sidebar-logo">
+                    <img src="logo.png?v=3" alt="CAPRS Logo" class="sidebar-logo">
                     <div class="sidebar-title-group">
                         <h2>Healing for Everyone</h2>
                         <p>CPRMS Receptionist Portal</p>
@@ -140,6 +144,6 @@
     <div id="toast-container" class="toast-container"></div>
 
     <!-- Application Scripts -->
-    <script type="module" src="assets/js/receptionist_main.js?v=47"></script>
+    <script type="module" src="assets/js/receptionist_main.js?v=49"></script>
 </body>
 </html>

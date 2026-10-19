@@ -6,8 +6,8 @@
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays & 03 APIs and Database Operations/javascript_working_with_apis
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast, formatStatusLabel } from '../ui.js?v=26';
-import { printBlankForm } from '../components/print-appointment-form.js?v=24';
+import { escapeHtml, showToast, formatStatusLabel } from '../ui.js?v=28';
+import { printBlankForm } from '../components/print-appointment-form.js?v=4';
 
 const MAX_DAILY_CAPACITY = 10;
 

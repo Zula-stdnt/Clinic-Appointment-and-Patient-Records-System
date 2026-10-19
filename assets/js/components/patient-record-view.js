@@ -5,10 +5,10 @@
 // ITE 387 Lessons applied: 02 DOM and UI/dom_create_and_remove_elements (view is
 // built, replaced, and torn down by the hosting module)
 
-import { escapeHtml, formatStatusLabel } from '../ui.js?v=26';
-import { printPrescription } from './print-prescription.js?v=2';
-import { printLabRequest } from './print-lab-request.js?v=1';
-import { printAppointmentForm } from './print-appointment-form.js?v=2';
+import { escapeHtml, formatStatusLabel } from '../ui.js?v=28';
+import { printPrescription } from './print-prescription.js?v=4';
+import { printLabRequest } from './print-lab-request.js?v=3';
+import { printAppointmentForm } from './print-appointment-form.js?v=4';
 
 const APPOINTMENT_STATUS = {
     scheduled: { label: 'Scheduled', className: 'badge-info' },

@@ -5,7 +5,7 @@
 // (consultation detail fetched by appointment key) & 02 DOM and UI/dom_create_and_remove_elements
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast } from '../ui.js?v=26';
+import { escapeHtml, showToast } from '../ui.js?v=28';
 import { openPrintFrame, fullName, computeAge, formatDate, formatNow, orDash, capitalize } from './print-utils.js?v=1';
 
 export async function printPrescription(appointmentId) {
@@ -30,7 +30,7 @@ export async function printPrescription(appointmentId) {
 }
 
 export function buildPrescription(data) {
-    const logoUrl = new URL('logo.png', window.location.href).href;
+    const logoUrl = new URL('logo.png?v=3', window.location.href).href;
     const appt = data.appointment || {};
     const doctorName = `Dr. ${fullName(appt.doctor_last, appt.doctor_first, appt.doctor_middle)}`;
     const patientName = escapeHtml(fullName(appt.patient_last, appt.patient_first, appt.patient_middle));
@@ -94,7 +94,7 @@ export function buildPrescription(data) {
 </head>
 <body>
     <div class="header">
-        <img src="${logoUrl}" alt="CPRMS Logo">
+        <img src="${logoUrl}" alt="CAPRS Logo">
         <div>
             <div class="org">CLINIC APPOINTMENT AND PATIENT RECORDS SYSTEM (CAPRS)</div>
             <div class="sub">Out-Patient Department &middot; Prescription</div>

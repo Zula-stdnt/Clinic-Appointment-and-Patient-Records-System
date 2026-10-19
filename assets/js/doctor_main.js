@@ -10,14 +10,14 @@ if (!sessionStorage.getItem('baseAPIUrl')) {
 }
 
 import { requireSession } from './session-guard.js?v=24';
-import { hideAllModals, closeSidebar } from './ui.js?v=26';
+import { hideAllModals, closeSidebar } from './ui.js?v=28';
 import { LiveSync } from './live-sync.js?v=1';
-import doctorOverview from './modules/doctor_overview.js?v=30';
-import doctorAppointments from './modules/doctor_appointments.js?v=34';
-import doctorPatients from './modules/doctor_patients.js?v=35';
-import doctorConsultation from './modules/doctor_consultation.js?v=34';
-import settingsModule from './modules/account_settings.js?v=25';
-import doctorProfile from './modules/doctor_profile.js?v=32';
+import doctorOverview from './modules/doctor_overview.js?v=31';
+import doctorAppointments from './modules/doctor_appointments.js?v=35';
+import doctorPatients from './modules/doctor_patients.js?v=37';
+import doctorConsultation from './modules/doctor_consultation.js?v=36';
+import settingsModule from './modules/account_settings.js?v=26';
+import doctorProfile from './modules/doctor_profile.js?v=33';
 
 const modules = {
     'doctor_overview': {

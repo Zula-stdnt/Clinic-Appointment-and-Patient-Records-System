@@ -10,13 +10,13 @@ if (!sessionStorage.getItem('baseAPIUrl')) {
 }
 
 import { requireSession } from './session-guard.js?v=24';
-import { hideAllModals, closeSidebar } from './ui.js?v=26';
+import { hideAllModals, closeSidebar } from './ui.js?v=28';
 import { LiveSync } from './live-sync.js?v=1';
-import receptionistOverview from './modules/receptionist_overview.js?v=5';
-import receptionistAppointments from './modules/receptionist_appointments.js?v=40';
-import receptionistPatients from './modules/receptionist_patients.js?v=34';
-import settingsModule from './modules/account_settings.js?v=25';
-import profileModule from './modules/my_profile.js?v=25';
+import receptionistOverview from './modules/receptionist_overview.js?v=6';
+import receptionistAppointments from './modules/receptionist_appointments.js?v=41';
+import receptionistPatients from './modules/receptionist_patients.js?v=35';
+import settingsModule from './modules/account_settings.js?v=26';
+import profileModule from './modules/my_profile.js?v=26';
 
 const modules = {
     'receptionist_overview': {

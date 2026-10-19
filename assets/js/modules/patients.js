@@ -3,8 +3,8 @@
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_specific_record (Reusable View/Edit modals populated by ID) & mysql_update_records (Reflexive UI refresh on save)
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmRestore, confirmHardDelete } from '../ui.js?v=27';
-import { renderPatientRecord } from '../components/patient-record-view.js?v=5';
+import { escapeHtml, showToast, openModal, closeModal, confirmSoftDelete, confirmRestore, confirmHardDelete } from '../ui.js?v=28';
+import { renderPatientRecord } from '../components/patient-record-view.js?v=7';
 
 export default {
     state: {

@@ -3,8 +3,8 @@
 // ITE 387 Lessons applied: 03 APIs and Database Operations/mysql_retrieve_specific_record (Summary table with primary-key drill-down to full record) & 02 DOM and UI/dom_create_and_remove_elements (Container reset before re-render)
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast, openModal, closeModal, confirmAction } from '../ui.js?v=26';
-import { renderPatientRecord } from '../components/patient-record-view.js?v=5';
+import { escapeHtml, showToast, openModal, closeModal, confirmAction } from '../ui.js?v=28';
+import { renderPatientRecord } from '../components/patient-record-view.js?v=7';
 
 export default {
     state: {

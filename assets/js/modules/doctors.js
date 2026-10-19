@@ -3,7 +3,7 @@
 // ITE 387 Lessons applied: 01 JavaScript Foundations/javascript_objects_and_arrays (Mapping specialty objects to <option> text/value) & 03 APIs and Database Operations/mysql_update_records
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast, openModal, closeModal, confirmAction, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=26';
+import { escapeHtml, showToast, openModal, closeModal, confirmAction, confirmSoftDelete, confirmHardDelete } from '../ui.js?v=28';
 
 export default {
     state: {

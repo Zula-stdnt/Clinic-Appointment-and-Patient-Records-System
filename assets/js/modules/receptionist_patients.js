@@ -4,11 +4,11 @@
 // & mysql_insert_records (registration through the shared patient form component)
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=26';
-import { confirmDialog } from '../components/confirm-dialog.js?v=1';
-import { PatientRegisterForm } from '../components/patient-register.js?v=1';
-import { printBlankForm } from '../components/print-appointment-form.js?v=2';
-import { renderPatientRecord } from '../components/patient-record-view.js?v=5';
+import { escapeHtml, showToast, openModal, closeModal } from '../ui.js?v=28';
+import { confirmDialog } from '../components/confirm-dialog.js?v=2';
+import { PatientRegisterForm } from '../components/patient-register.js?v=2';
+import { printBlankForm } from '../components/print-appointment-form.js?v=4';
+import { renderPatientRecord } from '../components/patient-record-view.js?v=7';
 
 export default {
     state: {

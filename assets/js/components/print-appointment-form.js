@@ -7,7 +7,7 @@
 // (temporary iframe created, used, then removed)
 
 import api from '../api.js?v=8';
-import { escapeHtml, showToast } from '../ui.js?v=26';
+import { escapeHtml, showToast } from '../ui.js?v=28';
 
 export async function printAppointmentForm(appointmentId) {
     try {
@@ -138,7 +138,7 @@ function printStyles() {
 }
 
 export function buildPrintableForm(appt) {
-    const logoUrl = new URL('logo.png', window.location.href).href;
+    const logoUrl = new URL('logo.png?v=3', window.location.href).href;
     const patientNo = `PAT-${String(appt.patient_id).padStart(4, '0')}`;
     const appointmentNo = `APP-${String(appt.appointment_id).padStart(4, '0')}`;
     const doctorName = `Dr. ${fullName(appt.doctor_last, appt.doctor_first, appt.doctor_middle)}`;
@@ -173,7 +173,7 @@ export function buildPrintableForm(appt) {
 </head>
 <body>
     <div class="header">
-        <img src="${logoUrl}" alt="CPRMS Logo">
+        <img src="${logoUrl}" alt="CAPRS Logo">
         <div>
             <div class="org">CLINIC APPOINTMENT AND PATIENT RECORDS SYSTEM (CAPRS)</div>
             <div class="sub">Front Desk &middot; Patient Registration &amp; Appointment Services</div>
@@ -287,7 +287,7 @@ export function buildPrintableForm(appt) {
 // Blank version of the same sheet, meant to be printed and filled by hand
 // before a walk-in patient is encoded into the system.
 export function buildBlankForm() {
-    const logoUrl = new URL('logo.png', window.location.href).href;
+    const logoUrl = new URL('logo.png?v=3', window.location.href).href;
     const blank = '&nbsp;';
 
     return `<!DOCTYPE html>
@@ -299,7 +299,7 @@ export function buildBlankForm() {
 </head>
 <body>
     <div class="header">
-        <img src="${logoUrl}" alt="CPRMS Logo">
+        <img src="${logoUrl}" alt="CAPRS Logo">
         <div>
             <div class="org">CLINIC APPOINTMENT AND PATIENT RECORDS SYSTEM (CAPRS)</div>
             <div class="sub">Front Desk &middot; Patient Registration &amp; Appointment Services</div>

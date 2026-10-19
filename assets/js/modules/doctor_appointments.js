@@ -3,8 +3,8 @@
 // ITE 387 Lessons applied: 02 DOM and UI/dom_create_and_remove_elements (Create -> Configure -> Listen -> Append row pattern) & 03 APIs and Database Operations/javascript_working_with_apis (Async/await response validation)
 
 import api from '../api.js?v=8';
-import { create, escapeHtml, showToast, openModal, closeModal, confirmAction, formatStatusLabel } from '../ui.js?v=26';
-import { confirmDialog } from '../components/confirm-dialog.js?v=1';
+import { create, escapeHtml, showToast, openModal, closeModal, confirmAction, formatStatusLabel } from '../ui.js?v=28';
+import { confirmDialog } from '../components/confirm-dialog.js?v=2';
 
 export default {
     state: {
