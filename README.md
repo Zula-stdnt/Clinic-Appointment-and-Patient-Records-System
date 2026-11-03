@@ -1,5 +1,9 @@
 # Clinic Appointment and Patient Records System (CAPRS)
 
+> [!NOTE]
+> **Major Project — ITE 387: Advanced Programming**  
+> Developed for the **1st Semester, Academic Year 2026–2027**.
+
 A web application built for clinics to manage patient records, doctor profiles, appointment schedules, medical consultations, clinical specialties, staff accounts, and compliance audit logs in one place.
 
 It is built with **PHP** (for server-side logic), **MySQL** via **PDO** (a secure database connector), **vanilla JavaScript** organized as a **Single-Page Application (SPA)** (a web app that switches screens smoothly without reloading the whole browser page), and custom **CSS**.
@@ -23,6 +27,8 @@ The roles above describe each member's primary areas of responsibility. Contribu
 ---
 
 ## Table of Contents
+- [Project Team & Contributions](#project-team--contributions)
+- [System Interface & Screenshots](#system-interface--screenshots)
 - [Project Scope](#project-scope)
 - [Patient Records System (Core Clinical Workflow)](#patient-records-system-core-clinical-workflow)
 - [Two-Stage Patient Allergy Workflow](#two-stage-patient-allergy-workflow)
@@ -36,6 +42,68 @@ The roles above describe each member's primary areas of responsibility. Contribu
 - [Running the Application](#running-the-application)
 - [Default User Accounts](#default-user-accounts)
 - [Project Structure](#project-structure)
+
+---
+
+## System Interface & Screenshots
+
+### 🔐 Authentication Portal
+Secure, role-aware entry point directing Staff, Physicians, and Administrators to their dedicated workspaces.
+![Login Portal](assets/System_Project_UI_Screenshot/Screenshot%20(1285)%20Login%20Page.png)
+
+---
+
+### 🛠️ Administrator Workspace
+#### Governance & KPI Analytics Dashboard
+Real-time clinic metrics, operational status, and master directory controls.
+![Admin Dashboard](assets/System_Project_UI_Screenshot/Screenshot%20(1274)%20Admin-Panen-Dashboard.png)
+
+#### Compliance & Audit Logging
+Searchable, categorized audit trail tracking 30+ system events with granular diff inspection.
+![Admin Audit Logs](assets/System_Project_UI_Screenshot/Screenshot%20(1279)%20Admin-Panel-Audit-Logs.png)
+
+---
+
+### 🩺 Doctor Clinical Workspace
+#### Physician Daily Queue & Overview
+Duty schedule tracking, upcoming patient queue, and clinical quick actions.
+![Doctor Dashboard](assets/System_Project_UI_Screenshot/Screenshot%20(1280)%20Doctor-Panel-Dashboard.png)
+
+#### Electronic Health Records (EHR) & Consultation History
+Comprehensive patient medical history timeline, vitals history, and past consultation summaries.
+![Doctor Patient Records](assets/System_Project_UI_Screenshot/Screenshot%20(1282)%20Doctor-Panel-Patient-Records.png)
+
+---
+
+### 📋 Receptionist Front-Desk Workspace
+#### Lobby Triage & Queue Command Center
+Daily capacity gauge (10-patient ceiling), arriving patient queue, and quick triage intake.
+![Receptionist Dashboard](assets/System_Project_UI_Screenshot/Screenshot%20(1270)%20Recep-Panel-Dashboard.png)
+
+#### Appointment Scheduling & Booking Modal
+Schedule-aware physician rota matching and front-desk booking controls.
+![Receptionist Appointments](assets/System_Project_UI_Screenshot/Screenshot%20(1272)%20Recep-Panel-Appointments.png)
+
+---
+
+<details>
+<summary><strong>🔍 Click to View Additional Administrative Management Screens</strong></summary>
+
+<br>
+
+#### Staff Account Management
+![Manage Users](assets/System_Project_UI_Screenshot/Screenshot%20(1275)%20Admin-Panel-Manage-Users.png)
+
+#### Patient Demographic Registry
+![Manage Patients](assets/System_Project_UI_Screenshot/Screenshot%20(1276)%20Admin-Panel-Manage-Patients.png)
+
+#### Physician Directory & Scheduling
+![Manage Doctors](assets/System_Project_UI_Screenshot/Screenshot%20(1277)%20Admin-Panel-Manage-Doctors.png)
+
+#### Soft-Delete Archive & Statutory Retention (RA 10173 & DOH DC 2021-0226)
+![Manage Archive](assets/System_Project_UI_Screenshot/Screenshot%20(1278)%20Admin-Panel-Manage-Archive.png)
+
+</details>
 
 ---
 
