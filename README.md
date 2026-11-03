@@ -6,6 +6,22 @@ It is built with **PHP** (for server-side logic), **MySQL** via **PDO** (a secur
 
 ---
 
+## Project Team & Contributions
+CAPRS was developed collaboratively by a six-member team. Each member was assigned a primary role and contributed to the planning, analysis, design, implementation, documentation, or testing of the system.
+
+| Team Member | Assigned Role | Primary Responsibilities |
+|---|---|---|
+| **Kurt Russel M. Valcurza** | Project Leader | Coordinates the team, monitors project progress, facilitates task assignments, and helps keep project activities aligned with the team's objectives. |
+| **Ric Angelo L. Pingkian** | System Analyst | Works on requirements analysis, system workflows, functional requirements, and translating project needs into system specifications. |
+| **Zuriel Anthony L. Villaluna** | Lead Programmer | Leads the technical implementation and development of CAPRS, including application logic, database integration, and coordination of programming tasks. |
+| **Michael Angelo B. Aranding** | UI/UX Designer / Assistant Programmer | Contributes to interface and user-experience design and assists with application development and implementation. |
+| **Jason T. Semini** | Documentation Writer | Prepares and organizes project documentation and written deliverables throughout the development process. |
+| **Gieson E. Cadosales** | Tester | Helps verify system functionality, execute tests, identify issues, and provide feedback for improvements. |
+
+The roles above describe each member's primary areas of responsibility. Contributions may overlap as the team collaborates throughout the project.
+
+---
+
 ## Table of Contents
 - [Project Scope](#project-scope)
 - [Patient Records System (Core Clinical Workflow)](#patient-records-system-core-clinical-workflow)
