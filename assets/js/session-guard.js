@@ -19,9 +19,11 @@ export async function requireSession(allowedRoles) {
     activeGuardedRoles = allowedRoles;
     let payload = null;
 
-    if (typeof sessionStorage !== 'undefined' && !sessionStorage.getItem('baseAPIUrl') && typeof window !== 'undefined' && window.location) {
+    if (typeof sessionStorage !== 'undefined' && typeof window !== 'undefined' && window.location) {
         const apiPath = window.location.pathname.replace(/\/[^/]*$/, '') + '/api';
-        sessionStorage.setItem('baseAPIUrl', apiPath);
+        if (sessionStorage.getItem('baseAPIUrl') !== apiPath) {
+            sessionStorage.setItem('baseAPIUrl', apiPath);
+        }
     }
     const baseAPI = (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('baseAPIUrl')) || 'api';
 

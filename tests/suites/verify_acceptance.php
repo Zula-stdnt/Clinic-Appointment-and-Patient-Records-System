@@ -3,7 +3,8 @@
 // Automated Verification Test Suite for Hospital Patient Information System
 // Directly verifies every requirement in Section 11 of AGENT.md
 
-$baseUrl = 'http://localhost/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System';
+$defaultBaseUrl = 'http://localhost/3rd%20Year/1ST%20SEMESTER/ITE%20387%20Advance%20Programming/Clinic%20Appointment%20and%20Patient%20Records%20System';
+$baseUrl = getenv('BASE_URL') ?: (isset($argv[1]) && is_numeric($argv[1]) ? "http://127.0.0.1:{$argv[1]}" : $defaultBaseUrl);
 $cookieAdmin = tempnam(sys_get_temp_dir(), 'ck_adm_');
 $cookieDoctor = tempnam(sys_get_temp_dir(), 'ck_doc_');
 $cookieUnauthorized = tempnam(sys_get_temp_dir(), 'ck_unauth_');

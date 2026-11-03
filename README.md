@@ -345,7 +345,7 @@ Place the project folder inside your web server's public folder (`htdocs` in XAM
 cd "C:\xampp\htdocs"
 
 # Download (clone) the project folder
-git clone https://github.com/Zula-stdnt/Hospital-Billing-and-Patient-Information-System.git "Hospital Billing And Patient Information System"
+git clone https://github.com/Zula-stdnt/Clinic-Appointment-and-Patient-Records-System.git "Clinic Appointment and Patient Records System"
 ```
 
 ---
@@ -395,9 +395,9 @@ $db_charset = 'utf8mb4';
 1. Confirm that **Apache** and **MySQL** are both running in your XAMPP Control Panel.
 2. Open your web browser and visit:
    ```text
-   http://localhost/Hospital%20Billing%20And%20Patient%20Information%20System/
+   http://localhost/Clinic%20Appointment%20and%20Patient%20Records%20System/
    ```
-   *(If you placed the project inside a subfolder—such as `3rd Year/ITE 387/Hospital Billing And Patient Information System`—include that subfolder path in the URL).*
+   *(If you placed the project inside a subfolder—such as `3rd Year/1ST SEMESTER/ITE 387 Advance Programming/Clinic Appointment and Patient Records System`—include that subfolder path in the URL).*
 3. The browser will open the **Login** screen.
 
 ---

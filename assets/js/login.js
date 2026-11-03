@@ -3,8 +3,8 @@
 
 document.addEventListener('DOMContentLoaded', () => {
     // ITE 387: Global State Persistence in sessionStorage (mysql_retrieve_specific_record.md)
-    if (!sessionStorage.getItem('baseAPIUrl')) {
-        const apiPath = window.location.pathname.replace(/\/[^/]*$/, '') + '/api';
+    const apiPath = window.location.pathname.replace(/\/[^/]*$/, '') + '/api';
+    if (sessionStorage.getItem('baseAPIUrl') !== apiPath) {
         sessionStorage.setItem('baseAPIUrl', apiPath);
     }
 

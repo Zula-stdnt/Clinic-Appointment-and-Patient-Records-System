@@ -4,8 +4,8 @@
 // & 03 APIs and Database Operations/mysql_retrieve_specific_record (Global state persistence in sessionStorage.baseAPIUrl)
 
 // ITE 387: Global State Persistence in sessionStorage (mysql_retrieve_specific_record.md)
-if (!sessionStorage.getItem('baseAPIUrl')) {
-    const apiPath = window.location.pathname.replace(/\/[^/]*$/, '') + '/api';
+const apiPath = window.location.pathname.replace(/\/[^/]*$/, '') + '/api';
+if (sessionStorage.getItem('baseAPIUrl') !== apiPath) {
     sessionStorage.setItem('baseAPIUrl', apiPath);
 }
 

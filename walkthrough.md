@@ -658,13 +658,13 @@ This update establishes permanent visual and behavioral consistency across all d
 ### 1. Default Landing on Dashboard
 - **What:** Configured the Receptionist login flow so that upon authenticating, receptionists land directly on the **Overview Dashboard** (`#receptionist_overview`) instead of being routed straight to the Appointments calendar.
 - **Why:** When front-desk staff start their shift, they must see the daily clinic load, current waiting queue, and capacity warnings before navigating into specific scheduling tasks.
-- **Where:** [`api/auth_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/auth_controller.php), [`assets/js/receptionist_main.js`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/assets/js/receptionist_main.js), and [`receptionist_dashboard.html`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/receptionist_dashboard.html).
+- **Where:** [`api/auth_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/1ST%20SEMESTER/ITE%20387%20Advance%20Programming/Clinic%20Appointment%20and%20Patient%20Records%20System/api/auth_controller.php), [`assets/js/receptionist_main.js`](file:///c:/xampp/htdocs/3rd%20Year/1ST%20SEMESTER/ITE%20387%20Advance%20Programming/Clinic%20Appointment%20and%20Patient%20Records%20System/assets/js/receptionist_main.js), and [`receptionist_dashboard.html`](file:///c:/xampp/htdocs/3rd%20Year/1ST%20SEMESTER/ITE%20387%20Advance%20Programming/Clinic%20Appointment%20and%20Patient%20Records%20System/receptionist_dashboard.html).
 - **How:** Updated the redirect response in `auth_controller.php` to `#receptionist_overview` and aligned the client router default route.
 
 ### 2. Resolution of 403 Forbidden Console Error on Dashboard Refresh
 - **What:** Fixed an issue where clicking "Refresh" on the Receptionist Dashboard caused an Axios `403 (Forbidden)` error in the browser developer console when calling `api/doctor_controller.php`.
 - **Why:** The dashboard needs to read active doctors and specialty metrics to display doctor availability widgets, but `doctor_controller.php` previously restricted all requests exclusively to Administrators.
-- **Where:** [`api/doctor_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/doctor_controller.php).
+- **Where:** [`api/doctor_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/1ST%20SEMESTER/ITE%20387%20Advance%20Programming/Clinic%20Appointment%20and%20Patient%20Records%20System/api/doctor_controller.php).
 - **How:** Granted Receptionists read-only permissions (`require_role(['Administrator', 'Receptionist'])` on `GET` requests), while preserving strict Administrator-only restrictions for create, edit, archive, and delete operations.
 
 ---
@@ -674,7 +674,7 @@ This update establishes permanent visual and behavioral consistency across all d
 ### 1. Elimination of Screen Flicker and Unauthorized Network Calls
 - **What:** Fixed the emergency **Break-Glass** button in the Doctor Patient Records table so it opens `#break-glass-modal` immediately without screen flicker or network errors.
 - **Why:** Clicking the button previously attempted to fetch medical chart data (`api/patient_record_controller.php?action=history`) before displaying the modal. Because the doctor was unassigned to that patient, the backend correctly returned `403 Forbidden`, triggering an error toast and causing the screen to jump.
-- **Where:** [`assets/js/modules/doctor_patients.js`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/assets/js/modules/doctor_patients.js).
+- **Where:** [`assets/js/modules/doctor_patients.js`](file:///c:/xampp/htdocs/3rd%20Year/1ST%20SEMESTER/ITE%20387%20Advance%20Programming/Clinic%20Appointment%20and%20Patient%20Records%20System/assets/js/modules/doctor_patients.js).
 - **How:** Tagged action buttons with `data-assigned="0"`. When clicked for unassigned patients, the script immediately extracts the patient's identity attributes and opens the Break-Glass modal directly without issuing any premature chart requests.
 
 ### 2. Clean Event Delegation Architecture
@@ -695,10 +695,10 @@ This update establishes permanent visual and behavioral consistency across all d
 
 ### 2. Comprehensive SQL Semantic Resolution
 - Updated the backend query across all controllers managing gender filtering:
-  - [`api/patient_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/patient_controller.php)
-  - [`api/doctor_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/doctor_controller.php)
-  - [`api/doctor_patients_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/doctor_patients_controller.php)
-  - [`api/user_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/user_controller.php)
+  - [`api/patient_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/1ST%20SEMESTER/ITE%20387%20Advance%20Programming/Clinic%20Appointment%20and%20Patient%20Records%20System/api/patient_controller.php)
+  - [`api/doctor_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/1ST%20SEMESTER/ITE%20387%20Advance%20Programming/Clinic%20Appointment%20and%20Patient%20Records%20System/api/doctor_controller.php)
+  - [`api/doctor_patients_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/1ST%20SEMESTER/ITE%20387%20Advance%20Programming/Clinic%20Appointment%20and%20Patient%20Records%20System/api/doctor_patients_controller.php)
+  - [`api/user_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/1ST%20SEMESTER/ITE%20387%20Advance%20Programming/Clinic%20Appointment%20and%20Patient%20Records%20System/api/user_controller.php)
 - When `$gender === 'other'` is queried, the SQL condition evaluates:
   ```sql
   (LOWER(TRIM(COALESCE(gender, ''))) NOT IN ('male', 'female', 'unknown') 
@@ -735,7 +735,7 @@ All automated verification test suites across the entire application were execut
 - **Solution Design:** Convert every technical audit payload into clear, friendly, human-readable English sentences, enrich rows with real patient and doctor names rather than database IDs, and provide an on-demand collapsible preview for forensic IT diff inspection while preserving original immutable database records.
 
 ### 2. Frontend Natural Language Formatter (`formatAuditDetails`)
-- **Where:** [`assets/js/modules/audit_logs.js`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/assets/js/modules/audit_logs.js).
+- **Where:** [`assets/js/modules/audit_logs.js`](file:///c:/xampp/htdocs/3rd%20Year/1ST%20SEMESTER/ITE%20387%20Advance%20Programming/Clinic%20Appointment%20and%20Patient%20Records%20System/assets/js/modules/audit_logs.js).
 - **How:** Implemented the `formatAuditDetails(item)` helper covering all 26 system actions:
   - **`LOGIN` / `LOGOUT`:** Displays `[Role] logged in` (e.g., `Doctor logged in`).
   - **`CREATE_APPOINTMENT`:** Displays `Appointment created for patient [Name] and assigned to Dr. [Doctor] (Scheduled for [Date] at [Time])` (with clean fallback to `the patient` / `the doctor` if unassigned or purged).
@@ -748,7 +748,7 @@ All automated verification test suites across the entire application were execut
   - **`ARCHIVE` / `RESTORE` / `PURGE`:** Clear plain English sentences explaining record lifecycle events.
 
 ### 3. Backend Entity Enrichment (`api/audit_log_controller.php`)
-- **Where:** [`api/audit_log_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System/api/audit_log_controller.php).
+- **Where:** [`api/audit_log_controller.php`](file:///c:/xampp/htdocs/3rd%20Year/1ST%20SEMESTER/ITE%20387%20Advance%20Programming/Clinic%20Appointment%20and%20Patient%20Records%20System/api/audit_log_controller.php).
 - **How:** Before returning paginated log entries, the controller collects all referenced entity IDs (patients, doctors, users, appointments) and performs batch primary-key lookups. It enriches each row with `target_name`, `target_patient_name`, and `target_doctor_name`, eliminating cryptic database IDs from the interface.
 
 ### 4. Collapsible Forensic Technical Details Preview

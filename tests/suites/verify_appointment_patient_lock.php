@@ -75,7 +75,8 @@ assertTest($hasBackendPatientLock, "2.1", "api/appointment_controller.php reject
 echo "\n--- Group 3: Live API Testing ---\n";
 
 // Login as receptionist
-$baseUrl = 'http://localhost/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System';
+$defaultBaseUrl = 'http://localhost/3rd%20Year/1ST%20SEMESTER/ITE%20387%20Advance%20Programming/Clinic%20Appointment%20and%20Patient%20Records%20System';
+$baseUrl = getenv('BASE_URL') ?: (isset($argv[1]) && is_numeric($argv[1]) ? "http://127.0.0.1:{$argv[1]}" : $defaultBaseUrl);
 
 $cookieFile = tempnam(sys_get_temp_dir(), 'ck_test_');
 

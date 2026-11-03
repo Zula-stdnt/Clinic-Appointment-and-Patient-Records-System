@@ -2,7 +2,8 @@
 // tests/verify_all_modules_crud.php
 // Verifies full CRUD (Create, Read, Update, Soft Delete, Restore, Hard Delete) across all 6 master modules
 
-$baseUrl = 'http://localhost/3rd%20Year/ITE%20387/Hospital%20Billing%20And%20Patient%20Information%20System';
+$defaultBaseUrl = 'http://localhost/3rd%20Year/1ST%20SEMESTER/ITE%20387%20Advance%20Programming/Clinic%20Appointment%20and%20Patient%20Records%20System';
+$baseUrl = getenv('BASE_URL') ?: (isset($argv[1]) && is_numeric($argv[1]) ? "http://127.0.0.1:{$argv[1]}" : $defaultBaseUrl);
 $cookieFile = tempnam(sys_get_temp_dir(), 'crud_ck_');
 
 function req(string $method, string $url, $data = null, array $headers = []): array {
@@ -30,7 +31,8 @@ function req(string $method, string $url, $data = null, array $headers = []): ar
 }
 
 // 1. Create a guaranteed admin user for tests
-$db = new PDO('mysql:host=localhost;dbname=hospital_db;charset=utf8mb4', 'root', '', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+$dbName = getenv('DB_NAME') ?: 'hospital_db';
+$db = new PDO("mysql:host=127.0.0.1;dbname=$dbName;charset=utf8mb4", 'root', '', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 $db->exec("INSERT IGNORE INTO users (role_id, first_name, last_name, username, password_hash) VALUES (1, 'Test', 'Admin', 'testadmin', '" . password_hash('TestPass123!', PASSWORD_DEFAULT) . "')");
 
 $login = req('POST', "$baseUrl/api/auth_controller.php?action=login", [

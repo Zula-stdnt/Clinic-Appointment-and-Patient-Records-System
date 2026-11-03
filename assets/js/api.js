@@ -9,11 +9,15 @@ export function getCsrfToken() {
     return meta ? meta.getAttribute('content') : '';
 }
 
-// Retrieve or initialize baseAPIUrl in sessionStorage
+// Retrieve or initialize baseAPIUrl in sessionStorage (self-healing on location/folder changes)
 export function getBaseApiUrl() {
+    let currentPathBase = '';
+    if (typeof window !== 'undefined' && window.location) {
+        currentPathBase = window.location.pathname.replace(/\/[^/]*$/, '') + '/api';
+    }
     let base = sessionStorage.getItem('baseAPIUrl');
-    if (!base && typeof window !== 'undefined' && window.location) {
-        base = window.location.pathname.replace(/\/[^/]*$/, '') + '/api';
+    if (!base || (currentPathBase && base !== currentPathBase)) {
+        base = currentPathBase || 'api';
         sessionStorage.setItem('baseAPIUrl', base);
     }
     return base || 'api';
