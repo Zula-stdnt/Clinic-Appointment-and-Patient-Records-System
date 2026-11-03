@@ -1,8 +1,8 @@
 # Clinic Appointment and Patient Records System (CAPRS)
 
-> [!NOTE]
-> **Major Project — ITE 387: Advanced Programming**  
-> Developed for the **1st Semester, Academic Year 2026–2027**.
+> **Academic Project — ITE 387: Advanced Programming**
+>
+> Developed as a major course requirement for the 1st Semester of Academic Year 2026–2027 at PHINMA Cagayan de Oro College.
 
 A web application built for clinics to manage patient records, doctor profiles, appointment schedules, medical consultations, clinical specialties, staff accounts, and compliance audit logs in one place.
 
@@ -544,4 +544,4 @@ Here is how the files and folders are organized inside the project:
 ---
 
 ## License
-Educational project developed for ITE 387. All rights reserved.
+Educational project developed for ITE 387 Advanced Programming. All rights reserved.
