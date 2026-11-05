@@ -1,8 +1,26 @@
+<div align="center">
+
+<img src="logo.png" alt="Healing for Everyone Clinic Logo" width="140">
+
 # Clinic Appointment and Patient Records System (CAPRS)
 
-> **Academic Project — ITE 387: Advanced Programming**
->
-> Developed as a major course requirement for the 1st Semester of Academic Year 2026–2027 at PHINMA Cagayan de Oro College.
+> **A specialized Electronic Health Record (EHR) and clinical workflow management system for outpatient multi-specialty practices.**
+
+Academic Project &bull; **ITE 387: Advanced Programming** &bull; PHINMA Cagayan de Oro College
+
+<br>
+
+![PHP](https://img.shields.io/badge/PHP-8.2-777BB4?style=flat-square&logo=php&logoColor=white)
+![MySQL](https://img.shields.io/badge/MySQL-8.0-4479A1?style=flat-square&logo=mysql&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-ES6+-F7DF1E?style=flat-square&logo=javascript&logoColor=black)
+![HTML5](https://img.shields.io/badge/HTML5-E34F26?style=flat-square&logo=html5&logoColor=white)
+![CSS3](https://img.shields.io/badge/CSS3-1572B6?style=flat-square&logo=css3&logoColor=white)
+![License: MIT](https://img.shields.io/badge/License-MIT-2ea44f?style=flat-square)
+![Status](https://img.shields.io/badge/Status-Completed%20%2F%20Active-brightgreen?style=flat-square)
+
+</div>
+
+---
 
 A web application built for clinics to manage patient records, doctor profiles, appointment schedules, medical consultations, clinical specialties, staff accounts, and compliance audit logs in one place.
 
@@ -42,6 +60,7 @@ The roles above describe each member's primary areas of responsibility. Contribu
 - [Running the Application](#running-the-application)
 - [Default User Accounts](#default-user-accounts)
 - [Project Structure](#project-structure)
+- [License](#license)
 
 ---
 
@@ -538,10 +557,14 @@ Here is how the files and folders are organized inside the project:
 ├── index.html               # Entry page that forwards visitors to the login screen
 ├── logout.php               # Ends the user's login session
 ├── walkthrough.md           # Step-by-step history of features and fixes built in the project
+├── LICENSE                  # MIT License terms
 └── README.md                # Main project guide (this file)
 ```
 
 ---
 
 ## License
-Educational project developed for ITE 387 Advanced Programming. All rights reserved.
+
+This project is licensed under the [MIT License](LICENSE) &mdash; see the [LICENSE](LICENSE) file for the full license text and permissions.
+
+Developed as a major academic course requirement for **ITE 387: Advanced Programming** (1st Semester, A.Y. 2026&ndash;2027) at **PHINMA Cagayan de Oro College**.
